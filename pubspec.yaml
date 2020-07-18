@@ -1,0 +1,26 @@
+name: fast_barcode_scanner
+description: A fast barcode scanner using ML Kit on Android and AVFoundation on iOS.
+version: 0.0.1
+author: Joshua Hoogstraat
+homepage: https://github.com/jhoogstraat/fast_barcode_scanner
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+  flutter: ">=1.10.0 < 2.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.jhoogstraat.fast_barcode_scanner
+        pluginClass: FastBarcodeScannerPlugin
+      ios:
+        pluginClass: FastBarcodeScannerPlugin
