@@ -1,8 +1,12 @@
 package com.jhoogstraat.fast_barcode_scanner
 
+import android.util.Log
 import androidx.annotation.NonNull;
+import com.google.mlkit.vision.barcode.Barcode
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -10,16 +14,20 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
 
 /** FastBarcodeScannerPlugin */
-public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler {
+public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
   private lateinit var channel : MethodChannel
+  private lateinit var reader : BarcodeReader
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), "fast_barcode_scanner")
-    channel.setMethodCallHandler(this);
+    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
+    channel.setMethodCallHandler(this)
+    reader = BarcodeReader(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
+      barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("read", listOf(barcodeFormatMap.entries.first { it.value == barcode.format }.key, barcode.rawValue)) }
+    }
   }
 
   // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -34,20 +42,48 @@ public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler {
   companion object {
     @JvmStatic
     fun registerWith(registrar: Registrar) {
-      val channel = MethodChannel(registrar.messenger(), "fast_barcode_scanner")
-      channel.setMethodCallHandler(FastBarcodeScannerPlugin())
+      val plugin = FastBarcodeScannerPlugin()
+      val channel = MethodChannel(registrar.messenger(), "com.jhoogstraat/fast_barcode_scanner")
+
+      plugin.reader = BarcodeReader(registrar.textures().createSurfaceTexture()) { barcodes ->
+        barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("read", listOf(barcodeFormatMap.entries.first { it.value == barcode.format }, barcode.rawValue)) }
+      }
+
+      channel.setMethodCallHandler(plugin)
     }
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-    if (call.method == "getPlatformVersion") {
-      result.success("Android ${android.os.Build.VERSION.RELEASE}")
-    } else {
-      result.notImplemented()
+    call.arguments
+    when (call.method) {
+      "start" -> reader.start(call.arguments as HashMap<String, Any>, result)
+      "stop" -> reader.stop()
+      "pause" -> reader.pause()
+      "resume" -> reader.resume()
+      "toggleFlash" -> reader.toggleFlash()
+      else -> result.notImplemented()
     }
   }
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     channel.setMethodCallHandler(null)
+  }
+
+  // https://flutter.dev/docs/development/packages-and-plugins/plugin-api-migration#uiactivity-plugin
+  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+    reader.attachTo(binding.activity, FlutterLifecycleAdapter.getActivityLifecycle(binding))
+    binding.addRequestPermissionsResultListener(reader)
+  }
+
+  override fun onDetachedFromActivity() {
+    reader.detachFromActivity()
+  }
+
+  override fun onDetachedFromActivityForConfigChanges() {
+    onDetachedFromActivity()
+  }
+
+  override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+    onAttachedToActivity(binding)
   }
 }
