@@ -2,9 +2,10 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:fast_barcode_scanner/barcode_camera.dart';
-import 'package:fast_barcode_scanner/messages/barcode_format.dart';
+import 'package:fast_barcode_scanner/messages/barcode_type.dart';
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner/messages/preview_details.dart';
+import 'package:fast_barcode_scanner/messages/preview_configuration.dart';
+import 'package:fast_barcode_scanner/overlays/beep_overlay.dart';
 import 'package:fast_barcode_scanner/overlays/blur_overlay.dart';
 import 'package:flutter/material.dart';
 
@@ -76,16 +77,15 @@ class DetectorScreen extends StatelessWidget {
       body: Stack(alignment: Alignment.center, fit: StackFit.expand, children: [
         BarcodeCamera(
           key: detector,
-          formats: [
-            BarcodeFormat.ean8,
-            BarcodeFormat.ean13,
-            BarcodeFormat.code128
-          ],
+          types: [BarcodeType.ean8, BarcodeType.ean13, BarcodeType.code128],
           resolution: Resolution.hd720,
           framerate: Framerate.fps60,
-          detectionMode: DetectionMode.pauseDetectionAndVideo,
+          detectionMode: DetectionMode.pauseVideo,
           fadeInOnReady: true,
-          overlayBuilder: (key) => BlurPreviewOverlay(key: key),
+          overlays: [
+            (key) => BeepPreviewOverlay(key: key),
+            (key) => BlurPreviewOverlay(key: key)
+          ],
         ),
         Positioned(bottom: 50, child: Counter()),
         Positioned(

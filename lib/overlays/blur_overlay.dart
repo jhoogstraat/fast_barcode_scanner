@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:fast_barcode_scanner/overlays/material_barcode_frame_painter.dart';
 import 'package:flutter/material.dart';
 
-import 'preview_overlay_base.dart';
+import '../preview_overlay.dart';
 
 class BlurPreviewOverlay extends PreviewOverlay {
   final double blurAmount;
@@ -49,7 +49,7 @@ class BlurPreviewOverlayState extends PreviewOverlayState<BlurPreviewOverlay> {
           tween: Tween(begin: 0.0, end: value ? widget.blurAmount : 0.0),
           duration: widget.duration,
           curve: Curves.easeOut,
-          child: Container(color: Colors.green.withOpacity(0)),
+          child: Container(color: Colors.black.withOpacity(0.0)),
           builder: (_, value, child) => BackdropFilter(
               filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
               child: child),

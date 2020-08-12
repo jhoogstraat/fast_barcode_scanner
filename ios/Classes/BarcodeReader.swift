@@ -70,7 +70,7 @@ enum Framerate: String {
 }
 
 enum DetectionMode: String {
-	case pauseDetection, pauseDetectionAndVideo, continuous
+	case pauseDetection, pauseVideo, continuous
 }
 
 class BarcodeReader: NSObject {
@@ -174,7 +174,7 @@ class BarcodeReader: NSObject {
 		case .continuous: return
 		case .pauseDetection:
 			captureSession.removeOutput(metadataOutput)
-		case .pauseDetectionAndVideo:
+		case .pauseVideo:
 			stop(pause: true)
 		}
 	}
@@ -184,7 +184,7 @@ class BarcodeReader: NSObject {
 		case .continuous: return
 		case .pauseDetection:
 			captureSession.addOutput(metadataOutput)
-		case .pauseDetectionAndVideo:
+		case .pauseVideo:
 			start(fromPause: true)
 		}
 	}

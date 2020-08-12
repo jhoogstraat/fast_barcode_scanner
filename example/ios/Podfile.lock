@@ -2,21 +2,27 @@ PODS:
   - fast_barcode_scanner (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+  - soundpool (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
   - fast_barcode_scanner (from `.symlinks/plugins/fast_barcode_scanner/ios`)
   - Flutter (from `Flutter`)
+  - soundpool (from `.symlinks/plugins/soundpool/ios`)
 
 EXTERNAL SOURCES:
   fast_barcode_scanner:
     :path: ".symlinks/plugins/fast_barcode_scanner/ios"
   Flutter:
     :path: Flutter
+  soundpool:
+    :path: ".symlinks/plugins/soundpool/ios"
 
 SPEC CHECKSUMS:
   fast_barcode_scanner: 0df01447443e9f9c7a6859844d8c4719887100b4
   Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  soundpool: c7f4422ca206e77f8900ed3c4ee6a6ff5a0e38a9
 
-PODFILE CHECKSUM: f45d293502bdcca725aca7bc62af43ad173e1292
+PODFILE CHECKSUM: fe0e1ee7f3d1f7d00b11b474b62dd62134535aea
 
 COCOAPODS: 1.8.4

@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import 'fast_barcode_scanner.dart';
-import 'messages/barcode_format.dart';
-import 'messages/preview_details.dart';
-import 'overlays/preview_overlay_base.dart';
+import 'messages/barcode_type.dart';
+import 'messages/preview_configuration.dart';
+import 'preview_overlay.dart';
 
 final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
   print("Error reading from camera: $error");
@@ -21,30 +21,33 @@ typedef Widget ErrorCallback(BuildContext context, Object error);
 class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
       {Key key,
-      @required this.formats,
-      this.resolution,
-      this.framerate,
+      @required this.types,
       this.detectionMode,
-      this.fadeInOnReady,
-      this.overlayBuilder,
+      this.resolution = Resolution.hd720,
+      this.framerate = Framerate.fps60,
+      this.fadeInOnReady = true,
+      this.overlays = const [],
       ErrorCallback onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
 
-  final List<BarcodeFormat> formats;
+  final List<BarcodeType> types;
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode detectionMode;
   final bool fadeInOnReady;
-  final OverlayBuilder overlayBuilder;
+  final List<OverlayBuilder> overlays;
   final ErrorCallback onError;
 
   @override
-  BarcodeCameraState createState() => BarcodeCameraState();
+  BarcodeCameraState createState() => BarcodeCameraState(overlays.length);
 }
 
 class BarcodeCameraState extends State<BarcodeCamera>
     with WidgetsBindingObserver {
+  BarcodeCameraState(int overlays)
+      : overlayKeys = List.generate(overlays, (_) => GlobalKey());
+
   @override
   void initState() {
     super.initState();
@@ -75,36 +78,42 @@ class BarcodeCameraState extends State<BarcodeCamera>
     }
   }
 
+  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
+
   // State
-  Future<PreviewDetails> _previewDetails;
+  Future<PreviewConfiguration> _previewConfiguration;
   StreamSubscription _eventStreamToken;
   StreamSubscription _codeStreamToken;
-  final GlobalKey<PreviewOverlayState> overlayKey = GlobalKey();
 
   void _initDetector() {
-    if (_previewDetails == null)
-      _previewDetails = FastBarcodeScanner.start(
-          formats: widget.formats,
+    // Only start the Scanner once.
+    if (_previewConfiguration == null) {
+      _previewConfiguration = FastBarcodeScanner.start(
+          types: widget.types,
           resolution: widget.resolution,
           framerate: widget.framerate,
           detectionMode: widget.detectionMode);
+    }
 
+    // Notify the overlay when a barcode is detected.
+    // Only happens when the detection mode is not continous,
+    // because that would required throttling the incoming barcodes.
     if (widget.detectionMode != DetectionMode.continuous &&
-        widget.overlayBuilder != null)
+        widget.overlays.isNotEmpty)
       _codeStreamToken = FastBarcodeScanner.codeStream.listen((_) {
-        overlayKey.currentState.didDetectBarcode();
+        overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       });
   }
 
   Future<void> resumeDetector() async {
     await FastBarcodeScanner.resume();
-    overlayKey?.currentState?.didResumePreview();
+    overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PreviewDetails>(
-      future: _previewDetails,
+    return FutureBuilder<PreviewConfiguration>(
+      future: _previewConfiguration,
       builder: (context, snapshot) {
         switch (snapshot.connectionState) {
           case ConnectionState.none:
@@ -120,8 +129,10 @@ class BarcodeCameraState extends State<BarcodeCamera>
               children: [
                 _fittedPreview(snapshot.data),
                 if (widget.fadeInOnReady) previewFader(),
-                if (widget.overlayBuilder != null)
-                  widget.overlayBuilder(overlayKey),
+                ...widget.overlays
+                    .asMap()
+                    .entries
+                    .map((entry) => entry.value(overlayKeys[entry.key]))
               ],
             );
             break;
@@ -134,12 +145,13 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   /// TODO: [FittedBox] produces a wrong height (666.7 instead of 667 on iPhone 6 screen size).
   /// This results in a white line at the bottom.
-  Widget _fittedPreview(PreviewDetails details) {
+  Widget _fittedPreview(PreviewConfiguration details) {
+    print(details.height.toDouble());
     return FittedBox(
       fit: BoxFit.cover,
       child: SizedBox(
           width: details.width.toDouble(),
-          height: details.height.toDouble(),
+          height: details.height.toDouble() * 1.001,
           child: Texture(textureId: details.textureId)),
     );
   }
@@ -149,9 +161,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
       tween: ColorTween(begin: Colors.black, end: Colors.transparent),
       curve: Curves.easeOut,
       duration: const Duration(milliseconds: 260),
-      builder: (_, value, __) => Container(
-        color: value,
-      ),
+      builder: (_, value, __) => Container(color: value),
     );
   }
 }

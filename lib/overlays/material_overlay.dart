@@ -1,7 +1,7 @@
 import 'package:fast_barcode_scanner/overlays/material_barcode_frame_painter.dart';
 import 'package:flutter/material.dart';
 
-import 'preview_overlay_base.dart';
+import '../preview_overlay.dart';
 
 class MaterialPreviewOverlay extends PreviewOverlay {
   MaterialPreviewOverlay({Key key}) : super(key: key);
@@ -59,14 +59,6 @@ class MaterialPreviewOverlayState
     return;
   }
 
-  void startDetecting() {
-    _controller.repeat();
-  }
-
-  void stopDetecting() {
-    _controller.reset();
-  }
-
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
@@ -99,7 +91,6 @@ class MaterialBarcodeSensingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    print("painting Material Overlay ${canvas.hashCode}");
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
 
     final cutOut = RRect.fromRectXY(

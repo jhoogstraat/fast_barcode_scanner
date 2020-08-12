@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'messages/barcode.dart';
-import 'messages/barcode_format.dart';
-import 'messages/preview_details.dart';
+import 'messages/barcode_type.dart';
+import 'messages/preview_configuration.dart';
 
 class FastBarcodeScanner {
   static const MethodChannel _channel =
@@ -16,19 +16,12 @@ class FastBarcodeScanner {
   static final Stream<Barcode> codeStream =
       _codeStreamController.stream.asBroadcastStream();
 
-  static Future<PreviewDetails> start(
-      {@required List<BarcodeFormat> formats,
+  static Future<PreviewConfiguration> start(
+      {@required List<BarcodeType> types,
       Resolution resolution,
       Framerate framerate,
       DetectionMode detectionMode}) async {
-    assert(formats.length > 0);
-
-    var response = await _channel.invokeMethod('start', {
-      'formats': formats.map((e) => describeEnum(e)).toList(),
-      'detectionMode': describeEnum(detectionMode ?? DetectionMode.continuous),
-      'res': describeEnum(resolution ?? Resolution.hd720),
-      'fps': describeEnum(framerate ?? Framerate.fps60)
-    });
+    assert(types.length > 0);
 
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
@@ -39,12 +32,19 @@ class FastBarcodeScanner {
           }
           break;
         default:
-          print("FastBarcodeReader: unknown method call received: "
-              "${call.method}");
+          assert(true,
+              "FastBarcodeReader: unknown method call received: ${call.method}");
       }
     });
 
-    return PreviewDetails(response);
+    var response = await _channel.invokeMethod('start', {
+      'formats': types.map((e) => describeEnum(e)).toList(),
+      'detectionMode': describeEnum(detectionMode ?? DetectionMode.continuous),
+      'res': describeEnum(resolution ?? Resolution.hd720),
+      'fps': describeEnum(framerate ?? Framerate.fps60)
+    });
+
+    return PreviewConfiguration(response);
   }
 
   static Future stop() {

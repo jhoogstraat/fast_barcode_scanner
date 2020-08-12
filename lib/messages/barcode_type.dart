@@ -1,6 +1,7 @@
-enum BarcodeFormat {
+/// Contains all currently on iOS and Android supported barcode types.
+enum BarcodeType {
   /// Android
-  all,
+  // all,
 
   /// Android, iOS
   aztec,
@@ -12,13 +13,13 @@ enum BarcodeFormat {
   code39,
 
   /// iOS
-  code39mod43,
+  // code39mod43,
 
   /// Android, iOS
   code93,
 
   /// Android
-  codabar,
+  // codabar,
 
   /// Android, iOS
   dataMatrix,
@@ -39,11 +40,11 @@ enum BarcodeFormat {
   qr,
 
   /// Android
-  upcA,
+  // upcA,
 
   /// Android, iOS
   upcE,
 
   /// iOS
-  interleaved,
+  // interleaved,
 }

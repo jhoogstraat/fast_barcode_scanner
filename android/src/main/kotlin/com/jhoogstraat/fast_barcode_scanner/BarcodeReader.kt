@@ -56,12 +56,12 @@ enum class Resolution {
 }
 
 enum class DetectionMode {
-    pauseDetection, pauseDetectionAndVideo, continuous;
+    pauseDetection, pauseVideo, continuous;
 
     fun pause() : Boolean = when(this) {
         continuous -> false
         pauseDetection -> true
-        pauseDetectionAndVideo -> true
+        pauseVideo -> true
     }
 }
 
