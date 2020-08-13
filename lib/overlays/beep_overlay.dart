@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fast_barcode_scanner/preview_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:soundpool/soundpool.dart';
@@ -22,12 +24,7 @@ class _BeepPreviewOverlayState extends PreviewOverlayState<BeepPreviewOverlay> {
   }
 
   @override
-  Future<void> didDetectBarcode() {
-    widget._pool.play(soundId);
-  }
-
-  @override
-  Future<void> didResumePreview() {}
+  FutureOr<void> didDetectBarcode() => widget._pool.play(soundId);
 
   @override
   Widget build(BuildContext context) {

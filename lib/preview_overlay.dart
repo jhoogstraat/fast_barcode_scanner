@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 abstract class PreviewOverlay extends StatefulWidget {
@@ -8,6 +10,6 @@ abstract class PreviewOverlay extends StatefulWidget {
 }
 
 abstract class PreviewOverlayState<T extends PreviewOverlay> extends State<T> {
-  Future<void> didDetectBarcode();
-  Future<void> didResumePreview();
+  FutureOr<void> didDetectBarcode() {}
+  FutureOr<void> didResumePreview() {}
 }

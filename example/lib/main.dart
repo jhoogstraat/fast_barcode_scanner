@@ -40,12 +40,12 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-/// This is outside of [DetectorScreen] to preserve [BarcodeCameraState] in hot reload.
+/// This is outside of [DetectorScreen] to preserve [BarcodeCameraState] after hot reload.
 /// Otherwise a new Key would be generated and thus a new [BarcodeCameraState].
 final detector = GlobalKey<BarcodeCameraState>();
 
 class DetectorScreen extends StatelessWidget {
-  final _flashState = ValueNotifier(false);
+  final _flashIconState = ValueNotifier(false);
 
   @override
   Widget build(BuildContext context) {
@@ -61,14 +61,14 @@ class DetectorScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           ValueListenableBuilder<bool>(
-            valueListenable: _flashState,
+            valueListenable: _flashIconState,
             builder: (context, state, _) => IconButton(
               icon: state
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
                 FastBarcodeScanner.toggleFlash();
-                _flashState.value = !_flashState.value;
+                _flashIconState.value = !_flashIconState.value;
               },
             ),
           )
@@ -109,7 +109,7 @@ class _CounterState extends State<Counter> {
   @override
   void initState() {
     super.initState();
-    _streamToken = FastBarcodeScanner.codeStream.listen((event) {
+    _streamToken = FastBarcodeScanner.detections.listen((event) {
       final count = detectionCount.update(event.value, (value) => value + 1,
           ifAbsent: () => 1);
       detectionInfo.value = "${count}x\n${event.value}";

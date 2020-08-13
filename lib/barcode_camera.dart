@@ -100,7 +100,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
     // because that would required throttling the incoming barcodes.
     if (widget.detectionMode != DetectionMode.continuous &&
         widget.overlays.isNotEmpty)
-      _codeStreamToken = FastBarcodeScanner.codeStream.listen((_) {
+      _codeStreamToken = FastBarcodeScanner.detections.listen((_) {
         overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       });
   }

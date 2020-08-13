@@ -1,20 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import 'messages/barcode.dart';
 import 'messages/barcode_type.dart';
 import 'messages/preview_configuration.dart';
+import 'platform_interface/fast_barcode_scanner_platform_interface.dart';
 
 class FastBarcodeScanner {
-  static const MethodChannel _channel =
-      const MethodChannel('com.jhoogstraat/fast_barcode_scanner');
+  static FastBarcodeScannerPlatform get _platformInstance =>
+      FastBarcodeScannerPlatform.instance;
 
-  static final _codeStreamController = StreamController<Barcode>();
-
-  static final Stream<Barcode> codeStream =
-      _codeStreamController.stream.asBroadcastStream();
+  static final _detectionStreamController = StreamController<Barcode>();
+  static final detections =
+      _detectionStreamController.stream.asBroadcastStream();
 
   static Future<PreviewConfiguration> start(
       {@required List<BarcodeType> types,
@@ -23,44 +22,33 @@ class FastBarcodeScanner {
       DetectionMode detectionMode}) async {
     assert(types.length > 0);
 
-    _channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'read':
-          if (_codeStreamController.hasListener) {
-            final barcode = Barcode(call.arguments);
-            _codeStreamController.add(barcode);
-          }
-          break;
-        default:
-          assert(true,
-              "FastBarcodeReader: unknown method call received: ${call.method}");
+    _platformInstance.setOnReadHandler((arguments) {
+      if (_detectionStreamController.hasListener) {
+        final barcode = Barcode(arguments);
+        _detectionStreamController.add(barcode);
       }
     });
 
-    var response = await _channel.invokeMethod('start', {
-      'formats': types.map((e) => describeEnum(e)).toList(),
-      'detectionMode': describeEnum(detectionMode ?? DetectionMode.continuous),
-      'res': describeEnum(resolution ?? Resolution.hd720),
-      'fps': describeEnum(framerate ?? Framerate.fps60)
-    });
-
-    return PreviewConfiguration(response);
+    return _platformInstance.init(
+        types.map((e) => describeEnum(e)).toList(),
+        describeEnum(resolution ?? Resolution.hd720),
+        describeEnum(framerate ?? Framerate.fps60),
+        describeEnum(detectionMode ?? DetectionMode.continuous));
   }
 
-  static Future stop() {
-    _channel.setMethodCallHandler(null);
-    return _channel.invokeMethod('stop').catchError(print);
+  static Future<void> stop() {
+    return _platformInstance.dispose();
   }
 
-  static Future pause() {
-    return _channel.invokeMethod('pause');
+  static Future<void> pause() {
+    return _platformInstance.pause();
   }
 
-  static Future resume() {
-    return _channel.invokeMethod('resume');
+  static Future<void> resume() {
+    return _platformInstance.resume();
   }
 
-  static Future toggleFlash() {
-    return _channel.invokeMethod('toggleTorch');
+  static Future<void> toggleFlash() {
+    return _platformInstance.toggleFlash();
   }
 }
