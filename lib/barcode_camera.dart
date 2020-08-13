@@ -22,7 +22,7 @@ class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
       {Key key,
       @required this.types,
-      this.detectionMode,
+      this.detectionMode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
       this.fadeInOnReady = true,
@@ -46,7 +46,13 @@ class BarcodeCamera extends StatefulWidget {
 class BarcodeCameraState extends State<BarcodeCamera>
     with WidgetsBindingObserver {
   BarcodeCameraState(int overlays)
-      : overlayKeys = List.generate(overlays, (_) => GlobalKey());
+      : overlayKeys = List.generate(
+            overlays, (_) => GlobalKey(debugLabel: "Overlay Nr. $overlays"));
+
+  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
+  Future<PreviewConfiguration> _previewConfiguration;
+  StreamSubscription _eventStreamToken;
+  StreamSubscription _detectionStreamToken;
 
   @override
   void initState() {
@@ -54,36 +60,6 @@ class BarcodeCameraState extends State<BarcodeCamera>
     WidgetsBinding.instance.addObserver(this);
     _initDetector();
   }
-
-  @override
-  dispose() {
-    FastBarcodeScanner.stop();
-    _eventStreamToken?.cancel();
-    _codeStreamToken?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.resumed:
-        FastBarcodeScanner.resume();
-        break;
-      case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-        FastBarcodeScanner.pause();
-        break;
-    }
-  }
-
-  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
-
-  // State
-  Future<PreviewConfiguration> _previewConfiguration;
-  StreamSubscription _eventStreamToken;
-  StreamSubscription _codeStreamToken;
 
   void _initDetector() {
     // Only start the Scanner once.
@@ -100,9 +76,32 @@ class BarcodeCameraState extends State<BarcodeCamera>
     // because that would required throttling the incoming barcodes.
     if (widget.detectionMode != DetectionMode.continuous &&
         widget.overlays.isNotEmpty)
-      _codeStreamToken = FastBarcodeScanner.detections.listen((_) {
+      _detectionStreamToken = FastBarcodeScanner.detections.listen((_) {
         overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        FastBarcodeScanner.resume();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+        FastBarcodeScanner.pause();
+        break;
+    }
+  }
+
+  @override
+  dispose() {
+    FastBarcodeScanner.stop();
+    _eventStreamToken?.cancel();
+    _detectionStreamToken?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> resumeDetector() async {

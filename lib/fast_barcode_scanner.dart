@@ -23,20 +23,19 @@ class FastBarcodeScanner {
     assert(types.length > 0);
 
     _platformInstance.setOnReadHandler((arguments) {
-      if (_detectionStreamController.hasListener) {
-        final barcode = Barcode(arguments);
-        _detectionStreamController.add(barcode);
-      }
+      if (_detectionStreamController.hasListener)
+        _detectionStreamController.add(Barcode(arguments));
     });
 
     return _platformInstance.init(
-        types.map((e) => describeEnum(e)).toList(),
+        types.map((e) => describeEnum(e)).toList(growable: false),
         describeEnum(resolution ?? Resolution.hd720),
         describeEnum(framerate ?? Framerate.fps60),
         describeEnum(detectionMode ?? DetectionMode.continuous));
   }
 
   static Future<void> stop() {
+    print("calling dispose");
     return _platformInstance.dispose();
   }
 

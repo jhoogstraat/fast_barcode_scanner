@@ -108,7 +108,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
     }
 
     private fun initCamera() {
-        val formats = (args["formats"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray()
+        val formats = (args["types"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray()
         val detectionMode = DetectionMode.valueOf(args["detectionMode"] as String)
         val resolution = Resolution.valueOf(args["res"] as String)
         val framerate = Framerate.valueOf(args["fps"] as String)

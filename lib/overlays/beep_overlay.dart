@@ -17,10 +17,11 @@ class _BeepPreviewOverlayState extends PreviewOverlayState<BeepPreviewOverlay> {
   int soundId;
 
   @override
-  void initState() async {
+  void initState() {
     super.initState();
-    soundId = await widget._pool
-        .loadUri("https://bigsoundbank.com/UPLOAD/m4a/1417.m4a");
+    widget._pool
+        .loadUri("https://bigsoundbank.com/UPLOAD/m4a/1417.m4a")
+        .then((id) => soundId = id);
   }
 
   @override
