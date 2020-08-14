@@ -6,7 +6,7 @@ struct StartArgs {
 			let dict = args as? [String: Any],
 			let resolution = Resolution(rawValue: dict["res"] as? String ?? ""),
 			let framerate = Framerate(rawValue: dict["fps"] as? String ?? ""),
-			let detectionMode = DetectionMode(rawValue: dict["detectionMode"] as? String ?? ""),
+			let detectionMode = DetectionMode(rawValue: dict["mode"] as? String ?? ""),
 			let codes = dict["types"] as? [String]
 			else {
 				return nil
@@ -67,7 +67,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 		guard let args = StartArgs(call.arguments) else {
 			let error = FlutterError(code: "INVALID_ARGUMENT",
 															 message: "Missing a required argument",
-															 details: "Expected resolution, framerate, detectionMode and types")
+															 details: "Expected resolution, framerate, mode and types")
 			result(error)
 			return
 		}

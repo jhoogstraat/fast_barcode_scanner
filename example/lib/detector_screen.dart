@@ -1,16 +1,14 @@
-import 'package:fast_barcode_scanner/barcode_camera.dart';
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner/messages/barcode_type.dart';
-import 'package:fast_barcode_scanner/messages/preview_configuration.dart';
-import 'package:fast_barcode_scanner/overlays/beep_overlay.dart';
-import 'package:fast_barcode_scanner/overlays/blur_overlay.dart';
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
 /// This is outside of [DetectorScreen] to preserve [BarcodeCameraState] after hot reload.
 /// Otherwise a new Key would be generated and thus a new [BarcodeCameraState].
 final detector = GlobalKey<BarcodeCameraState>();
+
+final detections = StreamController<Barcode>();
 
 class DetectorScreen extends StatelessWidget {
   final _flashIconState = ValueNotifier(false);
@@ -35,7 +33,7 @@ class DetectorScreen extends StatelessWidget {
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
-                FastBarcodeScanner.toggleFlash();
+                detector.currentState.toggleFlash();
                 _flashIconState.value = !_flashIconState.value;
               },
             ),
@@ -54,6 +52,7 @@ class DetectorScreen extends StatelessWidget {
             (key) => BeepPreviewOverlay(key: key),
             (key) => BlurPreviewOverlay(key: key)
           ],
+          onDetect: (barcode) => detections.add(barcode),
         ),
         Positioned(bottom: 50, child: DetectionsCounter()),
         Positioned(

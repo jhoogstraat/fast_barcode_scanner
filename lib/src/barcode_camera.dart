@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import 'fast_barcode_scanner.dart';
-import 'messages/barcode_type.dart';
-import 'messages/preview_configuration.dart';
 import 'preview_overlay.dart';
 
 final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
@@ -27,6 +25,7 @@ class BarcodeCamera extends StatefulWidget {
       this.framerate = Framerate.fps60,
       this.fadeInOnReady = true,
       this.overlays = const [],
+      @required this.onDetect,
       ErrorCallback onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
@@ -38,6 +37,7 @@ class BarcodeCamera extends StatefulWidget {
   final bool fadeInOnReady;
   final List<OverlayBuilder> overlays;
   final ErrorCallback onError;
+  final void Function(Barcode) onDetect;
 
   @override
   BarcodeCameraState createState() => BarcodeCameraState(overlays.length);
@@ -54,6 +54,9 @@ class BarcodeCameraState extends State<BarcodeCamera>
   StreamSubscription _eventStreamToken;
   StreamSubscription _detectionStreamToken;
 
+  FastBarcodeScannerPlatform get _platformInstance =>
+      FastBarcodeScannerPlatform.instance;
+
   @override
   void initState() {
     super.initState();
@@ -64,40 +67,37 @@ class BarcodeCameraState extends State<BarcodeCamera>
   void _initDetector() {
     // Only start the Scanner once.
     if (_previewConfiguration == null) {
-      _previewConfiguration = FastBarcodeScanner.start(
-          types: widget.types,
-          resolution: widget.resolution,
-          framerate: widget.framerate,
-          detectionMode: widget.detectionMode);
-    }
-
-    // Notify the overlay when a barcode is detected.
-    // Only happens when the detection mode is not continous,
-    // because that would required throttling the incoming barcodes.
-    if (widget.detectionMode != DetectionMode.continuous &&
-        widget.overlays.isNotEmpty)
-      _detectionStreamToken = FastBarcodeScanner.detections.listen((_) {
-        overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
+      _previewConfiguration = _platformInstance.init(widget.types,
+          widget.resolution, widget.framerate, widget.detectionMode);
+      _platformInstance.setOnDetectHandler((barcode) {
+        // Notify the overlay when a barcode is detected.
+        // Only happens when the detection mode is not continous,
+        // because that would required throttling incoming barcodes.
+        if (widget.detectionMode != DetectionMode.continuous &&
+            widget.overlays.isNotEmpty)
+          overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
+        widget.onDetect(barcode);
       });
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        FastBarcodeScanner.resume();
+        _platformInstance.resume();
         break;
       case AppLifecycleState.detached:
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
-        FastBarcodeScanner.pause();
+        _platformInstance.pause();
         break;
     }
   }
 
   @override
   dispose() {
-    FastBarcodeScanner.stop();
+    _platformInstance.dispose();
     _eventStreamToken?.cancel();
     _detectionStreamToken?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -105,7 +105,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
   }
 
   Future<void> resumeDetector() async {
-    await FastBarcodeScanner.resume();
+    await _platformInstance.resume();
     overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
   }
 
@@ -162,5 +162,9 @@ class BarcodeCameraState extends State<BarcodeCamera>
       duration: const Duration(milliseconds: 260),
       builder: (_, value, __) => Container(color: value),
     );
+  }
+
+  void toggleFlash() {
+    _platformInstance.toggleFlash();
   }
 }

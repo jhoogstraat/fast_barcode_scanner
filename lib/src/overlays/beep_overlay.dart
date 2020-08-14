@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:fast_barcode_scanner/preview_overlay.dart';
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart'
+    show PreviewOverlay, PreviewOverlayState;
 import 'package:flutter/material.dart';
 import 'package:soundpool/soundpool.dart';
 

@@ -1,9 +1,9 @@
 import 'dart:ui';
 
-import 'package:fast_barcode_scanner/overlays/material_barcode_frame_painter.dart';
 import 'package:flutter/material.dart';
 
 import '../preview_overlay.dart';
+import 'material_barcode_frame_painter.dart';
 
 class BlurPreviewOverlay extends PreviewOverlay {
   final double blurAmount;
