@@ -8,7 +8,9 @@ import 'detections_counter.dart';
 /// Otherwise a new Key would be generated and thus a new [BarcodeCameraState].
 final detector = GlobalKey<BarcodeCameraState>();
 
-final detections = StreamController<Barcode>();
+final detectionsController = StreamController<Barcode>();
+final Stream<Barcode> detectionsStream =
+    detectionsController.stream.asBroadcastStream();
 
 class DetectorScreen extends StatelessWidget {
   final _flashIconState = ValueNotifier(false);
@@ -52,7 +54,7 @@ class DetectorScreen extends StatelessWidget {
             (key) => BeepPreviewOverlay(key: key),
             (key) => BlurPreviewOverlay(key: key)
           ],
-          onDetect: (barcode) => detections.add(barcode),
+          onDetect: (barcode) => detectionsController.add(barcode),
         ),
         Positioned(bottom: 50, child: DetectionsCounter()),
         Positioned(
