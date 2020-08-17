@@ -49,7 +49,6 @@ class DetectorScreen extends StatelessWidget {
           resolution: Resolution.hd720,
           framerate: Framerate.fps60,
           detectionMode: DetectionMode.pauseVideo,
-          fadeInOnReady: true,
           overlays: [
             (key) => BeepPreviewOverlay(key: key),
             (key) => BlurPreviewOverlay(key: key)

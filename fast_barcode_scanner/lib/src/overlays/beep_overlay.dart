@@ -26,7 +26,7 @@ class _BeepPreviewOverlayState extends PreviewOverlayState<BeepPreviewOverlay> {
   }
 
   @override
-  FutureOr<void> didDetectBarcode() => widget._pool.play(soundId);
+  void didDetectBarcode() => widget._pool.play(soundId);
 
   @override
   Widget build(BuildContext context) {

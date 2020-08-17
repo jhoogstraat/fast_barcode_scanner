@@ -9,8 +9,8 @@ import 'package:flutter/rendering.dart';
 import 'preview_overlay.dart';
 
 final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
-  print("Error reading from camera: $error");
-  return Text("Error reading from camera...");
+  debugPrint("Error reading from camera: $error");
+  return Center(child: Text("Error reading from camera..."));
 };
 
 typedef PreviewOverlay OverlayBuilder(GlobalKey<PreviewOverlayState> key);
@@ -23,9 +23,8 @@ class BarcodeCamera extends StatefulWidget {
       this.detectionMode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
-      this.fadeInOnReady = true,
-      this.overlays = const [],
       @required this.onDetect,
+      this.overlays = const [],
       ErrorCallback onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
@@ -34,7 +33,6 @@ class BarcodeCamera extends StatefulWidget {
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode detectionMode;
-  final bool fadeInOnReady;
   final List<OverlayBuilder> overlays;
   final ErrorCallback onError;
   final void Function(Barcode) onDetect;
@@ -127,7 +125,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
             return Stack(
               children: [
                 _fittedPreview(snapshot.data),
-                if (widget.fadeInOnReady) previewFader(),
+                previewFader(),
                 ...widget.overlays
                     .asMap()
                     .entries
