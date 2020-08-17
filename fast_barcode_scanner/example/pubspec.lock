@@ -29,6 +29,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  fast_barcode_scanner_beeper:
+    dependency: "direct main"
+    description:
+      path: "../../fast_barcode_scanner_beeper"
+      relative: true
+    source: path
+    version: "0.0.1"
   fast_barcode_scanner_platform_interface:
     dependency: transitive
     description:

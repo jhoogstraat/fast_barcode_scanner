@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_beeper/fast_barcode_scanner_beeper.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
@@ -51,6 +52,7 @@ class DetectorScreen extends StatelessWidget {
           detectionMode: DetectionMode.pauseVideo,
           overlays: [
             (key) => BeepPreviewOverlay(key: key),
+            (key) => MaterialPreviewOverlay(key: key, animateDetection: false),
             (key) => BlurPreviewOverlay(key: key)
           ],
           onDetect: (barcode) => detectionsController.add(barcode),

@@ -6,8 +6,6 @@ import io.flutter.embedding.engine.plugins.lifecycle.HiddenLifecycleReference
 
 /** Provides a static method for extracting lifecycle objects from Flutter plugin bindings.  */
 object FlutterLifecycleAdapter {
-    private const val TAG = "FlutterLifecycleAdapter"
-
     /**
      * Returns the lifecycle object for the activity a plugin is bound to.
      *

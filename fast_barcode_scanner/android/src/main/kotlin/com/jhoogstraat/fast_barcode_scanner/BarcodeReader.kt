@@ -19,67 +19,11 @@ import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
 import java.util.ArrayList
-
-enum class Framerate {
-    fps30, fps60, fps120, fps240;
-
-    fun intValue() : Int = when(this) {
-        fps30 -> 30
-        fps60 -> 60
-        fps120 -> 120
-        fps240 -> 240
-    }
-}
-
-enum class Resolution {
-    sd480, hd720, hd1080, hd4k;
-
-    fun width() : Int = when(this) {
-        sd480 -> 640
-        hd720 -> 1280
-        hd1080 -> 1920
-        hd4k -> 3840
-    }
-
-    fun height() : Int = when(this) {
-        sd480 -> 360
-        hd720 -> 720
-        hd1080 -> 1080
-        hd4k -> 2160
-    }
-}
-
-enum class DetectionMode {
-    pauseDetection, pauseVideo, continuous;
-
-    fun pause() : Boolean = when(this) {
-        continuous -> false
-        pauseDetection -> true
-        pauseVideo -> true
-    }
-}
-
-val barcodeFormatMap = hashMapOf(
-        "aztec" to Barcode.FORMAT_AZTEC,
-        "code128" to Barcode.FORMAT_CODE_128,
-        "code39" to Barcode.FORMAT_CODE_39,
-        "code93" to Barcode.FORMAT_CODE_93,
-        "codabar" to Barcode.FORMAT_CODABAR,
-        "dataMatrix" to Barcode.FORMAT_DATA_MATRIX,
-        "ean13" to Barcode.FORMAT_EAN_13,
-        "ean8" to Barcode.FORMAT_EAN_8,
-        "itf" to Barcode.FORMAT_ITF,
-        "pdf417" to Barcode.FORMAT_PDF417,
-        "qr" to Barcode.FORMAT_QR_CODE,
-        "upcA" to Barcode.FORMAT_UPC_A,
-        "upcE" to Barcode.FORMAT_UPC_E
-)
 
 class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener, LifecycleOwner {
 
@@ -122,7 +66,8 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
 
             // Select back camera
             cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
+                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                    .build()
 
             try {
                 // Unbind use cases before rebinding
@@ -132,6 +77,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
                 // Preview Use Case
                 flutterPreview = Preview.Builder()
                         .setTargetResolution(Size(resolution.width(), resolution.height()))
+                        .setTargetRotation(Surface.ROTATION_90)
                         .build()
 
                 val textureSurface = flutterTexture.surfaceTexture()
@@ -167,17 +113,12 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
                         .build()
                         .also { it.setAnalyzer(analyseExecutor, detector) }
 
-                startRunning()
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
         }, ContextCompat.getMainExecutor(activity))
-    }
-
-    private fun startRunning() {
-        // Bind use cases to camera
-        camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
     }
 
     fun start(args: HashMap<String, Any>, result: Result) {
@@ -201,12 +142,12 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
     }
 
     fun resume() {
-        cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
+        camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
     }
 
-    fun toggleFlash() {
-        camera.cameraControl.enableTorch(torchState).addListener(Runnable {
-            torchState != torchState
+    fun toggleTorch() {
+        camera.cameraControl.enableTorch(!torchState).addListener(Runnable {
+            torchState = !torchState
         }, ContextCompat.getMainExecutor(activity))
     }
 

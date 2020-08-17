@@ -45,12 +45,10 @@ class BarcodeCameraState extends State<BarcodeCamera>
     with WidgetsBindingObserver {
   BarcodeCameraState(int overlays)
       : overlayKeys = List.generate(
-            overlays, (_) => GlobalKey(debugLabel: "Overlay Nr. $overlays"));
+            overlays, (_) => GlobalKey(debugLabel: "overlay_$overlays"));
 
   final List<GlobalKey<PreviewOverlayState>> overlayKeys;
   Future<PreviewConfiguration> _previewConfiguration;
-  StreamSubscription _eventStreamToken;
-  StreamSubscription _detectionStreamToken;
 
   FastBarcodeScannerPlatform get _platformInstance =>
       FastBarcodeScannerPlatform.instance;
@@ -96,15 +94,17 @@ class BarcodeCameraState extends State<BarcodeCamera>
   @override
   dispose() {
     _platformInstance.dispose();
-    _eventStreamToken?.cancel();
-    _detectionStreamToken?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  Future<void> resumeDetector() async {
+  void resumeDetector() async {
     await _platformInstance.resume();
-    overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
+    overlayKeys.forEach((key) => key.currentState.didResumePreview());
+  }
+
+  void toggleFlash() {
+    _platformInstance.toggleFlash();
   }
 
   @override
@@ -143,7 +143,6 @@ class BarcodeCameraState extends State<BarcodeCamera>
   /// TODO: [FittedBox] produces a wrong height (666.7 instead of 667 on iPhone 6 screen size).
   /// This results in a white line at the bottom.
   Widget _fittedPreview(PreviewConfiguration details) {
-    print(details.height.toDouble());
     return FittedBox(
       fit: BoxFit.cover,
       child: SizedBox(
@@ -160,9 +159,5 @@ class BarcodeCameraState extends State<BarcodeCamera>
       duration: const Duration(milliseconds: 260),
       builder: (_, value, __) => Container(color: value),
     );
-  }
-
-  void toggleFlash() {
-    _platformInstance.toggleFlash();
   }
 }
