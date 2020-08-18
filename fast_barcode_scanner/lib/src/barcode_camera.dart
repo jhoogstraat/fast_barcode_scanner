@@ -16,26 +16,30 @@ final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
 typedef PreviewOverlay OverlayBuilder(GlobalKey<PreviewOverlayState> key);
 typedef Widget ErrorCallback(BuildContext context, Object error);
 
+/// The main class connecting the platform code to the Flutter UI.
+///
+/// This class is used in a widget tree and connects to the camera
+/// as soon as the build method gets called.
 class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
       {Key key,
       @required this.types,
+      @required this.onDetect,
       this.detectionMode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
-      @required this.onDetect,
       this.overlays = const [],
       ErrorCallback onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
 
   final List<BarcodeType> types;
+  final void Function(Barcode) onDetect;
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode detectionMode;
   final List<OverlayBuilder> overlays;
   final ErrorCallback onError;
-  final void Function(Barcode) onDetect;
 
   @override
   BarcodeCameraState createState() => BarcodeCameraState(overlays.length);
@@ -47,34 +51,21 @@ class BarcodeCameraState extends State<BarcodeCamera>
       : overlayKeys = List.generate(
             overlays, (_) => GlobalKey(debugLabel: "overlay_$overlays"));
 
-  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
-  Future<PreviewConfiguration> _previewConfiguration;
-
   FastBarcodeScannerPlatform get _platformInstance =>
       FastBarcodeScannerPlatform.instance;
+
+  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
+
+  Future<void> _initFuture;
+  PreviewConfiguration _previewConfiguration;
+  Error _error;
+  double _opacity = 0.0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initDetector();
-  }
-
-  void _initDetector() {
-    // Only start the Scanner once.
-    if (_previewConfiguration == null) {
-      _previewConfiguration = _platformInstance.init(widget.types,
-          widget.resolution, widget.framerate, widget.detectionMode);
-      _platformInstance.setOnDetectHandler((barcode) {
-        // Notify the overlay when a barcode is detected.
-        // Only happens when the detection mode is not continous,
-        // because that would required throttling incoming barcodes.
-        if (widget.detectionMode != DetectionMode.continuous &&
-            widget.overlays.isNotEmpty)
-          overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
-        widget.onDetect(barcode);
-      });
-    }
   }
 
   @override
@@ -91,16 +82,39 @@ class BarcodeCameraState extends State<BarcodeCamera>
     }
   }
 
-  @override
-  dispose() {
-    _platformInstance.dispose();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
+  /// Informs the platform to initialize the camera.
+  ///
+  /// The camera is initialized only once per session.
+  /// All susequent calls to this method will be dropped.
+  /// Caution: The callback might be called many times in quick succession
+  ///  when using [DetectionMode.continuous].
+  void _initDetector() {
+    if (_initFuture != null) return;
+
+    _initFuture = _platformInstance
+        .init(widget.types, widget.resolution, widget.framerate,
+            widget.detectionMode)
+        .then((value) => _previewConfiguration = value)
+        .catchError((error) => _error = error)
+        .then((value) => setState(() => _opacity = 1.0));
+
+    // Notify the overlays when a barcode is detected and then call [onDetect].
+    _platformInstance.setOnDetectHandler((barcode) {
+      overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
+      widget.onDetect(barcode);
+    });
   }
 
   void resumeDetector() async {
     await _platformInstance.resume();
     overlayKeys.forEach((key) => key.currentState.didResumePreview());
+  }
+
+  @override
+  dispose() {
+    _platformInstance.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void toggleFlash() {
@@ -109,55 +123,41 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PreviewConfiguration>(
-      future: _previewConfiguration,
-      builder: (context, snapshot) {
-        switch (snapshot.connectionState) {
-          case ConnectionState.none:
-          case ConnectionState.waiting:
-            return Container(color: Colors.black);
-          case ConnectionState.done:
-            if (snapshot.hasError) {
-              debugPrint(snapshot.error.toString());
-              return widget.onError(context, snapshot.error);
-            }
-
-            return Stack(
-              children: [
-                _fittedPreview(snapshot.data),
-                previewFader(),
-                ...widget.overlays
-                    .asMap()
-                    .entries
-                    .map((entry) => entry.value(overlayKeys[entry.key]))
-              ],
-            );
-            break;
-          default:
-            throw AssertionError("${snapshot.connectionState} not supported.");
-        }
-      },
+    return AnimatedOpacity(
+      opacity: _opacity,
+      duration: const Duration(milliseconds: 260),
+      child: Stack(children: [
+        if (_error != null) widget.onError(context, _error),
+        if (_previewConfiguration != null) _buildPreview(_previewConfiguration),
+        if (_previewConfiguration != null) ..._buildOverlays()
+      ]),
     );
+  }
+
+  Iterable<Widget> _buildOverlays() {
+    return widget.overlays
+        .asMap()
+        .entries
+        .map((entry) => entry.value(overlayKeys[entry.key]));
   }
 
   /// TODO: [FittedBox] produces a wrong height (666.7 instead of 667 on iPhone 6 screen size).
   /// This results in a white line at the bottom.
-  Widget _fittedPreview(PreviewConfiguration details) {
-    return FittedBox(
-      fit: BoxFit.cover,
-      child: SizedBox(
-          width: details.width.toDouble(),
-          height: details.height.toDouble() * 1.001,
-          child: Texture(textureId: details.textureId)),
-    );
-  }
-
-  Widget previewFader() {
+  Widget _buildPreview(PreviewConfiguration details) {
     return TweenAnimationBuilder(
-      tween: ColorTween(begin: Colors.black, end: Colors.transparent),
+      tween: Tween<double>(begin: 0.0, end: 1.0),
       curve: Curves.easeOut,
       duration: const Duration(milliseconds: 260),
-      builder: (_, value, __) => Container(color: value),
+      builder: (_, value, __) => Opacity(
+        opacity: value,
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+              width: details.width.toDouble(),
+              height: details.height.toDouble() * 1.001,
+              child: Texture(textureId: details.textureId)),
+        ),
+      ),
     );
   }
 }
