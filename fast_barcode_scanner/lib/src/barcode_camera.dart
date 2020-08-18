@@ -96,7 +96,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
             widget.detectionMode)
         .then((value) => _previewConfiguration = value)
         .catchError((error) => _error = error)
-        .then((value) => setState(() => _opacity = 1.0));
+        .whenComplete(() => setState(() => _opacity = 1.0));
 
     // Notify the overlays when a barcode is detected and then call [onDetect].
     _platformInstance.setOnDetectHandler((barcode) {
