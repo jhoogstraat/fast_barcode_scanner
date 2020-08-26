@@ -117,8 +117,8 @@ class BarcodeCameraState extends State<BarcodeCamera>
     super.dispose();
   }
 
-  void toggleFlash() {
-    _platformInstance.toggleFlash();
+  void toggleTorch() {
+    _platformInstance.toggleTorch();
   }
 
   @override

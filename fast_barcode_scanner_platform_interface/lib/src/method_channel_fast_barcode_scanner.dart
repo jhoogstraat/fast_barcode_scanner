@@ -54,5 +54,5 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   Future<void> resume() => _channel.invokeMethod('resume');
 
-  Future<void> toggleFlash() => _channel.invokeMethod('toggleTorch');
+  Future<void> toggleTorch() => _channel.invokeMethod('toggleTorch');
 }

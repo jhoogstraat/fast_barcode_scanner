@@ -52,8 +52,8 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('resume() has not been implemented');
   }
 
-  Future<void> toggleFlash() {
-    throw UnimplementedError('toggleFlash() has not been implemented');
+  Future<void> toggleTorch() {
+    throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
   void setOnDetectHandler(void Function(Barcode) handler) {

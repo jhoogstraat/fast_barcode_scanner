@@ -14,7 +14,7 @@ final Stream<Barcode> detectionsStream =
     detectionsController.stream.asBroadcastStream();
 
 class DetectorScreen extends StatelessWidget {
-  final _flashIconState = ValueNotifier(false);
+  final _torchIconState = ValueNotifier(false);
 
   @override
   Widget build(BuildContext context) {
@@ -30,14 +30,14 @@ class DetectorScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           ValueListenableBuilder<bool>(
-            valueListenable: _flashIconState,
+            valueListenable: _torchIconState,
             builder: (context, state, _) => IconButton(
               icon: state
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
-                detector.currentState.toggleFlash();
-                _flashIconState.value = !_flashIconState.value;
+                detector.currentState.toggleTorch();
+                _torchIconState.value = !_torchIconState.value;
               },
             ),
           )
