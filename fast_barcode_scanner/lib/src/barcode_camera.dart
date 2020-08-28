@@ -58,7 +58,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   final List<GlobalKey<PreviewOverlayState>> overlayKeys;
 
-  Future<void> _initFuture;
+  Completer<void> _init;
   PreviewConfiguration _previewConfiguration;
   Error _error;
   double _opacity = 0.0;
@@ -72,16 +72,17 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.resumed:
-        _platformInstance.resume();
-        break;
-      case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-        _platformInstance.pause();
-        break;
-    }
+    if (_init?.isCompleted ?? false)
+      switch (state) {
+        case AppLifecycleState.resumed:
+          _platformInstance.resume();
+          break;
+        case AppLifecycleState.detached:
+        case AppLifecycleState.inactive:
+        case AppLifecycleState.paused:
+          _platformInstance.pause();
+          break;
+      }
   }
 
   /// Informs the platform to initialize the camera.
@@ -90,10 +91,12 @@ class BarcodeCameraState extends State<BarcodeCamera>
   /// All susequent calls to this method will be dropped.
   /// Caution: The callback might be called many times in quick succession
   ///  when using [DetectionMode.continuous].
-  void _initDetector() {
-    if (_initFuture != null) return;
+  void _initDetector() async {
+    if (_init != null) return;
 
-    _initFuture = _platformInstance
+    _init = Completer();
+
+    await _platformInstance
         .init(widget.types, widget.resolution, widget.framerate,
             widget.detectionMode)
         .then((value) => _previewConfiguration = value)
@@ -105,6 +108,8 @@ class BarcodeCameraState extends State<BarcodeCamera>
       overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       widget.onDetect(barcode);
     });
+
+    _init.complete();
   }
 
   void resumeDetector() async {
