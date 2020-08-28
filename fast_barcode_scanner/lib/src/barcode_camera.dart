@@ -58,7 +58,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   final List<GlobalKey<PreviewOverlayState>> overlayKeys;
 
-  Completer<void> _init;
+  Future<void> _init;
   PreviewConfiguration _previewConfiguration;
   Error _error;
   double _opacity = 0.0;
@@ -72,17 +72,18 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_init?.isCompleted ?? false)
-      switch (state) {
-        case AppLifecycleState.resumed:
-          _platformInstance.resume();
-          break;
-        case AppLifecycleState.detached:
-        case AppLifecycleState.inactive:
-        case AppLifecycleState.paused:
-          _platformInstance.pause();
-          break;
-      }
+    if (_previewConfiguration == null) return;
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _platformInstance.resume();
+        break;
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+        _platformInstance.pause();
+        break;
+    }
   }
 
   /// Informs the platform to initialize the camera.
@@ -94,9 +95,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
   void _initDetector() async {
     if (_init != null) return;
 
-    _init = Completer();
-
-    await _platformInstance
+    _init = _platformInstance
         .init(widget.types, widget.resolution, widget.framerate,
             widget.detectionMode)
         .then((value) => _previewConfiguration = value)
@@ -108,8 +107,6 @@ class BarcodeCameraState extends State<BarcodeCamera>
       overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       widget.onDetect(barcode);
     });
-
-    _init.complete();
   }
 
   void resumeDetector() async {
