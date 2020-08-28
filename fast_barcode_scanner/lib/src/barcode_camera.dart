@@ -25,6 +25,7 @@ class BarcodeCamera extends StatefulWidget {
       {Key key,
       @required this.types,
       @required this.onDetect,
+      this.child,
       this.detectionMode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
@@ -35,6 +36,7 @@ class BarcodeCamera extends StatefulWidget {
 
   final List<BarcodeType> types;
   final void Function(Barcode) onDetect;
+  final Widget child;
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode detectionMode;
@@ -117,8 +119,8 @@ class BarcodeCameraState extends State<BarcodeCamera>
     super.dispose();
   }
 
-  void toggleTorch() {
-    _platformInstance.toggleTorch();
+  Future<void> toggleTorch() {
+    return _platformInstance.toggleTorch();
   }
 
   @override
@@ -129,7 +131,8 @@ class BarcodeCameraState extends State<BarcodeCamera>
       child: Stack(children: [
         if (_error != null) widget.onError(context, _error),
         if (_previewConfiguration != null) _buildPreview(_previewConfiguration),
-        if (_previewConfiguration != null) ..._buildOverlays()
+        if (_previewConfiguration != null) ..._buildOverlays(),
+        if (widget.child != null) widget.child
       ]),
     );
   }

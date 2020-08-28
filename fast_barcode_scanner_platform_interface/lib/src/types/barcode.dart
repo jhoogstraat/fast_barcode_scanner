@@ -1,3 +1,7 @@
+import 'package:flutter/foundation.dart';
+
+import '../../fast_barcode_scanner_platform_interface.dart';
+
 /// Describes a Barcode with type and value.
 /// [Barcode] are equatable.
 class Barcode {
@@ -5,13 +9,14 @@ class Barcode {
   Barcode(List<dynamic> data)
       : assert(data[0] is String),
         assert(data[1] is String),
-        this.type = data[0],
+        this.type =
+            BarcodeType.values.firstWhere((e) => describeEnum(e) == data[0]),
         this.value = data[1];
 
   /// The type if the Barcode.
   ///
   /// Can be one of [BarcodeType] in [String] form.
-  final String type;
+  final BarcodeType type;
 
   /// The actual value of the barcode.
   final String value;
