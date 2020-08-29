@@ -134,11 +134,11 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
     }
 
     fun stop() {
-        cameraProvider.unbindAll()
+        cameraProvider?.unbindAll()
     }
 
     fun pause() {
-        cameraProvider.unbindAll()
+        cameraProvider?.unbindAll()
     }
 
     fun resume() {
@@ -146,7 +146,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
     }
 
     fun toggleTorch() {
-        camera.cameraControl.enableTorch(!torchState).addListener(Runnable {
+        camera?.cameraControl.enableTorch(!torchState).addListener(Runnable {
             torchState = !torchState
         }, ContextCompat.getMainExecutor(activity))
     }
