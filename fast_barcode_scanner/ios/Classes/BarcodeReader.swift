@@ -12,7 +12,7 @@ import Flutter
 let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 	[
 		"aztec": .aztec,
-		"cod128":.code128,
+		"code128":.code128,
 		"code39": .code39,
 		"code39mod43": .code39Mod43,
 		"code93": .code93,
@@ -20,7 +20,7 @@ let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 		"ean13": .ean13,
 		"ean8": .ean8,
 		"itf":  .itf14,
-		"pdf417":. pdf417,
+		"pdf417": .pdf417,
 		"qr": .qr,
 		"upcE": .upce,
 		"interleaved": .interleaved2of5
