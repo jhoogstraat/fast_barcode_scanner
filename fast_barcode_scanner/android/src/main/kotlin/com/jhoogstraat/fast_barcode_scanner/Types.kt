@@ -1,5 +1,6 @@
 package com.jhoogstraat.fast_barcode_scanner
 
+import android.util.Size
 import com.google.mlkit.vision.barcode.Barcode
 
 enum class Framerate {
@@ -11,6 +12,8 @@ enum class Framerate {
         fps120 -> 120
         fps240 -> 240
     }
+
+    fun duration() : Long = 1 / intValue().toLong()
 }
 
 enum class Resolution {
@@ -29,16 +32,14 @@ enum class Resolution {
         hd1080 -> 1080
         hd4k -> 2160
     }
+
+    fun size() : Size = Size(width(), height())
 }
 
 enum class DetectionMode {
     pauseDetection, pauseVideo, continuous;
 
-    fun pause() : Boolean = when(this) {
-        continuous -> false
-        pauseDetection -> true
-        pauseVideo -> true
-    }
+    fun pause() : Boolean = this != continuous
 }
 
 val barcodeFormatMap = hashMapOf(

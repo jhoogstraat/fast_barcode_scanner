@@ -56,7 +56,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
   final List<GlobalKey<PreviewOverlayState>> overlayKeys;
 
   Future<void> _init;
-  PreviewConfiguration _previewConfiguration;
+  PreviewConfiguration _previewConfig;
   Error _error;
   double _opacity = 0.0;
   Iterable<Widget> _overlayCache;
@@ -73,8 +73,8 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_previewConfiguration == null) return;
-
+    if (_previewConfig == null) return;
+    print("App switching to state: $state");
     switch (state) {
       case AppLifecycleState.resumed:
         _platformInstance.resume();
@@ -99,7 +99,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
     _init = _platformInstance
         .init(widget.types, widget.resolution, widget.framerate,
             widget.detectionMode)
-        .then((value) => _previewConfiguration = value)
+        .then((value) => _previewConfig = value)
         .catchError((error) => setState(() => _error = error))
         .whenComplete(() => setState(() => _opacity = 1.0));
 
@@ -136,15 +136,18 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: _opacity,
-      duration: const Duration(milliseconds: 260),
-      child: Stack(fit: StackFit.expand, children: [
-        if (_error != null) widget.onError(context, _error),
-        if (_previewConfiguration != null) _buildPreview(_previewConfiguration),
-        if (_previewConfiguration != null) ..._buildOverlays(),
-        if (widget.child != null) widget.child
-      ]),
+    return ColoredBox(
+      color: Colors.black,
+      child: AnimatedOpacity(
+        opacity: _opacity,
+        duration: const Duration(milliseconds: 260),
+        child: Stack(fit: StackFit.expand, children: [
+          if (_error != null) widget.onError(context, _error),
+          if (_previewConfig != null) _buildPreview(_previewConfig),
+          if (_previewConfig != null) ..._buildOverlays(),
+          if (widget.child != null) widget.child
+        ]),
+      ),
     );
   }
 

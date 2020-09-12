@@ -1,8 +1,7 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.annotation.SuppressLint
-import android.media.Image
-import android.renderscript.ScriptGroup
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.android.gms.tasks.OnFailureListener
@@ -18,18 +17,16 @@ class MLKitBarcodeDetector(
         private val successListener: OnSuccessListener<List<Barcode>>,
         private val failureListener: OnFailureListener
 ) : ImageAnalysis.Analyzer {
-
     private val scanner = BarcodeScanning.getClient(options)
+    private var runningTask: Task<List<Barcode>>? = null
 
-    private lateinit var runningTask: Task<List<Barcode>>
-
-    @SuppressLint("UnsafeExperimentalUsageError")
+    @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
 
+        // runningTask?.isComplete == true
         if (mediaImage != null) {
             val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees);
-
             runningTask = scanner.process(inputImage)
                     .addOnSuccessListener(successListener)
                     .addOnFailureListener(failureListener)

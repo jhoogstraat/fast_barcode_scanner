@@ -18,7 +18,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_plugin_android_lifecycle: ^1.0.8
+  flutter_plugin_android_lifecycle: ^1.0.9
 
 flutter:
   plugin:

@@ -2,6 +2,7 @@ package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.camera2.CaptureRequest
 import android.util.Log
@@ -19,29 +20,38 @@ import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import java.util.concurrent.Executors
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
 import java.util.ArrayList
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
+data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate)
 
 class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener, LifecycleOwner {
-
+    /* Android Lifecycle */
     private var activity: Activity? = null
     private var lifecycle: Lifecycle? = null
 
-    private lateinit var flutterPreview: Preview
-    private lateinit var barcodeAnalyzer: ImageAnalysis
+    /* Use Cases */
+    private lateinit var previewUseCase: Preview
+    private lateinit var analysisUseCase: ImageAnalysis
+
+    /* Camera */
     private lateinit var camera: Camera
+    private lateinit var cameraConfig: CameraConfig
     private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var cameraSelector: CameraSelector
-    private val analyseExecutor = Executors.newSingleThreadExecutor()
+    private lateinit var cameraExecutor: ExecutorService
 
-    private lateinit var args: HashMap<String, Any>
+    /* ML Kit */
+    private lateinit var imageProcessor: MLKitBarcodeDetector
 
-    var torchState = false
+    /* State */
+    private var isInitialized = false
 
-    fun attachTo(activity: Activity, lifecycle: Lifecycle) {
+    fun attachToActivity(activity: Activity, lifecycle: Lifecycle) {
         this.activity = activity
         this.lifecycle = lifecycle
     }
@@ -51,78 +61,14 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
         this.lifecycle = null
     }
 
-    private fun initCamera() {
-        val formats = (args["types"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray()
-        val detectionMode = DetectionMode.valueOf(args["mode"] as String)
-        val resolution = Resolution.valueOf(args["res"] as String)
-        val framerate = Framerate.valueOf(args["fps"] as String)
-
-        val activity = activity ?: throw IllegalStateException("No activity available!")
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
-
-        cameraProviderFuture.addListener(Runnable {
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            cameraProvider = cameraProviderFuture.get()
-
-            // Select back camera
-            cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                    .build()
-
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-
-                // Create Use Cases
-                // Preview Use Case
-                flutterPreview = Preview.Builder()
-                        .setTargetResolution(Size(resolution.width(), resolution.height()))
-                        .setTargetRotation(Surface.ROTATION_90)
-                        .build()
-
-                val textureSurface = flutterTexture.surfaceTexture()
-
-                val surfaceProvider = Preview.SurfaceProvider {
-                    textureSurface.setDefaultBufferSize(it.resolution.width, it.resolution.height)
-                    val surface = Surface(textureSurface)
-                    it.provideSurface(surface, ContextCompat.getMainExecutor(activity), Consumer<SurfaceRequest.Result> {})
-                }
-
-                flutterPreview.setSurfaceProvider(surfaceProvider)
-
-                // Analysis Use Case
-                val options = BarcodeScannerOptions.Builder()
-                        .setBarcodeFormats(0, *formats)
-                        .build()
-
-                val detector = MLKitBarcodeDetector(options, OnSuccessListener { barcodes ->
-                    if (detectionMode.pause() && barcodes.isNotEmpty()) {
-                        pause()
-                    }
-                    listener(barcodes)
-                }, OnFailureListener {
-                    Log.e(TAG, "Error in MLKit", it)
-                })
-
-                val analyserBuilder = ImageAnalysis.Builder()
-                val extender = Camera2Interop.Extender(analyserBuilder).setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(framerate.intValue(), framerate.intValue()))
-                extender.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(framerate.intValue(), framerate.intValue()))
-
-                barcodeAnalyzer = analyserBuilder
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { it.setAnalyzer(analyseExecutor, detector) }
-
-                camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
-            } catch(exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(activity))
-    }
-
     fun start(args: HashMap<String, Any>, result: Result) {
-        this.args = args
+        // Convert arguments to CameraConfig
+        cameraConfig = CameraConfig(
+                (args["types"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray(),
+                DetectionMode.valueOf(args["mode"] as String),
+                Resolution.valueOf(args["res"] as String),
+                Framerate.valueOf(args["fps"] as String)
+        )
 
         if (allPermissionsGranted()) {
             initCamera()
@@ -133,27 +79,109 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
         result.success(hashMapOf("textureId" to flutterTexture.id(), "surfaceOrientation" to 0, "surfaceHeight" to 1280, "surfaceWidth" to 720))
     }
 
-    fun stop() {
-        cameraProvider?.unbindAll()
+    fun stop(result: Result? = null) {
+        if (!isInitialized) return
+        cameraProvider.unbindAll()
+        result?.success(null)
     }
 
-    fun pause() {
-        cameraProvider?.unbindAll()
+    fun pause(result: Result? = null) {
+        if (!isInitialized) return
+        cameraProvider.unbindAll()
+        result?.success(null)
     }
 
-    fun resume() {
-        camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
+    fun resume(result: Result) {
+        if (!isInitialized) return
+        bindCameraUseCases()
+        result.success(null)
     }
 
     fun toggleTorch(result: Result) {
-        camera?.cameraControl.enableTorch(!torchState).addListener(Runnable {
-            torchState = !torchState
-            result.success(torchState)
+        if (!isInitialized) return
+        camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener(Runnable {
+            result.success(camera.cameraInfo.torchState.value == TorchState.ON)
         }, ContextCompat.getMainExecutor(activity))
     }
 
+    private fun initCamera() {
+        // Watch out that we have a activity!
+        val activity = activity ?: throw IllegalStateException("No activity available!")
+
+        // Init barcode Detector
+        val options = BarcodeScannerOptions.Builder()
+                .setBarcodeFormats(Barcode.FORMAT_UNKNOWN, *cameraConfig.formats)
+                .build()
+
+        imageProcessor = MLKitBarcodeDetector(options, OnSuccessListener { barcodes ->
+            if (cameraConfig.mode.pause() && barcodes.isNotEmpty()) { pause() }
+            listener(barcodes)
+        }, OnFailureListener {
+            Log.e(TAG, "Error in MLKit", it)
+        })
+
+        // Select back camera
+        cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build()
+
+        // Create Camera Thread
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
+        cameraProviderFuture.addListener(Runnable {
+            cameraProvider = cameraProviderFuture.get()
+            isInitialized = true
+            try { bindCameraUseCases() }
+            catch (exc: Exception) { Log.e(TAG, "Use case binding failed", exc) }
+        }, ContextCompat.getMainExecutor(activity))
+    }
+
+    private fun buildPreviewUseCase() : Preview {
+        previewUseCase = Preview.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                //.setTargetResolution(cameraConfig.resolution.size())
+                .setTargetRotation(Surface.ROTATION_90)
+                .build()
+
+        val textureSurface = flutterTexture.surfaceTexture()
+
+        val surfaceProvider = Preview.SurfaceProvider {
+            textureSurface.setDefaultBufferSize(it.resolution.width, it.resolution.height)
+            val surface = Surface(textureSurface)
+            it.provideSurface(surface, cameraExecutor, Consumer<SurfaceRequest.Result> {})
+        }
+
+        previewUseCase.setSurfaceProvider(cameraExecutor, surfaceProvider)
+
+        return previewUseCase
+    }
+
+    private fun buildAnalysisUseCase() : ImageAnalysis {
+        val analyserBuilder = ImageAnalysis.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                // .setTargetResolution(cameraConfig.resolution.size())
+                .setTargetRotation(Surface.ROTATION_90)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+
+        // Set Framerate via Camera2 Interop
+        // val interop = Camera2Interop.Extender(analyserBuilder)
+        // interop.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(cameraConfig.framerate.intValue(), cameraConfig.framerate.intValue()))
+
+        analysisUseCase = analyserBuilder.build()
+                .also { it.setAnalyzer(Executors.newSingleThreadExecutor(), imageProcessor) }
+
+        return analysisUseCase
+    }
+
+    private fun bindCameraUseCases() {
+        // As required by CameraX API, unbinds all use cases before trying to re-bind any of them.
+        cameraProvider.unbindAll()
+        camera = cameraProvider.bindToLifecycle(this, cameraSelector, buildPreviewUseCase(), buildAnalysisUseCase())
+    }
+
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(activity!!. baseContext, it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(activity!!.applicationContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
@@ -166,9 +194,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
         return true
     }
 
-    override fun getLifecycle(): Lifecycle {
-        return lifecycle!!
-    }
+    override fun getLifecycle(): Lifecycle = lifecycle!!
 
     companion object {
         private const val TAG = "fast_barcode_scanner"
