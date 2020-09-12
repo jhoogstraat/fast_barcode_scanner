@@ -145,9 +145,10 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
         camera = cameraProvider.bindToLifecycle(this, cameraSelector, flutterPreview, barcodeAnalyzer)
     }
 
-    fun toggleTorch() {
+    fun toggleTorch(result: Result) {
         camera?.cameraControl.enableTorch(!torchState).addListener(Runnable {
             torchState = !torchState
+            result.success(torchState)
         }, ContextCompat.getMainExecutor(activity))
     }
 

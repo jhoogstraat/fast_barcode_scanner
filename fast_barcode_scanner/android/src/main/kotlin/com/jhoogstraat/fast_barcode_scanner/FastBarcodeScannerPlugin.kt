@@ -55,7 +55,7 @@ public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, Activit
       "stop" -> reader.stop()
       "pause" -> reader.pause()
       "resume" -> reader.resume()
-      "toggleTorch" -> reader.toggleTorch()
+      "toggleTorch" -> reader.toggleTorch(result)
       else -> result.notImplemented()
     }
   }

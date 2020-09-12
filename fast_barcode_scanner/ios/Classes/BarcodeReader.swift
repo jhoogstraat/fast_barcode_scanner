@@ -163,10 +163,11 @@ class BarcodeReader: NSObject {
 		}
 	}
 
-	func toggleTorch() {
+	func toggleTorch() -> Bool {
 		try! captureDevice.lockForConfiguration()
 		captureDevice.torchMode = captureDevice.isTorchActive ? .off : .on
 		captureDevice.unlockForConfiguration()
+		return captureDevice.isTorchActive
 	}
 
 	func pauseIfRequired() {

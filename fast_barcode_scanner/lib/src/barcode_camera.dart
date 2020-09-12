@@ -53,15 +53,16 @@ class BarcodeCameraState extends State<BarcodeCamera>
       : overlayKeys = List.generate(
             overlays, (_) => GlobalKey(debugLabel: "overlay_$overlays"));
 
-  FastBarcodeScannerPlatform get _platformInstance =>
-      FastBarcodeScannerPlatform.instance;
-
   final List<GlobalKey<PreviewOverlayState>> overlayKeys;
 
   Future<void> _init;
   PreviewConfiguration _previewConfiguration;
   Error _error;
   double _opacity = 0.0;
+  Iterable<Widget> _overlayCache;
+
+  FastBarcodeScannerPlatform get _platformInstance =>
+      FastBarcodeScannerPlatform.instance;
 
   @override
   void initState() {
@@ -99,15 +100,17 @@ class BarcodeCameraState extends State<BarcodeCamera>
         .init(widget.types, widget.resolution, widget.framerate,
             widget.detectionMode)
         .then((value) => _previewConfiguration = value)
-        .catchError((error) => _error = error)
+        .catchError((error) => setState(() => _error = error))
         .whenComplete(() => setState(() => _opacity = 1.0));
 
-    // Notify the overlays when a barcode is detected and then call [onDetect].
+    /// Notify the overlays when a barcode is detected and then call [onDetect].
     _platformInstance.setOnDetectHandler((barcode) {
       overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
       widget.onDetect(barcode);
     });
   }
+
+  Future<void> pauseDetector() => _platformInstance.pause();
 
   void resumeDetector() async {
     await _platformInstance.resume();
@@ -121,8 +124,14 @@ class BarcodeCameraState extends State<BarcodeCamera>
     super.dispose();
   }
 
-  Future<void> toggleTorch() {
-    return _platformInstance.toggleTorch();
+  Future<bool> _togglingTorch;
+
+  Future<bool> toggleTorch() async {
+    if (_togglingTorch == null)
+      _togglingTorch = _platformInstance
+          .toggleTorch()
+          .whenComplete(() => _togglingTorch = null);
+    return _togglingTorch;
   }
 
   @override
@@ -130,7 +139,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
     return AnimatedOpacity(
       opacity: _opacity,
       duration: const Duration(milliseconds: 260),
-      child: Stack(children: [
+      child: Stack(fit: StackFit.expand, children: [
         if (_error != null) widget.onError(context, _error),
         if (_previewConfiguration != null) _buildPreview(_previewConfiguration),
         if (_previewConfiguration != null) ..._buildOverlays(),
@@ -140,27 +149,23 @@ class BarcodeCameraState extends State<BarcodeCamera>
   }
 
   Iterable<Widget> _buildOverlays() {
-    return widget.overlays
-        .asMap()
-        .entries
-        .map((entry) => entry.value(overlayKeys[entry.key]));
+    if (_overlayCache == null)
+      _overlayCache = widget.overlays
+          .asMap()
+          .entries
+          .map((entry) => entry.value(overlayKeys[entry.key]));
+    return _overlayCache;
   }
 
-  /// TODO: [FittedBox] produces a wrong height (666.7 instead of 667 on iPhone 6 screen size).
-  /// This results in a white line at the bottom.
   Widget _buildPreview(PreviewConfiguration details) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0.0, end: 1.0),
-      curve: Curves.easeOut,
-      duration: const Duration(milliseconds: 260),
-      builder: (_, value, __) => Opacity(
-        opacity: value,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-              width: details.width.toDouble(),
-              height: details.height.toDouble() * 1.001,
-              child: Texture(textureId: details.textureId)),
+    return FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: details.width.toDouble(),
+        height: details.height.toDouble(),
+        child: Texture(
+          textureId: details.textureId,
+          filterQuality: FilterQuality.none,
         ),
       ),
     );

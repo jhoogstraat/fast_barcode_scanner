@@ -112,7 +112,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	}
 
 	func toggleTorch(result: @escaping FlutterResult) {
-		reader?.toggleTorch()
+		result(reader?.toggleTorch())
 	}
 
 	func stop(result: @escaping FlutterResult) {

@@ -52,7 +52,7 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('resume() has not been implemented');
   }
 
-  Future<void> toggleTorch() {
+  Future<bool> toggleTorch() {
     throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
