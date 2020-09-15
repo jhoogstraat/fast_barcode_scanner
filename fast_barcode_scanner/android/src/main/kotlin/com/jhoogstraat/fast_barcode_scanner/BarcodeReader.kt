@@ -2,14 +2,10 @@ package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.pm.PackageManager
-import android.hardware.camera2.CaptureRequest
+import android.graphics.SurfaceTexture
 import android.util.Log
-import android.util.Range
-import android.util.Size
 import android.view.Surface
-import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
@@ -29,7 +25,7 @@ import java.util.concurrent.Executors
 
 data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate)
 
-class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener, LifecycleOwner {
+class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener, LifecycleOwner {
     /* Android Lifecycle */
     private var activity: Activity? = null
     private var lifecycle: Lifecycle? = null
@@ -44,6 +40,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
     private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var cameraSelector: CameraSelector
     private lateinit var cameraExecutor: ExecutorService
+    private lateinit var cameraSurfaceProvider: Preview.SurfaceProvider
 
     /* ML Kit */
     private lateinit var imageProcessor: MLKitBarcodeDetector
@@ -76,7 +73,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
             activity?.requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
 
-        result.success(hashMapOf("textureId" to flutterTexture.id(), "surfaceOrientation" to 0, "surfaceHeight" to 1280, "surfaceWidth" to 720))
+        result.success(hashMapOf("textureId" to flutterTextureEntry.id(), "surfaceOrientation" to 0, "surfaceHeight" to 1280, "surfaceWidth" to 720))
     }
 
     fun stop(result: Result? = null) {
@@ -128,6 +125,13 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
         // Create Camera Thread
         cameraExecutor = Executors.newSingleThreadExecutor()
 
+        // Setup Surface
+        cameraSurfaceProvider = Preview.SurfaceProvider {
+            val surfaceTexture = flutterTextureEntry.surfaceTexture()
+            surfaceTexture.setDefaultBufferSize(it.resolution.width, it.resolution.height)
+            it.provideSurface(Surface(surfaceTexture), cameraExecutor, Consumer<SurfaceRequest.Result> {})
+        }
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
         cameraProviderFuture.addListener(Runnable {
             cameraProvider = cameraProviderFuture.get()
@@ -144,15 +148,7 @@ class BarcodeReader(private val flutterTexture: TextureRegistry.SurfaceTextureEn
                 .setTargetRotation(Surface.ROTATION_90)
                 .build()
 
-        val textureSurface = flutterTexture.surfaceTexture()
-
-        val surfaceProvider = Preview.SurfaceProvider {
-            textureSurface.setDefaultBufferSize(it.resolution.width, it.resolution.height)
-            val surface = Surface(textureSurface)
-            it.provideSurface(surface, cameraExecutor, Consumer<SurfaceRequest.Result> {})
-        }
-
-        previewUseCase.setSurfaceProvider(cameraExecutor, surfaceProvider)
+        previewUseCase.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
 
         return previewUseCase
     }
