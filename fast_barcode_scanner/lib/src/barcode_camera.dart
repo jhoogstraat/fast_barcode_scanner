@@ -47,8 +47,7 @@ class BarcodeCamera extends StatefulWidget {
   BarcodeCameraState createState() => BarcodeCameraState(overlays.length);
 }
 
-class BarcodeCameraState extends State<BarcodeCamera>
-    with WidgetsBindingObserver {
+class BarcodeCameraState extends State<BarcodeCamera> {
   BarcodeCameraState(int overlays)
       : overlayKeys = List.generate(
             overlays, (_) => GlobalKey(debugLabel: "overlay_$overlays"));
@@ -57,7 +56,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   Future<void> _init;
   PreviewConfiguration _previewConfig;
-  Error _error;
+  Object _error;
   double _opacity = 0.0;
   Iterable<Widget> _overlayCache;
 
@@ -67,24 +66,7 @@ class BarcodeCameraState extends State<BarcodeCamera>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _initDetector();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_previewConfig == null) return;
-    print("App switching to state: $state");
-    switch (state) {
-      case AppLifecycleState.resumed:
-        _platformInstance.resume();
-        break;
-      case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.paused:
-        _platformInstance.pause();
-        break;
-    }
   }
 
   /// Informs the platform to initialize the camera.
@@ -120,7 +102,6 @@ class BarcodeCameraState extends State<BarcodeCamera>
   @override
   dispose() {
     _platformInstance.dispose();
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 

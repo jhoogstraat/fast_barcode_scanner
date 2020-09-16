@@ -11,7 +11,7 @@ class BlurPreviewOverlay extends PreviewOverlay {
   BlurPreviewOverlay(
       {Key key,
       this.blurAmount = 30,
-      this.duration = const Duration(milliseconds: 270)})
+      this.duration = const Duration(milliseconds: 500)})
       : super(key: key);
 
   @override

@@ -1,9 +1,7 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
-import android.app.Activity
 import android.content.pm.PackageManager
-import android.graphics.SurfaceTexture
 import android.util.Log
 import android.view.Surface
 import androidx.camera.core.*
@@ -11,11 +9,12 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import io.flutter.embedding.android.FlutterActivity
+
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.view.TextureRegistry
@@ -25,9 +24,9 @@ import java.util.concurrent.Executors
 
 data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate)
 
-class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener, LifecycleOwner {
+class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener {
     /* Android Lifecycle */
-    private var activity: Activity? = null
+    private var activity: FlutterActivity? = null
     private var lifecycle: Lifecycle? = null
 
     /* Use Cases */
@@ -48,17 +47,28 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     /* State */
     private var isInitialized = false
 
-    fun attachToActivity(activity: Activity, lifecycle: Lifecycle) {
+    fun attachToActivity(activity: FlutterActivity, lifecycle: Lifecycle) {
         this.activity = activity
         this.lifecycle = lifecycle
     }
 
     fun detachFromActivity() {
+        stop(null)
         this.activity = null
         this.lifecycle = null
     }
 
     fun start(args: HashMap<String, Any>, result: Result) {
+        // Make sure we are connected to an activity
+        if (activity == null)
+            return result.error("0", "Activity not connected!", null)
+
+        // Stop running camera and start new
+        stop(null)
+
+        // Reset init state.
+        isInitialized = false
+
         // Convert arguments to CameraConfig
         cameraConfig = CameraConfig(
                 (args["types"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray(),
@@ -82,12 +92,6 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         result?.success(null)
     }
 
-    fun pause(result: Result? = null) {
-        if (!isInitialized) return
-        cameraProvider.unbindAll()
-        result?.success(null)
-    }
-
     fun resume(result: Result) {
         if (!isInitialized) return
         bindCameraUseCases()
@@ -101,17 +105,28 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         }, ContextCompat.getMainExecutor(activity))
     }
 
-    private fun initCamera() {
-        // Watch out that we have a activity!
-        val activity = activity ?: throw IllegalStateException("No activity available!")
+    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
+        ContextCompat.checkSelfPermission(activity!!.applicationContext, it) == PackageManager.PERMISSION_GRANTED
+    }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                initCamera()
+            }
+        }
+
+        return true
+    }
+
+    private fun initCamera() {
         // Init barcode Detector
         val options = BarcodeScannerOptions.Builder()
                 .setBarcodeFormats(Barcode.FORMAT_UNKNOWN, *cameraConfig.formats)
                 .build()
 
         imageProcessor = MLKitBarcodeDetector(options, OnSuccessListener { barcodes ->
-            if (cameraConfig.mode.pause() && barcodes.isNotEmpty()) { pause() }
+            if (cameraConfig.mode.pause() && barcodes.isNotEmpty()) { stop() }
             listener(barcodes)
         }, OnFailureListener {
             Log.e(TAG, "Error in MLKit", it)
@@ -132,13 +147,13 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
             it.provideSurface(Surface(surfaceTexture), cameraExecutor, Consumer<SurfaceRequest.Result> {})
         }
 
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
         cameraProviderFuture.addListener(Runnable {
             cameraProvider = cameraProviderFuture.get()
             isInitialized = true
             try { bindCameraUseCases() }
             catch (exc: Exception) { Log.e(TAG, "Use case binding failed", exc) }
-        }, ContextCompat.getMainExecutor(activity))
+        }, ContextCompat.getMainExecutor(activity!!))
     }
 
     private fun buildPreviewUseCase() : Preview {
@@ -173,24 +188,8 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     private fun bindCameraUseCases() {
         // As required by CameraX API, unbinds all use cases before trying to re-bind any of them.
         cameraProvider.unbindAll()
-        camera = cameraProvider.bindToLifecycle(this, cameraSelector, buildPreviewUseCase(), buildAnalysisUseCase())
+        camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, buildPreviewUseCase(), buildAnalysisUseCase())
     }
-
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(activity!!.applicationContext, it) == PackageManager.PERMISSION_GRANTED
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                initCamera()
-            }
-        }
-
-        return true
-    }
-
-    override fun getLifecycle(): Lifecycle = lifecycle!!
 
     companion object {
         private const val TAG = "fast_barcode_scanner"
