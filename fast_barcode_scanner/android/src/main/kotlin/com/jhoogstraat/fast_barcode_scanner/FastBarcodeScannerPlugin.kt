@@ -33,7 +33,7 @@ public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, Activit
   // https://flutter.dev/docs/development/packages-and-plugins/plugin-api-migration#uiactivity-plugin
   // https://github.com/flutter/plugins/blob/master/packages/camera/android/src/main/java/io/flutter/plugins/camera/CameraPlugin.java
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    reader.attachToActivity(binding.activity as FlutterActivity, FlutterLifecycleAdapter.getActivityLifecycle(binding))
+    reader.attachToActivity(binding.activity as FlutterActivity)
     binding.addRequestPermissionsResultListener(reader)
     channel.setMethodCallHandler(this)
   }

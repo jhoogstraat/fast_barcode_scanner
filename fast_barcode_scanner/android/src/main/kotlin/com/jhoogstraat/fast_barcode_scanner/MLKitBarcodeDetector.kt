@@ -1,6 +1,5 @@
 package com.jhoogstraat.fast_barcode_scanner
 
-import android.annotation.SuppressLint
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -13,24 +12,18 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 
 class MLKitBarcodeDetector(
-        private val options: BarcodeScannerOptions,
+        options: BarcodeScannerOptions,
         private val successListener: OnSuccessListener<List<Barcode>>,
         private val failureListener: OnFailureListener
 ) : ImageAnalysis.Analyzer {
     private val scanner = BarcodeScanning.getClient(options)
-    private var runningTask: Task<List<Barcode>>? = null
 
     @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-
-        // runningTask?.isComplete == true
-        if (mediaImage != null) {
-            val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees);
-            runningTask = scanner.process(inputImage)
-                    .addOnSuccessListener(successListener)
-                    .addOnFailureListener(failureListener)
-                    .addOnCompleteListener { imageProxy.close() }
-        }
+        val inputImage = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees);
+        scanner.process(inputImage)
+                .addOnSuccessListener(successListener)
+                .addOnFailureListener(failureListener)
+                .addOnCompleteListener { imageProxy.close() }
     }
 }
