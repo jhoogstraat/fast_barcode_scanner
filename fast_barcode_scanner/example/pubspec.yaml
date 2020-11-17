@@ -18,9 +18,9 @@ dependencies:
     # See https://dart.dev/tools/pub/dependencies#version-constraints
     # The example app is bundled with the plugin so we use a path dependency on
     # the parent directory to use the current plugin's version. 
-    path: ../
+    path: https://github.com/larover/fast_barcode_scanner
   fast_barcode_scanner_beeper:
-    path: ../../fast_barcode_scanner_beeper
+    path: https://github.com/larover/fast_barcode_scanner_beeper
 
 flutter:
   uses-material-design: true
