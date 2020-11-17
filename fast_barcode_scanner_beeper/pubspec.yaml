@@ -14,5 +14,6 @@ dependencies:
   flutter:
     sdk: flutter
   fast_barcode_scanner:
-    path: https://github.com/larover/fast_barcode_scanner
+    git:
+      url: https://github.com/larover/fast_barcode_scanner
   soundpool: ^1.1.1
