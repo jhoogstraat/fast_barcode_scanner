@@ -1,4 +1,4 @@
-group 'com.jhoogstraat.fast_barcode_scanner'
+group 'io.spidr.fast_barcode_scanner'
 version '1.0-SNAPSHOT'
 
 buildscript {

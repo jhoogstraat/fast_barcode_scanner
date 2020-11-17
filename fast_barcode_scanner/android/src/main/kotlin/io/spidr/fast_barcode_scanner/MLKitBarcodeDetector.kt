@@ -1,4 +1,4 @@
-package com.jhoogstraat.fast_barcode_scanner
+package io.spidr.fast_barcode_scanner
 
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis

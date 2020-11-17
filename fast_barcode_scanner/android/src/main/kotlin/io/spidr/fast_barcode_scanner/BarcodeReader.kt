@@ -1,4 +1,4 @@
-package com.jhoogstraat.fast_barcode_scanner
+package io.spidr.fast_barcode_scanner
 
 import android.Manifest
 import android.content.pm.PackageManager
