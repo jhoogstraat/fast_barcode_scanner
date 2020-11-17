@@ -9,9 +9,9 @@ Pod::Spec.new do |s|
   s.description      = <<-DESC
   A fast barcode scanner using ML Kit on Android and AVFoundation on iOS.
                        DESC
-  s.homepage         = 'https://github.com/jhoogstraat/fast_barcode_scanner'
+  s.homepage         = 'https://github.com/larover/fast_barcode_scanner'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Joshua Hoogstraat' => 'https://github.com/jhoogstraat' }
+  s.author           = { 'larover' => 'https://github.com/larover' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
