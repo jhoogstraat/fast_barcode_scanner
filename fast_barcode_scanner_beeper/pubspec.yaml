@@ -1,6 +1,6 @@
 name: fast_barcode_scanner_beeper
 description: A common platform interface for the fast_barcode_scanner plugin.
-homepage: https://github.com/jhoogstraat/fast_barcode_scanner/tree/master/fast_barcode_scanner_platform_interface
+homepage: https://github.com/larover/fast_barcode_scanner/tree/dev/fast_barcode_scanner_platform_interface
 author: Joshua Hoogstraat
 # NOTE: We strongly prefer non-breaking changes, even at the expense of a
 # less-clean API. See https://flutter.dev/go/platform-interface-breaking-changes
@@ -14,5 +14,5 @@ dependencies:
   flutter:
     sdk: flutter
   fast_barcode_scanner:
-    path: ../fast_barcode_scanner
+    path: https://github.com/larover/fast_barcode_scanner
   soundpool: ^1.1.1
