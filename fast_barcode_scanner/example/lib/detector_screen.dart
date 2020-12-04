@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_beeper/fast_barcode_scanner_beeper.dart';
+// import 'package:fast_barcode_scanner_beeper/fast_barcode_scanner_beeper.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
@@ -43,29 +43,36 @@ class DetectorScreen extends StatelessWidget {
           )
         ],
       ),
-      body: Stack(alignment: Alignment.center, fit: StackFit.expand, children: [
-        BarcodeCamera(
-          key: detector,
-          types: [BarcodeType.ean8, BarcodeType.ean13, BarcodeType.code128],
-          resolution: Resolution.hd720,
-          framerate: Framerate.fps60,
-          detectionMode: DetectionMode.pauseVideo,
-          overlays: [
-            (key) => BeepPreviewOverlay(key: key),
-            (key) => MaterialPreviewOverlay(key: key, animateDetection: false),
-            (key) => BlurPreviewOverlay(key: key)
+      body: BarcodeCamera(
+        key: detector,
+        types: [BarcodeType.ean8, BarcodeType.ean13, BarcodeType.code128],
+        resolution: Resolution.hd720,
+        framerate: Framerate.fps60,
+        mode: DetectionMode.pauseVideo,
+        onDetect: (barcode) => detectionsController.add(barcode),
+        child: Stack(
+          alignment: Alignment.center,
+          fit: StackFit.expand,
+          children: [
+            // (key) => BeepPreviewOverlay(key: key),
+            MaterialPreviewOverlay(animateDetection: false),
+            BlurPreviewOverlay(),
+            Positioned(
+              bottom: 100,
+              child: Column(
+                children: [
+                  RaisedButton(
+                    child: Text("Resume"),
+                    onPressed: () => detector.currentState.resumeDetector(),
+                  ),
+                  SizedBox(height: 20),
+                  DetectionsCounter()
+                ],
+              ),
+            )
           ],
-          onDetect: (barcode) => detectionsController.add(barcode),
         ),
-        Positioned(bottom: 50, child: DetectionsCounter()),
-        Positioned(
-          bottom: 150,
-          child: RaisedButton(
-            child: Text("Resume"),
-            onPressed: () => detector.currentState.resumeDetector(),
-          ),
-        )
-      ]),
+      ),
     );
   }
 }

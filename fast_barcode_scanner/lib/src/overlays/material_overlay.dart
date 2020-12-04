@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../preview_overlay.dart';
 import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
-class MaterialPreviewOverlay extends PreviewOverlay {
-  MaterialPreviewOverlay({Key key, this.animateDetection = true})
+class MaterialPreviewOverlay extends StatefulWidget {
+  const MaterialPreviewOverlay({Key key, this.animateDetection = true})
       : super(key: key);
 
   final bool animateDetection;
@@ -14,8 +13,7 @@ class MaterialPreviewOverlay extends PreviewOverlay {
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
 }
 
-class MaterialPreviewOverlayState
-    extends PreviewOverlayState<MaterialPreviewOverlay>
+class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     with SingleTickerProviderStateMixin {
   AnimationController _controller;
   Animation<double> _opacitySequence;
@@ -54,13 +52,13 @@ class MaterialPreviewOverlayState
     }
   }
 
-  @override
-  void didDetectBarcode() async {
-    if (widget.animateDetection) {
-      await _controller.forward();
-      _controller.reset();
-    }
-  }
+  // @override
+  // void didDetectBarcode() async {
+  //   if (widget.animateDetection) {
+  //     await _controller.forward();
+  //     _controller.reset();
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -76,10 +74,10 @@ class MaterialPreviewOverlayState
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => CustomPaint(
-          painter: MaterialBarcodeFramePainter(),
-          foregroundPainter: MaterialBarcodeSensingPainter(
-              inflate: _inflateSequence.value,
-              opacity: _opacitySequence.value)),
+        painter: MaterialBarcodeFramePainter(),
+        foregroundPainter: MaterialBarcodeSensingPainter(
+            inflate: _inflateSequence.value, opacity: _opacitySequence.value),
+      ),
     );
   }
 }

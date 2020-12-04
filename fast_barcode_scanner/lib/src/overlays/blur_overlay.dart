@@ -1,41 +1,26 @@
 import 'dart:ui';
 
+import 'package:fast_barcode_scanner/src/camera_state.dart';
 import 'package:flutter/material.dart';
 
-import '../preview_overlay.dart';
-
-class BlurPreviewOverlay extends PreviewOverlay {
+class BlurPreviewOverlay extends StatelessWidget {
   final double blurAmount;
   final Duration duration;
 
-  BlurPreviewOverlay(
-      {Key key,
-      this.blurAmount = 30,
-      this.duration = const Duration(milliseconds: 500)})
-      : super(key: key);
+  const BlurPreviewOverlay({
+    Key key,
+    this.blurAmount = 30,
+    this.duration = const Duration(milliseconds: 500),
+  }) : super(key: key);
 
-  @override
-  BlurPreviewOverlayState createState() => BlurPreviewOverlayState();
-}
-
-class BlurPreviewOverlayState extends PreviewOverlayState<BlurPreviewOverlay> {
-  var isBlurred = false;
-
-  @override
-  void didDetectBarcode() async {
-    setState(() => isBlurred = true);
-  }
-
-  @override
-  void didResumePreview() async {
-    setState(() => isBlurred = false);
-  }
+  bool blur(BuildContext context) =>
+      CameraState.of(context) == CameraEvent.codeFound;
 
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder(
-      tween: Tween(begin: 0.0, end: isBlurred ? widget.blurAmount : 0.0),
-      duration: widget.duration,
+      tween: Tween(begin: 0.0, end: blur(context) ? blurAmount : 0.0),
+      duration: duration,
       curve: Curves.easeOut,
       child: Container(color: Colors.black.withOpacity(0.0)),
       builder: (_, value, child) => BackdropFilter(

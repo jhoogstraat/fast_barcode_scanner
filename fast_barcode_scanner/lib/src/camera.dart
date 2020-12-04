@@ -1,19 +1,17 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:fast_barcode_scanner/src/camera_state.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-
-import 'preview_overlay.dart';
 
 final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
   debugPrint("Error reading from camera: $error");
   return Center(child: Text("Error reading from camera..."));
 };
 
-typedef PreviewOverlay OverlayBuilder(GlobalKey<PreviewOverlayState> key);
 typedef Widget ErrorCallback(BuildContext context, Object error);
 
 /// The main class connecting the platform code to the Flutter UI.
@@ -25,42 +23,35 @@ class BarcodeCamera extends StatefulWidget {
       {Key key,
       @required this.types,
       @required this.onDetect,
-      this.child,
-      this.detectionMode = DetectionMode.pauseVideo,
+      this.mode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
-      this.overlays = const [],
+      this.child,
       ErrorCallback onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
 
   final List<BarcodeType> types;
   final void Function(Barcode) onDetect;
-  final Widget child;
   final Resolution resolution;
   final Framerate framerate;
-  final DetectionMode detectionMode;
-  final List<OverlayBuilder> overlays;
+  final DetectionMode mode;
+  final Widget child;
   final ErrorCallback onError;
 
   @override
-  BarcodeCameraState createState() => BarcodeCameraState(overlays.length);
+  BarcodeCameraState createState() => BarcodeCameraState();
 }
 
 class BarcodeCameraState extends State<BarcodeCamera> {
-  BarcodeCameraState(int overlays)
-      : overlayKeys = List.generate(
-            overlays, (_) => GlobalKey(debugLabel: "overlay_$overlays"));
-
-  final List<GlobalKey<PreviewOverlayState>> overlayKeys;
-
   Future<void> _init;
   PreviewConfiguration _previewConfig;
   Object _error;
   double _opacity = 0.0;
-  Iterable<Widget> _overlayCache;
+  Future<bool> _togglingTorch;
+  final _eventNotifier = ValueNotifier(CameraEvent.init);
 
-  FastBarcodeScannerPlatform get _platformInstance =>
+  FastBarcodeScannerPlatform get _platform =>
       FastBarcodeScannerPlatform.instance;
 
   @override
@@ -73,45 +64,42 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   ///
   /// The camera is initialized only once per session.
   /// All susequent calls to this method will be dropped.
-  /// Caution: The callback might be called many times in quick succession
-  ///  when using [DetectionMode.continuous].
   void _initDetector() async {
     if (_init != null) return;
 
-    _init = _platformInstance
-        .init(widget.types, widget.resolution, widget.framerate,
-            widget.detectionMode)
+    _init = _platform
+        .init(widget.types, widget.resolution, widget.framerate, widget.mode)
         .then((value) => _previewConfig = value)
         .catchError((error) => setState(() => _error = error))
         .whenComplete(() => setState(() => _opacity = 1.0));
 
     /// Notify the overlays when a barcode is detected and then call [onDetect].
-    _platformInstance.setOnDetectHandler((barcode) {
-      overlayKeys.forEach((key) => key.currentState.didDetectBarcode());
-      widget.onDetect(barcode);
+    _platform.setOnDetectHandler((code) {
+      _eventNotifier.value = CameraEvent.codeFound;
+      widget.onDetect(code);
     });
   }
 
-  Future<void> pauseDetector() => _platformInstance.pause();
+  Future<void> pauseDetector() {
+    _eventNotifier.value = CameraEvent.paused;
+    return _platform.pause();
+  }
 
-  void resumeDetector() async {
-    await _platformInstance.resume();
-    overlayKeys.forEach((key) => key.currentState.didResumePreview());
+  Future<void> resumeDetector() {
+    _eventNotifier.value = CameraEvent.resumed;
+    return _platform.resume();
   }
 
   @override
   dispose() {
-    _platformInstance.dispose();
+    _platform.dispose();
     super.dispose();
   }
 
-  Future<bool> _togglingTorch;
-
   Future<bool> toggleTorch() async {
     if (_togglingTorch == null)
-      _togglingTorch = _platformInstance
-          .toggleTorch()
-          .whenComplete(() => _togglingTorch = null);
+      _togglingTorch =
+          _platform.toggleTorch().whenComplete(() => _togglingTorch = null);
     return _togglingTorch;
   }
 
@@ -125,20 +113,20 @@ class BarcodeCameraState extends State<BarcodeCamera> {
         child: Stack(fit: StackFit.expand, children: [
           if (_error != null) widget.onError(context, _error),
           if (_previewConfig != null) _buildPreview(_previewConfig),
-          if (_previewConfig != null) ..._buildOverlays(),
-          if (widget.child != null) widget.child
+          if (widget.child != null) _buildOverlay()
         ]),
       ),
     );
   }
 
-  Iterable<Widget> _buildOverlays() {
-    if (_overlayCache == null)
-      _overlayCache = widget.overlays
-          .asMap()
-          .entries
-          .map((entry) => entry.value(overlayKeys[entry.key]));
-    return _overlayCache;
+  Widget _buildOverlay() {
+    return ValueListenableBuilder(
+      valueListenable: _eventNotifier,
+      builder: (context, state, _) => CameraState(
+        event: state,
+        child: widget.child,
+      ),
+    );
   }
 
   Widget _buildPreview(PreviewConfiguration details) {

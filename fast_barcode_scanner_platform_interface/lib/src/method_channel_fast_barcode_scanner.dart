@@ -26,6 +26,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'read':
+          // This might fail if the code type is not present in the list of available code types.
+          // Barcode init will throw in this case.
           _onDetectHandler?.call(Barcode(call.arguments));
           break;
         default:

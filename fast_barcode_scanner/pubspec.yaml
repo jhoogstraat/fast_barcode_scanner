@@ -5,8 +5,8 @@ author: Joshua Hoogstraat
 homepage: https://github.com/jhoogstraat/fast_barcode_scanner
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
-  flutter: ">=1.10.0 < 2.0.0"
+  sdk: ">=2.8.0 <3.0.0"
+  flutter: ">=1.12.13 < 2.0.0"
 
 dependencies:
   flutter:

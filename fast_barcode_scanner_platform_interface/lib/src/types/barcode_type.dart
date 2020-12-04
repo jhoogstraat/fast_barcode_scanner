@@ -13,13 +13,13 @@ enum BarcodeType {
   code39,
 
   /// iOS
-  // code39mod43,
+  code39mod43,
 
   /// Android, iOS
   code93,
 
   /// Android
-  // codabar,
+  codabar,
 
   /// Android, iOS
   dataMatrix,
@@ -40,11 +40,11 @@ enum BarcodeType {
   qr,
 
   /// Android
-  // upcA,
+  upcA,
 
   /// Android, iOS
   upcE,
 
   /// iOS
-  // interleaved,
+  interleaved,
 }

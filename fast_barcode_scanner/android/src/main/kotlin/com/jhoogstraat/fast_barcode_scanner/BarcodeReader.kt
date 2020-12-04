@@ -8,14 +8,12 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
-import com.google.android.gms.tasks.OnFailureListener
-import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import io.flutter.embedding.android.FlutterActivity
 
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.PluginRegistry
+import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import io.flutter.view.TextureRegistry
 import java.util.ArrayList
 import java.util.concurrent.ExecutorService
@@ -23,7 +21,7 @@ import java.util.concurrent.Executors
 
 data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate)
 
-class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : PluginRegistry.RequestPermissionsResultListener {
+class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
     private var activity: FlutterActivity? = null
 
@@ -117,10 +115,10 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 .setBarcodeFormats(Barcode.FORMAT_UNKNOWN, *cameraConfig.formats)
                 .build()
 
-        barcodeDetector = MLKitBarcodeDetector(options, OnSuccessListener { barcodes ->
-            if (cameraConfig.mode.pause() && barcodes.isNotEmpty()) { stop() }
-            listener(barcodes)
-        }, OnFailureListener {
+        barcodeDetector = MLKitBarcodeDetector(options, { codes ->
+            if (cameraConfig.mode.pause() && codes.isNotEmpty()) { stop() }
+            listener(codes)
+        }, {
             Log.e(TAG, "Error in MLKit", it)
         })
 
