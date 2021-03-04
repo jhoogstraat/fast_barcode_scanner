@@ -19,7 +19,7 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
     });
   }
 
-  StreamSubscription _streamToken;
+  late StreamSubscription _streamToken;
   Map<String, int> detectionCount = {};
   final detectionInfo = ValueNotifier("");
 
@@ -27,16 +27,18 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.all(Radius.circular(15))),
+        color: Colors.white,
+        borderRadius: BorderRadius.all(Radius.circular(15)),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 12),
         child: ValueListenableBuilder(
-            valueListenable: detectionInfo,
-            builder: (context, info, child) => Text(
-                  info,
-                  textAlign: TextAlign.center,
-                )),
+          valueListenable: detectionInfo,
+          builder: (context, dynamic info, child) => Text(
+            info,
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
     );
   }

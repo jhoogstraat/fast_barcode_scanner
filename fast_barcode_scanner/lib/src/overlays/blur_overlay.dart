@@ -8,7 +8,7 @@ class BlurPreviewOverlay extends StatelessWidget {
   final Duration duration;
 
   const BlurPreviewOverlay({
-    Key key,
+    Key? key,
     this.blurAmount = 30,
     this.duration = const Duration(milliseconds: 500),
   }) : super(key: key);
@@ -18,7 +18,7 @@ class BlurPreviewOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder(
+    return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: blur(context) ? blurAmount : 0.0),
       duration: duration,
       curve: Curves.easeOut,

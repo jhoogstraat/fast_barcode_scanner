@@ -7,27 +7,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
+typedef Widget ErrorCallback(BuildContext context, Object? error);
+
+final ErrorCallback _defaultOnError = (BuildContext context, Object? error) {
   debugPrint("Error reading from camera: $error");
   return Center(child: Text("Error reading from camera..."));
 };
 
-typedef Widget ErrorCallback(BuildContext context, Object error);
-
-/// The main class connecting the platform code to the Flutter UI.
+/// The main class connecting the platform code to the UI.
 ///
-/// This class is used in a widget tree and connects to the camera
+/// This class is used in the widget tree and connects to the camera
 /// as soon as the build method gets called.
 class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
-      {Key key,
-      @required this.types,
-      @required this.onDetect,
+      {Key? key,
+      required this.types,
+      required this.onDetect,
       this.mode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps60,
       this.child,
-      ErrorCallback onError})
+      ErrorCallback? onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
 
@@ -36,7 +36,7 @@ class BarcodeCamera extends StatefulWidget {
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode mode;
-  final Widget child;
+  final Widget? child;
   final ErrorCallback onError;
 
   @override
@@ -44,11 +44,9 @@ class BarcodeCamera extends StatefulWidget {
 }
 
 class BarcodeCameraState extends State<BarcodeCamera> {
-  Future<void> _init;
-  PreviewConfiguration _previewConfig;
-  Object _error;
+  late Future<PreviewConfiguration> _init;
   double _opacity = 0.0;
-  Future<bool> _togglingTorch;
+  Future<bool>? _togglingTorch;
   final _eventNotifier = ValueNotifier(CameraEvent.init);
 
   FastBarcodeScannerPlatform get _platform =>
@@ -65,12 +63,8 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   /// The camera is initialized only once per session.
   /// All susequent calls to this method will be dropped.
   void _initDetector() async {
-    if (_init != null) return;
-
     _init = _platform
         .init(widget.types, widget.resolution, widget.framerate, widget.mode)
-        .then((value) => _previewConfig = value)
-        .catchError((error) => setState(() => _error = error))
         .whenComplete(() => setState(() => _opacity = 1.0));
 
     /// Notify the overlays when a barcode is detected and then call [onDetect].
@@ -100,7 +94,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
     if (_togglingTorch == null)
       _togglingTorch =
           _platform.toggleTorch().whenComplete(() => _togglingTorch = null);
-    return _togglingTorch;
+    return _togglingTorch!;
   }
 
   @override
@@ -110,11 +104,18 @@ class BarcodeCameraState extends State<BarcodeCamera> {
       child: AnimatedOpacity(
         opacity: _opacity,
         duration: const Duration(milliseconds: 260),
-        child: Stack(fit: StackFit.expand, children: [
-          if (_error != null) widget.onError(context, _error),
-          if (_previewConfig != null) _buildPreview(_previewConfig),
-          if (widget.child != null) _buildOverlay()
-        ]),
+        child: FutureBuilder<PreviewConfiguration>(
+          future: _init,
+          builder: (context, snapshot) {
+            if (snapshot.hasError)
+              return widget.onError(context, snapshot.error);
+            else
+              return Stack(fit: StackFit.expand, children: [
+                if (snapshot.hasData) _buildPreview(snapshot.data!),
+                if (widget.child != null) _buildOverlay()
+              ]);
+          },
+        ),
       ),
     );
   }
@@ -122,9 +123,9 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   Widget _buildOverlay() {
     return ValueListenableBuilder(
       valueListenable: _eventNotifier,
-      builder: (context, state, _) => CameraState(
+      builder: (context, dynamic state, _) => CameraState(
         event: state,
-        child: widget.child,
+        child: widget.child!,
       ),
     );
   }

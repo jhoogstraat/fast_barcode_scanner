@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class MaterialBarcodeSensingPainter extends CustomPainter {
-  MaterialBarcodeSensingPainter({this.inflate, this.opacity});
+  MaterialBarcodeSensingPainter(
+      {required this.inflate, required this.opacity});
 
   final double inflate;
   final double opacity;

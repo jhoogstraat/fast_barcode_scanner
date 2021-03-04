@@ -15,7 +15,7 @@ import 'method_channel_fast_barcode_scanner.dart';
 abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   FastBarcodeScannerPlatform() : super(token: _token);
 
-  static final Object _token = Object();
+  static const Object _token = Object();
 
   static FastBarcodeScannerPlatform _instance =
       MethodChannelFastBarcodeScanner();
@@ -40,16 +40,16 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('init() has not been implemented');
   }
 
-  Future<void> dispose() {
-    throw UnimplementedError('stop() has not been implemented');
-  }
-
   Future<void> pause() {
     throw UnimplementedError('pause() has not been implemented');
   }
 
   Future<void> resume() {
     throw UnimplementedError('resume() has not been implemented');
+  }
+
+  Future<void> dispose() {
+    throw UnimplementedError('stop() has not been implemented');
   }
 
   Future<bool> toggleTorch() {

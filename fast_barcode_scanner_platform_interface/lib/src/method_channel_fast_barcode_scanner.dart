@@ -12,11 +12,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =
       const MethodChannel('com.jhoogstraat/fast_barcode_scanner');
 
-  void Function(Barcode) _onDetectHandler;
-
-  @override
-  void setOnDetectHandler(void Function(Barcode) handler) =>
-      _onDetectHandler = handler;
+  void Function(Barcode)? _onDetectHandler;
 
   Future<PreviewConfiguration> init(
       List<BarcodeType> types,
@@ -28,11 +24,12 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
         case 'read':
           // This might fail if the code type is not present in the list of available code types.
           // Barcode init will throw in this case.
-          _onDetectHandler?.call(Barcode(call.arguments));
+          final barcode = Barcode(call.arguments);
+          _onDetectHandler?.call(barcode);
           break;
         default:
           assert(true,
-              "FastBarcodeScanner: unknown method call received: ${call.method}");
+              "FastBarcodeScanner: Unknown method call received: ${call.method}");
       }
     });
 
@@ -46,15 +43,19 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     return PreviewConfiguration(response);
   }
 
+  Future<void> pause() => _channel.invokeMethod('pause');
+
+  Future<void> resume() => _channel.invokeMethod('resume');
+
   Future<void> dispose() {
     _channel.setMethodCallHandler(null);
     _onDetectHandler = null;
     return _channel.invokeMethod('stop');
   }
 
-  Future<void> pause() => _channel.invokeMethod('pause');
+  Future<bool> toggleTorch() =>
+      _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
 
-  Future<void> resume() => _channel.invokeMethod('resume');
-
-  Future<bool> toggleTorch() => _channel.invokeMethod('toggleTorch');
+  void setOnDetectHandler(void Function(Barcode) handler) =>
+      _onDetectHandler = handler;
 }

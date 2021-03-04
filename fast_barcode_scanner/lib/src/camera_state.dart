@@ -7,7 +7,7 @@ class CameraState extends InheritedWidget {
   final CameraEvent event;
 
   const CameraState({
-    Widget child,
+    required Widget child,
     this.event = CameraEvent.init,
   }) : super(child: child);
 
@@ -16,5 +16,5 @@ class CameraState extends InheritedWidget {
       event != oldWidget.event || event == CameraEvent.codeFound;
 
   static CameraEvent of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<CameraState>().event;
+      context.dependOnInheritedWidgetOfExactType<CameraState>()!.event;
 }

@@ -4,7 +4,7 @@ import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
 class MaterialPreviewOverlay extends StatefulWidget {
-  const MaterialPreviewOverlay({Key key, this.animateDetection = true})
+  const MaterialPreviewOverlay({Key? key, this.animateDetection = true})
       : super(key: key);
 
   final bool animateDetection;
@@ -15,9 +15,9 @@ class MaterialPreviewOverlay extends StatefulWidget {
 
 class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     with SingleTickerProviderStateMixin {
-  AnimationController _controller;
-  Animation<double> _opacitySequence;
-  Animation<double> _inflateSequence;
+  late AnimationController _controller;
+  late Animation<double> _opacitySequence;
+  late Animation<double> _inflateSequence;
 
   @override
   void initState() {

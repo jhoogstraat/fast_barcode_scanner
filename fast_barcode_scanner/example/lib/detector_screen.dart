@@ -36,7 +36,7 @@ class DetectorScreen extends StatelessWidget {
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
-                detector.currentState.toggleTorch();
+                detector.currentState!.toggleTorch();
                 _torchIconState.value = !_torchIconState.value;
               },
             ),
@@ -61,9 +61,9 @@ class DetectorScreen extends StatelessWidget {
               bottom: 100,
               child: Column(
                 children: [
-                  RaisedButton(
+                  ElevatedButton(
                     child: Text("Resume"),
-                    onPressed: () => detector.currentState.resumeDetector(),
+                    onPressed: () => detector.currentState!.resumeDetector(),
                   ),
                   SizedBox(height: 20),
                   DetectionsCounter()
