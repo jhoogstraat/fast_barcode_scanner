@@ -58,7 +58,7 @@ class DetectorScreen extends StatelessWidget {
             MaterialPreviewOverlay(animateDetection: false),
             BlurPreviewOverlay(),
             Positioned(
-              bottom: 100,
+              bottom: 50,
               child: Column(
                 children: [
                   ElevatedButton(

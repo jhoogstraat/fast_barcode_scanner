@@ -4,10 +4,12 @@ import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
 class MaterialPreviewOverlay extends StatefulWidget {
-  const MaterialPreviewOverlay({Key? key, this.animateDetection = true})
+  const MaterialPreviewOverlay(
+      {Key? key, this.animateDetection = true, this.aspectRatio = 16 / 9})
       : super(key: key);
 
   final bool animateDetection;
+  final double aspectRatio;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -66,7 +68,8 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       child: SizedBox.expand(
           child: widget.animateDetection
               ? _buildAnimation(context)
-              : CustomPaint(painter: MaterialBarcodeFramePainter())),
+              : CustomPaint(
+                  painter: MaterialBarcodeFramePainter(widget.aspectRatio))),
     );
   }
 
@@ -74,7 +77,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => CustomPaint(
-        painter: MaterialBarcodeFramePainter(),
+        painter: MaterialBarcodeFramePainter(widget.aspectRatio),
         foregroundPainter: MaterialBarcodeSensingPainter(
             inflate: _inflateSequence.value, opacity: _opacitySequence.value),
       ),
