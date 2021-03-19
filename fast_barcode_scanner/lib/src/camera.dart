@@ -25,7 +25,8 @@ class BarcodeCamera extends StatefulWidget {
       required this.onDetect,
       this.mode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
-      this.framerate = Framerate.fps60,
+      this.framerate = Framerate.fps30,
+      this.position = CameraPosition.back,
       this.child,
       ErrorCallback? onError})
       : onError = onError ?? _defaultOnError,
@@ -36,6 +37,7 @@ class BarcodeCamera extends StatefulWidget {
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode mode;
+  final CameraPosition position;
   final Widget? child;
   final ErrorCallback onError;
 
@@ -64,7 +66,8 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   /// All susequent calls to this method will be dropped.
   void _initDetector() async {
     _init = _platform
-        .init(widget.types, widget.resolution, widget.framerate, widget.mode)
+        .init(widget.types, widget.resolution, widget.framerate, widget.mode,
+            widget.position)
         .whenComplete(() => setState(() => _opacity = 1.0));
 
     /// Notify the overlays when a barcode is detected and then call [onDetect].

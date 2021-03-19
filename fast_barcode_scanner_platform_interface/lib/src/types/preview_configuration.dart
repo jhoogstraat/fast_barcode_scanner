@@ -11,6 +11,9 @@ enum Framerate { fps30, fps60, fps120, fps240 }
 /// - continuous: Does nothing on detection. May need to throttle detections using this.
 enum DetectionMode { pauseDetection, pauseVideo, continuous }
 
+/// The position of the camera.
+enum CameraPosition { front, back }
+
 /// A OS-provided configuration by which the camera feed can be laid out in the UI.
 class PreviewConfiguration {
   /// The width of the camera feed in points or dp.

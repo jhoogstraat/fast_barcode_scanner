@@ -35,8 +35,12 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   /// Returns a [PreviewConfiguration] containing the parameters with wich the camera is set up.
   ///
   ///
-  Future<PreviewConfiguration> init(List<BarcodeType> types,
-      Resolution resolution, Framerate framerate, DetectionMode detectionMode) {
+  Future<PreviewConfiguration> init(
+      List<BarcodeType> types,
+      Resolution resolution,
+      Framerate framerate,
+      DetectionMode detectionMode,
+      CameraPosition position) {
     throw UnimplementedError('init() has not been implemented');
   }
 

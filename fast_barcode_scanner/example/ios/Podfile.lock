@@ -1,0 +1,22 @@
+PODS:
+  - fast_barcode_scanner (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - fast_barcode_scanner (from `.symlinks/plugins/fast_barcode_scanner/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  fast_barcode_scanner:
+    :path: ".symlinks/plugins/fast_barcode_scanner/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  fast_barcode_scanner: 0df01447443e9f9c7a6859844d8c4719887100b4
+  Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
+
+PODFILE CHECKSUM: fe0e1ee7f3d1f7d00b11b474b62dd62134535aea
+
+COCOAPODS: 1.10.0

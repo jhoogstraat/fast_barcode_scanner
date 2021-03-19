@@ -18,7 +18,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       List<BarcodeType> types,
       Resolution resolution,
       Framerate framerate,
-      DetectionMode detectionMode) async {
+      DetectionMode detectionMode,
+      CameraPosition position) async {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'read':
@@ -37,7 +38,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       'types': types.map((e) => describeEnum(e)).toList(growable: false),
       'mode': describeEnum(detectionMode),
       'res': describeEnum(resolution),
-      'fps': describeEnum(framerate)
+      'fps': describeEnum(framerate),
+      'pos': describeEnum(position)
     });
 
     return PreviewConfiguration(response);

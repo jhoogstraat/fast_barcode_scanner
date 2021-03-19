@@ -26,6 +26,11 @@ let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 		"interleaved": .interleaved2of5
 ]
 
+let cameraPositions: [String: AVCaptureDevice.Position]  = [
+    "front": .front,
+    "back": .back
+]
+
 // Reverse lookup flutter type
 let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map({ ($1, $0) }))
 
@@ -84,7 +89,7 @@ class BarcodeReader: NSObject {
 	let metadataOutput: AVCaptureMetadataOutput
 	let codeCallback: ([String]) -> Void
 	let detectionMode: DetectionMode
-	let cameraPosition = AVCaptureDevice.Position.back
+    let position: AVCaptureDevice.Position
 	var torchActiveBeforeStop = false
 	var previewSize: CMVideoDimensions!
 
@@ -95,9 +100,10 @@ class BarcodeReader: NSObject {
 		self.dataOutput = AVCaptureVideoDataOutput()
 		self.metadataOutput = AVCaptureMetadataOutput()
 		self.detectionMode = arguments.detectionMode
+        self.position = arguments.position
 		super.init()
 
-		captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: cameraPosition)
+		captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position)
 
 		guard captureDevice != nil else {
 			throw ReaderError.noInputDevice

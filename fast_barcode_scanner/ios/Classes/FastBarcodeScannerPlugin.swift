@@ -1,9 +1,11 @@
 import Flutter
+import AVFoundation
 
 struct StartArgs {
 	init?(_ args: Any?) {
 		guard
 			let dict = args as? [String: Any],
+            let position = cameraPositions[dict["pos"] as? String ?? ""],
 			let resolution = Resolution(rawValue: dict["res"] as? String ?? ""),
 			let framerate = Framerate(rawValue: dict["fps"] as? String ?? ""),
 			let detectionMode = DetectionMode(rawValue: dict["mode"] as? String ?? ""),
@@ -11,13 +13,15 @@ struct StartArgs {
 			else {
 				return nil
 		}
-
+        
+        self.position = position
 		self.framerate = framerate
 		self.resolution = resolution
 		self.detectionMode = detectionMode
 		self.codes = codes
 	}
 
+    let position: AVCaptureDevice.Position
 	let framerate: Framerate
 	let resolution: Resolution
 	let detectionMode: DetectionMode
