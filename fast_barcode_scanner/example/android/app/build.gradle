@@ -32,11 +32,6 @@ android {
         main.java.srcDirs += 'src/main/kotlin'
     }
 
-    lintOptions {
-        disable 'InvalidPackage'
-        checkReleaseBuilds false
-    }
-
     defaultConfig {
         applicationId "com.jhoogstraat.fast_barcode_scanner_example"
         minSdkVersion 23
@@ -59,5 +54,5 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.4.20"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
