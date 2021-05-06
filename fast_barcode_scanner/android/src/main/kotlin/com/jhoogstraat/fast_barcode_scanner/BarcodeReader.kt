@@ -7,7 +7,6 @@ import android.view.Surface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.core.util.Consumer
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import io.flutter.embedding.android.FlutterActivity
@@ -90,7 +89,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
 
     fun toggleTorch(result: Result) {
         if (!isInitialized) return
-        camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener(Runnable {
+        camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener({
             result.success(camera.cameraInfo.torchState.value == TorchState.ON)
         }, ContextCompat.getMainExecutor(activity))
     }
@@ -112,7 +111,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     private fun initCamera() {
         // Init barcode Detector
         val options = BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(Barcode.FORMAT_UNKNOWN, *cameraConfig.formats)
+                .setBarcodeFormats(0, *cameraConfig.formats)
                 .build()
 
         barcodeDetector = MLKitBarcodeDetector(options, { codes ->
@@ -134,11 +133,11 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         cameraSurfaceProvider = Preview.SurfaceProvider {
             val surfaceTexture = flutterTextureEntry.surfaceTexture()
             surfaceTexture.setDefaultBufferSize(it.resolution.width, it.resolution.height)
-            it.provideSurface(Surface(surfaceTexture), cameraExecutor, Consumer<SurfaceRequest.Result> {})
+            it.provideSurface(Surface(surfaceTexture), cameraExecutor, {})
         }
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
-        cameraProviderFuture.addListener(Runnable {
+        cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
             isInitialized = true
             try { bindCameraUseCases() }
