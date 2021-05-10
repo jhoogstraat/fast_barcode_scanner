@@ -26,7 +26,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
           // This might fail if the code type is not present in the list of available code types.
           // Barcode init will throw in this case.
           final barcode = Barcode(call.arguments);
-          _onDetectHandler?.call(barcode);
+          this._onDetectHandler?.call(barcode);
           break;
         default:
           assert(true,

@@ -25,7 +25,8 @@ class BarcodeCamera extends StatefulWidget {
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps30,
       this.position = CameraPosition.back,
-      this.child,
+      this.onScan,
+      this.children = const [],
       ErrorCallback? onError})
       : onError = onError ?? _defaultOnError,
         super(key: key);
@@ -35,7 +36,8 @@ class BarcodeCamera extends StatefulWidget {
   final Framerate framerate;
   final DetectionMode mode;
   final CameraPosition position;
-  final Widget? child;
+  final void Function(Barcode)? onScan;
+  final List<Widget> children;
   final ErrorCallback onError;
 
   @override
@@ -43,25 +45,16 @@ class BarcodeCamera extends StatefulWidget {
 }
 
 class BarcodeCameraState extends State<BarcodeCamera> {
-  var _opacity = 1.0;
+  var _opacity = 0.0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    print("UPDATE DEPS");
-    if (!CameraController.instance.state.isInitialized) {
-      _opacity = 0.0;
-      CameraController.instance
-          .initialize(widget.types, widget.resolution, widget.framerate,
-              widget.mode, widget.position)
-          .whenComplete(() => setState(() => _opacity = 1.0));
-    }
-  }
 
-  @override
-  void dispose() {
-    CameraController.instance.dispose();
-    super.dispose();
+    CameraController.instance
+        .initialize(widget.types, widget.resolution, widget.framerate,
+            widget.mode, widget.position, widget.onScan)
+        .whenComplete(() => setState(() => _opacity = 1.0));
   }
 
   @override
@@ -79,7 +72,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
                 children: [
                   if (camera.isInitialized)
                     _buildPreview(camera.previewConfig!),
-                  if (widget.child != null) widget.child!
+                  ...widget.children
                 ],
               ),
       ),

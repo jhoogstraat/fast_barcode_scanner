@@ -36,18 +36,25 @@ class CameraController {
   /// The camera is initialized only once per session.
   /// All susequent calls to this method will be dropped.
   Future<void> initialize(
-    List<BarcodeType> types,
-    Resolution resolution,
-    Framerate framerate,
-    DetectionMode detectionMode,
-    CameraPosition position,
-  ) async {
+      List<BarcodeType> types,
+      Resolution resolution,
+      Framerate framerate,
+      DetectionMode detectionMode,
+      CameraPosition position,
+      void Function(Barcode)? onScan) async {
     state.eventNotifier.value = CameraEvent.init;
 
     try {
       if (state.isInitialized) await _platform.dispose();
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
+
+      /// Notify the overlays when a barcode is detected and then call [onDetect].
+      _platform.setOnDetectHandler((code) {
+        state.eventNotifier.value = CameraEvent.codeFound;
+        onScan?.call(code);
+      });
+
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {
       print(error);
@@ -55,12 +62,6 @@ class CameraController {
       state.eventNotifier.value = CameraEvent.error;
       return;
     }
-
-    /// Notify the overlays when a barcode is detected and then call [onDetect].
-    _platform.setOnDetectHandler((code) {
-      state.eventNotifier.value = CameraEvent.codeFound;
-      state._codeStream.add(code);
-    });
   }
 
   Future<void> dispose() async {
@@ -111,7 +112,6 @@ class CameraController {
 }
 
 class CameraState {
-  final _codeStream = StreamController<Barcode>.broadcast();
   PreviewConfiguration? _previewConfig;
   bool _togglingTorch = false;
   Object? error;
@@ -120,5 +120,4 @@ class CameraState {
   bool get isInitialized => _previewConfig != null;
   bool get hasError => error != null;
   PreviewConfiguration? get previewConfig => _previewConfig;
-  Stream<Barcode> get codeStream => _codeStream.stream;
 }

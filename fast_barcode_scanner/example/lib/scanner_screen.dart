@@ -52,28 +52,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
         framerate: Framerate.fps30,
         mode: DetectionMode.pauseVideo,
         position: CameraPosition.front,
-        child: Stack(
-          alignment: Alignment.center,
-          fit: StackFit.expand,
-          children: [
-            // (key) => BeepPreviewOverlay(key: key),
-            MaterialPreviewOverlay(animateDetection: false),
-            BlurPreviewOverlay(),
-            Positioned(
-              bottom: 50,
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    child: Text("Resume"),
-                    onPressed: () => CameraController.instance.resumeDetector(),
-                  ),
-                  SizedBox(height: 20),
-                  DetectionsCounter()
-                ],
-              ),
-            )
-          ],
-        ),
+        children: [
+          MaterialPreviewOverlay(animateDetection: false),
+          BlurPreviewOverlay(),
+          Positioned(
+            bottom: 50,
+            child: Column(
+              children: [
+                ElevatedButton(
+                  child: Text("Resume"),
+                  onPressed: () => CameraController.instance.resumeDetector(),
+                ),
+                SizedBox(height: 20),
+                DetectionsCounter()
+              ],
+            ),
+          )
+        ],
       ),
     );
   }
