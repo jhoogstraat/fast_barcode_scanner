@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'detector_screen.dart';
+import 'scanner_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +15,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: DetectorScreen());
+    return MaterialApp(home: ScannerScreen());
   }
 }

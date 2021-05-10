@@ -14,7 +14,7 @@ class BlurPreviewOverlay extends StatelessWidget {
   }) : super(key: key);
 
   bool blur(BuildContext context) =>
-      CameraState.of(context) == CameraEvent.codeFound;
+      CameraController.of(context) == CameraEvent.codeFound;
 
   @override
   Widget build(BuildContext context) {

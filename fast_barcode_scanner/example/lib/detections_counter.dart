@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import 'detector_screen.dart';
+import 'scanner_screen.dart';
 
 class DetectionsCounter extends StatefulWidget {
   @override

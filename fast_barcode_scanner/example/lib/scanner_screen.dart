@@ -4,15 +4,20 @@ import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
-/// This is outside of [DetectorScreen] to preserve [BarcodeCameraState] after hot reload.
+/// This is outside of [ScannerScreen] to preserve [BarcodeCameraState] after hot reload.
 /// Otherwise a new Key would be generated and thus a new [BarcodeCameraState].
-final detector = GlobalKey<BarcodeCameraState>();
+final scanner = GlobalKey<BarcodeCameraState>();
 
 final detectionsController = StreamController<Barcode>();
 final Stream<Barcode> detectionsStream =
     detectionsController.stream.asBroadcastStream();
 
-class DetectorScreen extends StatelessWidget {
+class ScannerScreen extends StatefulWidget {
+  @override
+  _ScannerScreenState createState() => _ScannerScreenState();
+}
+
+class _ScannerScreenState extends State<ScannerScreen> {
   final _torchIconState = ValueNotifier(false);
 
   @override
@@ -35,15 +40,20 @@ class DetectorScreen extends StatelessWidget {
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
-                detector.currentState!.toggleTorch();
+                scanner.currentState!.toggleTorch();
                 _torchIconState.value = !_torchIconState.value;
               },
             ),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pushReplacement(
+                context, MaterialPageRoute(builder: (ctx) => ScannerScreen())),
+            icon: Icon(Icons.navigate_next),
           )
         ],
       ),
       body: BarcodeCamera(
-        key: detector,
+        key: scanner,
         types: [
           BarcodeType.ean8,
           BarcodeType.ean13,
@@ -68,7 +78,7 @@ class DetectorScreen extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     child: Text("Resume"),
-                    onPressed: () => detector.currentState!.resumeDetector(),
+                    onPressed: () => scanner.currentState!.resumeDetector(),
                   ),
                   SizedBox(height: 20),
                   DetectionsCounter()

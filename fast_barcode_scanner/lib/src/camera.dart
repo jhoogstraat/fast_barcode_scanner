@@ -126,7 +126,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   Widget _buildOverlay() {
     return ValueListenableBuilder(
       valueListenable: _eventNotifier,
-      builder: (context, dynamic state, _) => CameraState(
+      builder: (context, dynamic state, _) => CameraController(
         event: state,
         child: widget.child!,
       ),
