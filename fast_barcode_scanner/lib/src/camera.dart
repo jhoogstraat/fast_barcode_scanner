@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'dart:ui';
 
-import 'package:fast_barcode_scanner/src/camera_state.dart';
+import 'package:fast_barcode_scanner/src/camera_controller.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +21,6 @@ class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
       {Key? key,
       required this.types,
-      required this.onDetect,
       this.mode = DetectionMode.pauseVideo,
       this.resolution = Resolution.hd720,
       this.framerate = Framerate.fps30,
@@ -33,7 +31,6 @@ class BarcodeCamera extends StatefulWidget {
         super(key: key);
 
   final List<BarcodeType> types;
-  final void Function(Barcode) onDetect;
   final Resolution resolution;
   final Framerate framerate;
   final DetectionMode mode;
@@ -46,101 +43,57 @@ class BarcodeCamera extends StatefulWidget {
 }
 
 class BarcodeCameraState extends State<BarcodeCamera> {
-  late Future<PreviewConfiguration> _init;
-  double _opacity = 0.0;
-  Future<bool>? _togglingTorch;
-  final _eventNotifier = ValueNotifier(CameraEvent.init);
-
-  FastBarcodeScannerPlatform get _platform =>
-      FastBarcodeScannerPlatform.instance;
+  var _opacity = 1.0;
 
   @override
-  void initState() {
-    super.initState();
-    _initDetector();
-  }
-
-  /// Informs the platform to initialize the camera.
-  ///
-  /// The camera is initialized only once per session.
-  /// All susequent calls to this method will be dropped.
-  void _initDetector() async {
-    _init = _platform
-        .init(widget.types, widget.resolution, widget.framerate, widget.mode,
-            widget.position)
-        .whenComplete(() => setState(() => _opacity = 1.0));
-
-    /// Notify the overlays when a barcode is detected and then call [onDetect].
-    _platform.setOnDetectHandler((code) {
-      _eventNotifier.value = CameraEvent.codeFound;
-      widget.onDetect(code);
-    });
-  }
-
-  Future<void> pauseDetector() {
-    _eventNotifier.value = CameraEvent.paused;
-    return _platform.pause();
-  }
-
-  Future<void> resumeDetector() {
-    _eventNotifier.value = CameraEvent.resumed;
-    return _platform.resume();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print("UPDATE DEPS");
+    if (!CameraController.instance.state.isInitialized) {
+      _opacity = 0.0;
+      CameraController.instance
+          .initialize(widget.types, widget.resolution, widget.framerate,
+              widget.mode, widget.position)
+          .whenComplete(() => setState(() => _opacity = 1.0));
+    }
   }
 
   @override
-  dispose() {
-    _platform.dispose();
+  void dispose() {
+    CameraController.instance.dispose();
     super.dispose();
-  }
-
-  Future<bool> toggleTorch() async {
-    if (_togglingTorch == null)
-      _togglingTorch =
-          _platform.toggleTorch().whenComplete(() => _togglingTorch = null);
-    return _togglingTorch!;
   }
 
   @override
   Widget build(BuildContext context) {
+    final camera = CameraController.instance.state;
     return ColoredBox(
       color: Colors.black,
       child: AnimatedOpacity(
         opacity: _opacity,
         duration: const Duration(milliseconds: 260),
-        child: FutureBuilder<PreviewConfiguration>(
-          future: _init,
-          builder: (context, snapshot) {
-            if (snapshot.hasError)
-              return widget.onError(context, snapshot.error);
-            else
-              return Stack(fit: StackFit.expand, children: [
-                if (snapshot.hasData) _buildPreview(snapshot.data!),
-                if (widget.child != null) _buildOverlay()
-              ]);
-          },
-        ),
+        child: camera.hasError
+            ? widget.onError(context, camera.error!)
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (camera.isInitialized)
+                    _buildPreview(camera.previewConfig!),
+                  if (widget.child != null) widget.child!
+                ],
+              ),
       ),
     );
   }
 
-  Widget _buildOverlay() {
-    return ValueListenableBuilder(
-      valueListenable: _eventNotifier,
-      builder: (context, dynamic state, _) => CameraController(
-        event: state,
-        child: widget.child!,
-      ),
-    );
-  }
-
-  Widget _buildPreview(PreviewConfiguration details) {
+  Widget _buildPreview(PreviewConfiguration config) {
     return FittedBox(
       fit: BoxFit.cover,
       child: SizedBox(
-        width: details.width.toDouble(),
-        height: details.height.toDouble(),
+        width: config.width.toDouble(),
+        height: config.height.toDouble(),
         child: Texture(
-          textureId: details.textureId,
+          textureId: config.textureId,
           filterQuality: FilterQuality.none,
         ),
       ),

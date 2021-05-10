@@ -1,7 +1,6 @@
 import 'dart:async';
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
-
-import 'scanner_screen.dart';
 
 class DetectionsCounter extends StatefulWidget {
   @override
@@ -12,7 +11,7 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
   @override
   void initState() {
     super.initState();
-    _streamToken = detectionsStream.listen((event) {
+    _streamToken = CameraController.instance.state.codeStream.listen((event) {
       final count = detectionCount.update(event.value, (value) => value + 1,
           ifAbsent: () => 1);
       detectionInfo.value = "${count}x\n${event.value}";

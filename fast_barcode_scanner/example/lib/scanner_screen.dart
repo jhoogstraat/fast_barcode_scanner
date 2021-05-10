@@ -1,16 +1,6 @@
-import 'dart:async';
-
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
-
-/// This is outside of [ScannerScreen] to preserve [BarcodeCameraState] after hot reload.
-/// Otherwise a new Key would be generated and thus a new [BarcodeCameraState].
-final scanner = GlobalKey<BarcodeCameraState>();
-
-final detectionsController = StreamController<Barcode>();
-final Stream<Barcode> detectionsStream =
-    detectionsController.stream.asBroadcastStream();
 
 class ScannerScreen extends StatefulWidget {
   @override
@@ -40,7 +30,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
               onPressed: () {
-                scanner.currentState!.toggleTorch();
                 _torchIconState.value = !_torchIconState.value;
               },
             ),
@@ -53,7 +42,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       ),
       body: BarcodeCamera(
-        key: scanner,
         types: [
           BarcodeType.ean8,
           BarcodeType.ean13,
@@ -64,7 +52,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
         framerate: Framerate.fps30,
         mode: DetectionMode.pauseVideo,
         position: CameraPosition.front,
-        onDetect: (barcode) => detectionsController.add(barcode),
         child: Stack(
           alignment: Alignment.center,
           fit: StackFit.expand,
@@ -78,7 +65,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 children: [
                   ElevatedButton(
                     child: Text("Resume"),
-                    onPressed: () => scanner.currentState!.resumeDetector(),
+                    onPressed: () => CameraController.instance.resumeDetector(),
                   ),
                   SizedBox(height: 20),
                   DetectionsCounter()

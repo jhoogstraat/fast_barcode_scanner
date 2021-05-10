@@ -1,3 +1,4 @@
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 
 import 'scanner_screen.dart';
