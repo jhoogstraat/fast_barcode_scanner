@@ -32,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 23
+        minSdkVersion 21
     }
 
     lintOptions {
@@ -54,8 +54,9 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
     def camerax_version = "1.1.0-alpha04"
+    def mlkit_version = "16.1.1"
     implementation "androidx.camera:camera-camera2:$camerax_version"
     implementation "androidx.camera:camera-lifecycle:$camerax_version"
 
-    implementation 'com.google.mlkit:barcode-scanning:16.1.1'
+    implementation "com.google.mlkit:barcode-scanning:$mlkit_version"
 }

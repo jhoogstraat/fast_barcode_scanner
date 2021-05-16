@@ -8,14 +8,43 @@ class CameraConfiguration {
   const CameraConfiguration(this.types, this.resolution, this.framerate,
       this.detectionMode, this.position);
 
+  /// The types the scanner should look out for.
+  ///
+  /// If a barcode type is not in this list, it will not be detected.
   final List<BarcodeType> types;
+
+  /// The target resolution of the camera feed.
+  ///
+  /// This is experimental, but functional. Should not be set higher
+  /// than necessary.
   final Resolution resolution;
+
+  /// The target framerate of the camera feed.
+  ///
+  /// This is experimental, but functional on iOS. Should not be set higher
+  /// than necessary.
   final Framerate framerate;
+
+  ///
   final DetectionMode detectionMode;
   final CameraPosition position;
 }
 
 enum CameraEvent { uninitialized, init, paused, resumed, codeFound, error }
+
+class CameraState {
+  PreviewConfiguration? _previewConfig;
+  bool _togglingTorch = false;
+  Object? _error;
+
+  Object? get error => _error;
+  PreviewConfiguration? get previewConfig => _previewConfig;
+
+  final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
+
+  bool get isInitialized => _previewConfig != null;
+  bool get hasError => error != null;
+}
 
 class CameraController {
   CameraController._() : this.state = CameraState();
@@ -23,7 +52,10 @@ class CameraController {
   static final _instance = CameraController._();
   static CameraController get instance => _instance;
 
-  // Data
+  /// The cumulated state of the barcode scanner.
+  ///
+  /// Contains information about the configuration, torch,
+  /// errors and events.
   final CameraState state;
 
   FastBarcodeScannerPlatform get _platform =>
@@ -33,8 +65,9 @@ class CameraController {
 
   /// Informs the platform to initialize the camera.
   ///
-  /// The camera is initialized only once per session.
-  /// All susequent calls to this method will be dropped.
+  /// The camera is disposed and reinitialized when calling this
+  /// method repeatedly.
+  /// Events and errors are received via the current state's eventNotifier.
   Future<void> initialize(
       List<BarcodeType> types,
       Resolution resolution,
@@ -57,44 +90,63 @@ class CameraController {
 
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
       print(error);
       debugPrintStack(stackTrace: stack);
-      state.eventNotifier.value = CameraEvent.error;
       return;
     }
   }
 
+  /// Disposed the platform camera and resets the whole system.
+  ///
+  ///
   Future<void> dispose() async {
     try {
       await _platform.dispose();
       state._previewConfig = null;
       state.eventNotifier.value = CameraEvent.uninitialized;
     } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
       print(error);
       debugPrintStack(stackTrace: stack);
     }
   }
 
+  /// Pauses the scanner and preview on the platform level.
+  ///
+  ///
   Future<void> pauseDetector() async {
     try {
       await _platform.pause();
       state.eventNotifier.value = CameraEvent.paused;
     } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
       print(error);
       debugPrintStack(stackTrace: stack);
     }
   }
 
+  /// Resumes the scanner and preview on the platform level.
+  ///
+  ///
   Future<void> resumeDetector() async {
     try {
       await _platform.resume();
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
       print(error);
       debugPrintStack(stackTrace: stack);
     }
   }
 
+  /// Toggles the torch, if available.
+  ///
+  ///
   Future<void> toggleTorch() async {
     if (!state._togglingTorch) {
       state._togglingTorch = true;
@@ -102,6 +154,8 @@ class CameraController {
       try {
         await _platform.toggleTorch();
       } catch (error, stack) {
+        state._error = error;
+        state.eventNotifier.value = CameraEvent.error;
         print(error);
         debugPrintStack(stackTrace: stack);
       }
@@ -109,15 +163,4 @@ class CameraController {
       state._togglingTorch = false;
     }
   }
-}
-
-class CameraState {
-  PreviewConfiguration? _previewConfig;
-  bool _togglingTorch = false;
-  Object? error;
-
-  final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
-  bool get isInitialized => _previewConfig != null;
-  bool get hasError => error != null;
-  PreviewConfiguration? get previewConfig => _previewConfig;
 }

@@ -16,7 +16,7 @@ final ErrorCallback _defaultOnError = (BuildContext context, Object? error) {
 /// The main class connecting the platform code to the UI.
 ///
 /// This class is used in the widget tree and connects to the camera
-/// as soon as the build method gets called.
+/// as soon as didChangeDependencies gets called.
 class BarcodeCamera extends StatefulWidget {
   BarcodeCamera(
       {Key? key,
@@ -59,19 +59,19 @@ class BarcodeCameraState extends State<BarcodeCamera> {
 
   @override
   Widget build(BuildContext context) {
-    final camera = CameraController.instance.state;
+    final cameraState = CameraController.instance.state;
     return ColoredBox(
       color: Colors.black,
       child: AnimatedOpacity(
         opacity: _opacity,
         duration: const Duration(milliseconds: 260),
-        child: camera.hasError
-            ? widget.onError(context, camera.error!)
+        child: cameraState.hasError
+            ? widget.onError(context, cameraState.error!)
             : Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (camera.isInitialized)
-                    _buildPreview(camera.previewConfig!),
+                  if (cameraState.isInitialized)
+                    _buildPreview(cameraState.previewConfig!),
                   ...widget.children
                 ],
               ),

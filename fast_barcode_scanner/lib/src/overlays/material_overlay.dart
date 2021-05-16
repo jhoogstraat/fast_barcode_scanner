@@ -54,14 +54,6 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     }
   }
 
-  // @override
-  // void didDetectBarcode() async {
-  //   if (widget.animateDetection) {
-  //     await _controller.forward();
-  //     _controller.reset();
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(

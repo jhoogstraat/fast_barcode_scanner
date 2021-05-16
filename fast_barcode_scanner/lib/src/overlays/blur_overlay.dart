@@ -18,17 +18,18 @@ class BlurPreviewOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-        valueListenable: CameraController.instance.state.eventNotifier,
-        builder: (context, event, child) {
-          return TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: shouldBlur(event) ? blurAmount : 0.0),
-            duration: duration,
-            curve: Curves.easeOut,
-            child: Container(color: Colors.black.withOpacity(0.0)),
-            builder: (_, value, child) => BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
-                child: child),
-          );
-        });
+      valueListenable: CameraController.instance.state.eventNotifier,
+      builder: (context, event, child) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: shouldBlur(event) ? blurAmount : 0.0),
+          duration: duration,
+          curve: Curves.easeOut,
+          child: Container(color: Colors.black.withOpacity(0.0)),
+          builder: (_, value, child) => BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
+              child: child),
+        );
+      },
+    );
   }
 }

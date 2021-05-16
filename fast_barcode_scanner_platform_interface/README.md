@@ -1,7 +1,5 @@
 # fast_barcode_scanner_platform_interface
 
-A fast barcode scanner using ML Kit (and CameraX) on Android and AVFoundation on iOS.
+A fast barcode scanner using MLKit (and CameraX) on Android and AVFoundation on iOS.
 
-Android implementation is still missing.
-
-Documentation coming soon.
+This package contains the contract for the fast_barcode_scanner plugin.

@@ -11,9 +11,7 @@ class Barcode {
             BarcodeType.values.firstWhere((e) => describeEnum(e) == data[0]),
         this.value = data[1];
 
-  /// The type if the Barcode.
-  ///
-  /// Can be one of [BarcodeType] in [String] form.
+  /// The type of the barcode.
   final BarcodeType type;
 
   /// The actual value of the barcode.

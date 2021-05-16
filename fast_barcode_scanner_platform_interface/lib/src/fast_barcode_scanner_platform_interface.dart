@@ -25,15 +25,15 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   /// Defaults to [MethodChannelFastBarcodeScanner].
   static FastBarcodeScannerPlatform get instance => _instance;
 
-  /// Platform-specific plugins should set this with their own platform-specific
+  /// Platform specific plugins should set this with their own platform-specific
   /// class that extends [FastBarcodeScannerPlatform] when they register themselves.
   static set instance(FastBarcodeScannerPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
 
-  /// Returns a [PreviewConfiguration] containing the parameters with wich the camera is set up.
-  ///
+  /// Returns a [PreviewConfiguration] containing the parameters with
+  /// which the camera is set up.
   ///
   Future<PreviewConfiguration> init(
       List<BarcodeType> types,
@@ -44,22 +44,27 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('init() has not been implemented');
   }
 
+  /// Pauses the camera on the platform.
   Future<void> pause() {
     throw UnimplementedError('pause() has not been implemented');
   }
 
+  /// Resumes the camera from the paused state on the platform.
   Future<void> resume() {
     throw UnimplementedError('resume() has not been implemented');
   }
 
+  /// Stops and clears the camera ressources.
   Future<void> dispose() {
-    throw UnimplementedError('stop() has not been implemented');
+    throw UnimplementedError('dispose() has not been implemented');
   }
 
+  /// Toggles the torch, if available.
   Future<bool> toggleTorch() {
     throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
+  /// Set the method to be called when a barcode is detected
   void setOnDetectHandler(void Function(Barcode) handler) {
     throw UnimplementedError('setOnReadHandler() has not been implemented');
   }

@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
+
+final codeStream = StreamController<Barcode>.broadcast();
 
 class ScannerScreen extends StatefulWidget {
   @override
@@ -35,9 +39,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
           IconButton(
-            onPressed: () => Navigator.pushReplacement(
-                context, MaterialPageRoute(builder: (ctx) => ScannerScreen())),
-            icon: Icon(Icons.navigate_next),
+            onPressed: () => print("switch camera in the future"),
+            icon: Icon(Icons.switch_camera),
           )
         ],
       ),
@@ -51,12 +54,15 @@ class _ScannerScreenState extends State<ScannerScreen> {
         resolution: Resolution.hd720,
         framerate: Framerate.fps30,
         mode: DetectionMode.pauseVideo,
-        position: CameraPosition.front,
+        position: CameraPosition.back,
+        onScan: (code) => codeStream.add(code),
         children: [
           MaterialPreviewOverlay(animateDetection: false),
           BlurPreviewOverlay(),
           Positioned(
             bottom: 50,
+            left: 0,
+            right: 0,
             child: Column(
               children: [
                 ElevatedButton(

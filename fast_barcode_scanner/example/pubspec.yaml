@@ -1,8 +1,5 @@
 name: fast_barcode_scanner_example
 description: Demonstrates how to use the fast_barcode_scanner plugin.
-
-# The following line prevents the package from being accidentally published to
-# pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: 'none'
 
 environment:
@@ -13,14 +10,7 @@ dependencies:
     sdk: flutter
 
   fast_barcode_scanner:
-    # When depending on this package from a real application you should use:
-    #   fast_barcode_scanner: ^x.y.z
-    # See https://dart.dev/tools/pub/dependencies#version-constraints
-    # The example app is bundled with the plugin so we use a path dependency on
-    # the parent directory to use the current plugin's version. 
     path: ../
-  # fast_barcode_scanner_beeper:
-  #   path: ../../fast_barcode_scanner_beeper
 
 flutter:
   uses-material-design: true
