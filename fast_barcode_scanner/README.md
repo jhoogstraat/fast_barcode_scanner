@@ -11,7 +11,7 @@ A fast barcode scanner using **MLKit** (and **CameraX**) on Android and **AVFoun
 ## Installation
 Add the following line to your **pubspec.yaml**:
 ```yaml
-fast_barcode_scanner: ^1.0.2
+fast_barcode_scanner: ^1.1.0
 ```
 ### iOS
 Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist`, like so:
@@ -68,28 +68,40 @@ As you can see, there are two overlays in the childrens list. These two are incl
 ### CameraController
 The `CameraController`-singleton manages the camera. It handles all the low level stuff like communicating with native code. It is implemented as a singleton to guarantee that there is always one and the same controller managing the camera. You can access the controller via the `CameraController.instance` attribute. These are the accessible methods:
 
-|method          |Description                                      |
-|----------------|-------------------------------------------------|
-|`initialize`    | Initialized the scanner with the provided config|          
-|`pauseDetector` | Actively pauses the scanner                     | 
-|`resumeDetector`| Resumes the scanner from the paused state       |
-|`toggleTorch`   | toggles the torch on and off                    |
-|`dispose`       | Stops and resets the camera on platform level   |
+method          |Description                                      
+----------------|-------------------------------------------------
+`initialize`    | Initialized the scanner with the provided config          
+`pauseDetector` | Actively pauses the scanner                      
+`resumeDetector`| Resumes the scanner from the paused state       
+`toggleTorch`   | toggles the torch on and off                    
+`dispose`       | Stops and resets the camera on platform level   
 
 You do not have to call `initialize` yourself, if you use the `BarcodeCamera` widget.
-If you want to use your own widget however, have a look at `CameraController.instance.state`, which contains a `PreviewConfiguration` after initialization. This class contains all necessary information to build a preview widget yourself.
+
+### CameraState
+`CameraController.instance.state` contains the current state of the scanner.
+You can use it to build your own overlay. The following information can be accessed:
+
+Attribute | Description
+----------------|-------------------------------------------------
+`isInitialized` | Indicated whether the camera is currently initialized
+`previewConfig` | A `PreviewConfiguration` that is currently used
+`eventNotifier` | A event notifier to react to init or detecting codes
+`torchState`    | The current state of the torch (on/off)
+`hasError`      | Indicates whether `error` is null or not
+`error`         | Access the error produced last
 
 ### BarcodeCamera
 The `BarcodeCamera` is a widget showing a preview of the camera feed. It calls the `CameraController` in the background for initialization and configuration of the barcode camera.
 
 An overview of all possible configurations (either passed to `BarcodeCamera` or `CameraController.initialize`):
 
-|Attribute    |Description                                              |
-|-------------|---------------------------------------------------------|
-|`types`      | See code types to scan (see `BarcodeType`)              |
-|`mode`       | Whether to pause the camera on detection                |          
-|`resolution` | The resolution of the camera feed                       | 
-|`framerate`  | The framerate of the camera feed                        |
-|`position`   | Choose betreen back and front camera                    |
-|`onScan`     | The callback when a barcode is scanned                  |
-|`children`   | Child widgets to display on top (`BarcodeCamera` only)  |
+Attribute    |Description                                              
+-------------|---------------------------------------------------------
+`types`      | See code types to scan (see `BarcodeType`)              
+`mode`       | Whether to pause the camera on detection                          
+`resolution` | The resolution of the camera feed                        
+`framerate`  | The framerate of the camera feed                        
+`position`   | Choose between back and front camera (iOS)         
+`onScan`     | The callback when a barcode is scanned                  
+`children`   | Widgets to display on top of the preview

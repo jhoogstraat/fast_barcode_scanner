@@ -7,6 +7,9 @@ import android.view.Surface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.util.Consumer
+import com.google.android.gms.tasks.OnFailureListener
+import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import io.flutter.embedding.android.FlutterActivity
@@ -89,7 +92,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
 
     fun toggleTorch(result: Result) {
         if (!isInitialized) return
-        camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener({
+        camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener(Runnable {
             result.success(camera.cameraInfo.torchState.value == TorchState.ON)
         }, ContextCompat.getMainExecutor(activity))
     }
@@ -114,10 +117,10 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 .setBarcodeFormats(0, *cameraConfig.formats)
                 .build()
 
-        barcodeDetector = MLKitBarcodeDetector(options, { codes ->
+        barcodeDetector = MLKitBarcodeDetector(options, OnSuccessListener { codes ->
             if (cameraConfig.mode.pause() && codes.isNotEmpty()) { stop() }
             listener(codes)
-        }, {
+        }, OnFailureListener {
             Log.e(TAG, "Error in MLKit", it)
         })
 
@@ -133,11 +136,11 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         cameraSurfaceProvider = Preview.SurfaceProvider {
             val surfaceTexture = flutterTextureEntry.surfaceTexture()
             surfaceTexture.setDefaultBufferSize(it.resolution.width, it.resolution.height)
-            it.provideSurface(Surface(surfaceTexture), cameraExecutor, {})
+            it.provideSurface(Surface(surfaceTexture), cameraExecutor, Consumer {})
         }
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
-        cameraProviderFuture.addListener({
+        cameraProviderFuture.addListener(Runnable {
             cameraProvider = cameraProviderFuture.get()
             isInitialized = true
             try { bindCameraUseCases() }

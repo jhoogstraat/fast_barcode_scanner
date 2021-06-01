@@ -33,15 +33,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
               icon: state
                   ? const Icon(Icons.flash_on)
                   : const Icon(Icons.flash_off),
-              onPressed: () {
-                _torchIconState.value = !_torchIconState.value;
+              onPressed: () async {
+                await CameraController.instance.toggleTorch();
+                _torchIconState.value =
+                    CameraController.instance.state.torchState;
               },
             ),
           ),
-          IconButton(
-            onPressed: () => print("switch camera in the future"),
-            icon: Icon(Icons.switch_camera),
-          )
         ],
       ),
       body: BarcodeCamera(

@@ -34,6 +34,7 @@ enum CameraEvent { uninitialized, init, paused, resumed, codeFound, error }
 
 class CameraState {
   PreviewConfiguration? _previewConfig;
+  bool _torchState = false;
   bool _togglingTorch = false;
   Object? _error;
 
@@ -42,6 +43,7 @@ class CameraState {
 
   final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
 
+  bool get torchState => _torchState;
   bool get isInitialized => _previewConfig != null;
   bool get hasError => error != null;
 }
@@ -152,7 +154,7 @@ class CameraController {
       state._togglingTorch = true;
 
       try {
-        await _platform.toggleTorch();
+        state._torchState = await _platform.toggleTorch();
       } catch (error, stack) {
         state._error = error;
         state.eventNotifier.value = CameraEvent.error;
