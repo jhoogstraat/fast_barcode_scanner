@@ -38,8 +38,10 @@ enum class Resolution {
 
 enum class DetectionMode {
     pauseDetection, pauseVideo, continuous;
+}
 
-    fun pause() : Boolean = this != continuous
+enum class CameraPosition {
+    front, back;
 }
 
 val barcodeFormatMap = hashMapOf(

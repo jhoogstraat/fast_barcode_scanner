@@ -25,8 +25,10 @@ class CameraConfiguration {
   /// than necessary.
   final Framerate framerate;
 
-  ///
+  /// Determines how the camera reacts to detected barcodes.
   final DetectionMode detectionMode;
+
+  /// The physical position of the camera being used.
   final CameraPosition position;
 }
 
@@ -163,6 +165,17 @@ class CameraController {
       }
 
       state._togglingTorch = false;
+    }
+  }
+
+  Future<void> changeCamera(CameraPosition position) async {
+    try {
+      await _platform.changeCamera(position);
+    } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
+      print(error);
+      debugPrintStack(stackTrace: stack);
     }
   }
 }

@@ -6,9 +6,11 @@ enum Framerate { fps30, fps60, fps120, fps240 }
 
 enum DetectionMode {
   /// Pauses the detection of further barcodes when a barcode is detected.
+  /// The camera feed continues.
   pauseDetection,
 
   /// Pauses the camera feed on detection.
+  /// This will inevitably stop the detection of barcodes.
   pauseVideo,
 
   /// Does nothing on detection. May need to throttle detections using continuous.

@@ -58,6 +58,10 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   Future<bool> toggleTorch() =>
       _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
 
+  Future<bool> changeCamera(CameraPosition position) => _channel
+      .invokeMethod('changeCamera', describeEnum(position))
+      .then<bool>((success) => success);
+
   void setOnDetectHandler(void Function(Barcode) handler) =>
       _onDetectHandler = handler;
 }

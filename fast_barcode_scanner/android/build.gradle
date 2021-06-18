@@ -53,7 +53,7 @@ android {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
-    def camerax_version = "1.1.0-alpha04"
+    def camerax_version = "1.1.0-alpha05"
     def mlkit_version = "16.1.2"
     implementation "androidx.camera:camera-camera2:$camerax_version"
     implementation "androidx.camera:camera-lifecycle:$camerax_version"

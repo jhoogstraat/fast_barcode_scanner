@@ -21,7 +21,7 @@ import java.util.ArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate)
+data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, val position: CameraPosition)
 
 class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
@@ -40,6 +40,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
 
     /* State */
     private var isInitialized = false
+    private var pauseDetection = false
 
     fun attachToActivity(activity: FlutterActivity) {
         this.activity = activity
@@ -66,7 +67,8 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 (args["types"] as ArrayList<String>).map { barcodeFormatMap[it]!! }.toIntArray(),
                 DetectionMode.valueOf(args["mode"] as String),
                 Resolution.valueOf(args["res"] as String),
-                Framerate.valueOf(args["fps"] as String)
+                Framerate.valueOf(args["fps"] as String),
+                CameraPosition.valueOf(args["pos"] as String)
         )
 
         if (allPermissionsGranted()) {
@@ -118,16 +120,30 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 .build()
 
         barcodeDetector = MLKitBarcodeDetector(options, OnSuccessListener { codes ->
-            if (cameraConfig.mode.pause() && codes.isNotEmpty()) { stop() }
-            listener(codes)
+            if (!pauseDetection && codes.isNotEmpty()) {
+                if (cameraConfig.mode == DetectionMode.pauseDetection) {
+                    pauseDetection = true
+                } else if (cameraConfig.mode == DetectionMode.pauseVideo) {
+                    stop()
+                }
+
+                listener(codes)
+            }
         }, OnFailureListener {
             Log.e(TAG, "Error in MLKit", it)
         })
 
-        // Select back camera
-        cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build()
+        // Select camera
+        val selectorBuilder = CameraSelector.Builder()
+        when (cameraConfig.position) {
+            CameraPosition.front -> {
+                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+            }
+            CameraPosition.back -> {
+                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
+            }
+        }
+        cameraSelector = selectorBuilder.build()
 
         // Create Camera Thread
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -156,7 +172,6 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 .setTargetRotation(Surface.ROTATION_90)
                 .build()
 
-        // ImageAnalysis
         val imageAnalyzer = ImageAnalysis.Builder()
                 .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                 // .setTargetResolution(cameraConfig.resolution.size())
@@ -170,15 +185,17 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 .build()
                 .also { it.setAnalyzer(cameraExecutor, barcodeDetector) }
 
-
-        // As required by CameraX API, unbinds all use cases before trying to re-bind any of them.
+        // As required by CameraX, unbinds all use cases before trying to re-bind any of them.
         cameraProvider.unbindAll()
+
+        // Attach the viewfinder's surface provider to preview use case
+        preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
 
         // Bind camera to Lifecycle
         camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, preview, imageAnalyzer)
 
-        // Attach the viewfinder's surface provider to preview use case
-        preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
+        // Make sure detections are allowed
+        pauseDetection = false
     }
 
     companion object {

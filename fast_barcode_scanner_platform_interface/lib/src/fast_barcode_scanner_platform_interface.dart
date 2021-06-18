@@ -64,6 +64,10 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
+  Future<bool> changeCamera(CameraPosition position) {
+    throw UnimplementedError('changeCamera() has not been implemented');
+  }
+
   /// Set the method to be called when a barcode is detected
   void setOnDetectHandler(void Function(Barcode) handler) {
     throw UnimplementedError('setOnReadHandler() has not been implemented');
