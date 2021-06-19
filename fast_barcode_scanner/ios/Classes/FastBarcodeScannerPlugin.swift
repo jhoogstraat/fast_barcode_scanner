@@ -48,22 +48,27 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	}
 
 	public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-		switch call.method {
-		case "start": start(call: call, result: result)
-		case "stop": stop(result: result)
-		case "pause": pause(result: result)
-		case "resume": resume(result: result)
-		case "toggleTorch": toggleTorch(result: result)
-		case "heartBeat": result(nil)
-		default: result(FlutterMethodNotImplemented)
-		}
+        do {
+            switch call.method {
+            case "start": start(call: call, result: result)
+            case "stop": stop(result: result)
+            case "pause": pause(result: result)
+            case "resume": try resume(result: result)
+            case "toggleTorch": toggleTorch(result: result)
+            case "heartBeat": result(nil)
+            default: result(FlutterMethodNotImplemented)
+            }
+        } catch {
+            print(error)
+            result(FlutterError(code: "THROW", message: "\(error)", details: nil))
+        }
 	}
 
 	func start(call: FlutterMethodCall, result: @escaping FlutterResult) {
 		guard reader == nil else {
 			let error = FlutterError(code: "ALREADY_RUNNING",
 															 message: "Start cannot be called when already running",
-															 details: "")
+															 details: nil)
 			result(error)
 			return
 		}
@@ -81,7 +86,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 				self.channel.invokeMethod("read", arguments: code)
 			}
 
-			reader!.start(fromPause: false)
+			try reader!.start(fromPause: false)
 
 			result([
 				"surfaceWidth": reader!.previewSize.height,
@@ -117,8 +122,8 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 		result(nil)
 	}
 
-	func resume(result: @escaping FlutterResult) {
-		reader?.resume()
+	func resume(result: @escaping FlutterResult) throws {
+		try reader?.resume()
 		result(nil)
 	}
 

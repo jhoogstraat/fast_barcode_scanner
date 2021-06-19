@@ -38,6 +38,7 @@ enum ReaderError: Error {
 	case noInputDevice
 	case cameraNotSuitable(Resolution, Framerate)
     case unauthorized
+    case configurationLockError(Error)
 }
 
 enum Resolution: String {
@@ -87,11 +88,11 @@ class BarcodeReader: NSObject {
 	var captureDevice: AVCaptureDevice!
 	var captureSession: AVCaptureSession
 	let dataOutput: AVCaptureVideoDataOutput
-	let metadataOutput: AVCaptureMetadataOutput
+    var metadataOutput: AVCaptureMetadataOutput
 	let codeCallback: ([String]) -> Void
 	let detectionMode: DetectionMode
     let position: AVCaptureDevice.Position
-	var torchActiveBeforeStop = false
+	var torchActiveOnStop = false
 	var previewSize: CMVideoDimensions!
 
 	init(textureRegistry: FlutterTextureRegistry,
@@ -111,7 +112,7 @@ class BarcodeReader: NSObject {
 		guard captureDevice != nil else {
 			throw ReaderError.noInputDevice
 		}
-        
+
         do {
             let input = try AVCaptureDeviceInput(device: captureDevice)
             captureSession.addInput(input)
@@ -121,8 +122,7 @@ class BarcodeReader: NSObject {
             }
             throw error
         }
-        
-        
+
         captureSession.addOutput(dataOutput)
         captureSession.addOutput(metadataOutput)
 
@@ -146,34 +146,46 @@ class BarcodeReader: NSObject {
 			throw ReaderError.cameraNotSuitable(arguments.resolution, arguments.framerate)
 		}
 
-        // swiftlint:disable:next force_try
-		try! captureDevice.lockForConfiguration()
-		captureDevice.activeFormat = optimalFormat
-		captureDevice.activeVideoMinFrameDuration = optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
-		captureDevice.activeVideoMaxFrameDuration = optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
-		captureDevice.unlockForConfiguration()
+        do {
+            try captureDevice.lockForConfiguration()
+            captureDevice.activeFormat = optimalFormat
+            captureDevice.activeVideoMinFrameDuration =
+                optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
+            captureDevice.activeVideoMaxFrameDuration =
+                optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
+            captureDevice.unlockForConfiguration()
+        } catch {
+            throw ReaderError.configurationLockError(error)
+        }
 
 		previewSize = CMVideoFormatDescriptionGetDimensions(captureDevice.activeFormat.formatDescription)
 	}
 
-	func start(fromPause: Bool) {
+	func start(fromPause: Bool) throws {
+        guard captureDevice != nil else { return }
+
 		captureSession.startRunning()
 
 		if !fromPause {
 			self.textureId = textureRegistry.register(self)
 		}
 
-		if torchActiveBeforeStop {
-            // swiftlint:disable:next force_try
-			try! captureDevice.lockForConfiguration()
-			captureDevice.torchMode = .on
-			captureDevice.unlockForConfiguration()
-			torchActiveBeforeStop = false
+		if (torchActiveOnStop) {
+            do {
+                try captureDevice.lockForConfiguration()
+                captureDevice.torchMode = .on
+                captureDevice.unlockForConfiguration()
+                torchActiveOnStop = false
+            } catch {
+                throw ReaderError.configurationLockError(error)
+            }
 		}
 	}
 
 	func stop(pause: Bool) {
-		torchActiveBeforeStop = captureDevice.isTorchActive
+        guard captureDevice != nil else { return }
+        
+		torchActiveOnStop = captureDevice.isTorchActive
 		captureSession.stopRunning()
 		if !pause {
 			pixelBuffer = nil
@@ -183,10 +195,16 @@ class BarcodeReader: NSObject {
 	}
 
 	func toggleTorch() -> Bool {
-        // swiftlint:disable:next force_try
-		try! captureDevice.lockForConfiguration()
-		captureDevice.torchMode = captureDevice.isTorchActive ? .off : .on
-		captureDevice.unlockForConfiguration()
+        guard captureDevice != nil && captureDevice.isTorchAvailable else { return false }
+
+		do {
+            try captureDevice.lockForConfiguration()
+            captureDevice.torchMode = captureDevice.isTorchActive ? .off : .on
+            captureDevice.unlockForConfiguration() } catch {
+            print(error)
+            return false
+        }
+
 		return captureDevice.isTorchActive
 	}
 
@@ -200,13 +218,19 @@ class BarcodeReader: NSObject {
 		}
 	}
 
-	func resume() {
+	func resume() throws {
 		switch detectionMode {
 		case .continuous: return
 		case .pauseDetection:
+            guard !captureSession.outputs.contains(metadataOutput) else { return }
+
+            let types = metadataOutput.metadataObjectTypes
+            metadataOutput = AVCaptureMetadataOutput()
+            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
+            metadataOutput.metadataObjectTypes = types
 			captureSession.addOutput(metadataOutput)
 		case .pauseVideo:
-			start(fromPause: true)
+			try start(fromPause: true)
 		}
 	}
 
