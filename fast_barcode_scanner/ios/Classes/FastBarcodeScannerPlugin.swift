@@ -98,11 +98,15 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 			result(FlutterError(code: "CAMERA_NOT_SUITABLE",
 													message: "The camera does not support the requested resolution (\(res)) and framerate (\(fps)) combination",
 													details: "try to lower your settings"))
-		} catch {
-			result(FlutterError(code: "UNEXPECTED_ERROR",
-													message: "Unknown error occured.",
-													details: nil))
-		}
+        } catch ReaderError.unauthorized {
+                result(FlutterError(code: "UNAUTHORIZED",
+                                    message: "The application is not authorized to use the camera device",
+                                    details: nil))
+        } catch {
+            result(FlutterError(code: "UNEXPECTED_ERROR",
+                                                    message: "Unknown error occured.",
+                                                    details: nil))
+        }
 	}
 
 	func pause(result: @escaping FlutterResult) {
