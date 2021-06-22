@@ -37,6 +37,7 @@ let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObje
 enum ReaderError: Error {
 	case noInputDevice
 	case cameraNotSuitable(Resolution, Framerate)
+    case unauthorized
 }
 
 enum Resolution: String {
@@ -108,12 +109,20 @@ class BarcodeReader: NSObject {
 		guard captureDevice != nil else {
 			throw ReaderError.noInputDevice
 		}
-
-		let input = try! AVCaptureDeviceInput(device: captureDevice)
-
-		captureSession.addInput(input)
-		captureSession.addOutput(dataOutput)
-		captureSession.addOutput(metadataOutput)
+        
+        do {
+            let input = try AVCaptureDeviceInput(device: captureDevice)
+            captureSession.addInput(input)
+        } catch let error as AVError {
+            if error.code == AVError.applicationIsNotAuthorizedToUseDevice {
+                throw ReaderError.unauthorized
+            }
+            throw error
+        }
+        
+        
+        captureSession.addOutput(dataOutput)
+        captureSession.addOutput(metadataOutput)
 
 		dataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
 		dataOutput.connection(with: .video)?.videoOrientation = .portrait // TODO: Get real interface orientation
