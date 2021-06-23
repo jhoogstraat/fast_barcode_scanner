@@ -1,11 +1,11 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 
-import androidx.annotation.NonNull;
+import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 
-import io.flutter.embedding.engine.plugins.FlutterPlugin;
-import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 
 import io.flutter.plugin.common.MethodCall
@@ -14,7 +14,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 /** FastBarcodeScannerPlugin */
-public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
+class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel : MethodChannel
   private lateinit var reader: BarcodeReader
 
@@ -52,6 +52,7 @@ public class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, Activit
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+    @Suppress("UNCHECKED_CAST")
     when (call.method) {
       "start" -> reader.start(call.arguments as HashMap<String, Any>, result)
       "stop" -> reader.stop(result)
