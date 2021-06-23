@@ -35,7 +35,7 @@ let cameraPositions: [String: AVCaptureDevice.Position]  = [
 let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map({ ($1, $0) }))
 
 enum ReaderError: Error {
-	case noInputDevice
+	case noInputDeviceForConfig(CameraConfiguration)
 	case cameraNotSuitable(Resolution, Framerate)
     case unauthorized
     case configurationLockError(Error)
@@ -85,66 +85,40 @@ class BarcodeReader: NSObject {
 	var textureId: Int64!
 	var pixelBuffer: CVPixelBuffer?
 
-	var captureDevice: AVCaptureDevice!
-	var captureSession: AVCaptureSession
 	let dataOutput: AVCaptureVideoDataOutput
     var metadataOutput: AVCaptureMetadataOutput
 	let codeCallback: ([String]) -> Void
-	let detectionMode: DetectionMode
-    let position: AVCaptureDevice.Position
+
+    var configuration: CameraConfiguration
+    var captureDevice: AVCaptureDevice!
+    var captureSession: AVCaptureSession
 	var torchActiveOnStop = false
 	var previewSize: CMVideoDimensions!
 
 	init(textureRegistry: FlutterTextureRegistry,
-      arguments: StartArgs,
+      configuration: CameraConfiguration,
       codeCallback: @escaping ([String]) -> Void) throws {
 		self.textureRegistry = textureRegistry
 		self.codeCallback = codeCallback
 		self.captureSession = AVCaptureSession()
 		self.dataOutput = AVCaptureVideoDataOutput()
 		self.metadataOutput = AVCaptureMetadataOutput()
-		self.detectionMode = arguments.detectionMode
-        self.position = arguments.position
+        self.configuration = configuration
 		super.init()
 
-		captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position)
+        try setCaptureDevice(config: configuration)
 
-		guard captureDevice != nil else {
-			throw ReaderError.noInputDevice
-		}
+        guard let optimalFormat = captureDevice.formats.first(where: {
+            let dimensions = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
+            let mediaSubType = CMFormatDescriptionGetMediaSubType($0.formatDescription).toString()
 
-        do {
-            let input = try AVCaptureDeviceInput(device: captureDevice)
-            captureSession.addInput(input)
-        } catch let error as AVError {
-            if error.code == AVError.applicationIsNotAuthorizedToUseDevice {
-                throw ReaderError.unauthorized
-            }
-            throw error
+            return $0.videoSupportedFrameRateRanges.first!.maxFrameRate >= configuration.framerate.doubleValue
+                && dimensions.height >= configuration.resolution.height
+                && dimensions.width >= configuration.resolution.width
+                && mediaSubType == "420f" // maybe 420v is also ok? Who knows...
+        }) else {
+            throw ReaderError.cameraNotSuitable(configuration.resolution, configuration.framerate)
         }
-
-        captureSession.addOutput(dataOutput)
-        captureSession.addOutput(metadataOutput)
-
-		dataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-		dataOutput.connection(with: .video)?.videoOrientation = .portrait
-		dataOutput.alwaysDiscardsLateVideoFrames = true
-		dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue.global(qos: .default))
-
-		metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
-		metadataOutput.metadataObjectTypes = arguments.codes.compactMap { avMetadataObjectTypes[$0] }
-
-		guard let optimalFormat = captureDevice.formats.first(where: {
-			let dimensions = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
-			let mediaSubType = CMFormatDescriptionGetMediaSubType($0.formatDescription).toString()
-
-			return $0.videoSupportedFrameRateRanges.first!.maxFrameRate >= arguments.framerate.doubleValue
-				&& dimensions.height >= arguments.resolution.height
-				&& dimensions.width >= arguments.resolution.width
-				&& mediaSubType == "420f" // maybe 420v is also ok? Who knows...
-		}) else {
-			throw ReaderError.cameraNotSuitable(arguments.resolution, arguments.framerate)
-		}
 
         do {
             try captureDevice.lockForConfiguration()
@@ -158,8 +132,45 @@ class BarcodeReader: NSObject {
             throw ReaderError.configurationLockError(error)
         }
 
-		previewSize = CMVideoFormatDescriptionGetDimensions(captureDevice.activeFormat.formatDescription)
-	}
+        previewSize = CMVideoFormatDescriptionGetDimensions(captureDevice.activeFormat.formatDescription)
+
+        captureSession.addOutput(dataOutput)
+        captureSession.addOutput(metadataOutput)
+
+        dataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        dataOutput.connection(with: .video)?.videoOrientation = .portrait
+        dataOutput.alwaysDiscardsLateVideoFrames = true
+        dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue.global(qos: .default))
+
+        metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
+        metadataOutput.metadataObjectTypes = configuration.codes.compactMap { avMetadataObjectTypes[$0] }
+    }
+
+    func setCaptureDevice(config: CameraConfiguration) throws {
+        if captureSession.isRunning {
+            captureSession.stopRunning()
+        }
+
+        captureSession.inputs.forEach(captureSession.removeInput)
+
+        captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: configuration.position)
+
+        guard captureDevice != nil else {
+            throw ReaderError.noInputDeviceForConfig(configuration)
+        }
+
+        do {
+            let input = try AVCaptureDeviceInput(device: captureDevice)
+            captureSession.addInput(input)
+        } catch let error as AVError {
+            if error.code == AVError.applicationIsNotAuthorizedToUseDevice {
+                throw ReaderError.unauthorized
+            }
+            throw error
+        }
+
+        self.configuration = config
+    }
 
 	func start(fromPause: Bool) throws {
         guard captureDevice != nil else { return }
@@ -170,7 +181,7 @@ class BarcodeReader: NSObject {
 			self.textureId = textureRegistry.register(self)
 		}
 
-		if (torchActiveOnStop) {
+		if torchActiveOnStop {
             do {
                 try captureDevice.lockForConfiguration()
                 captureDevice.torchMode = .on
@@ -184,7 +195,7 @@ class BarcodeReader: NSObject {
 
 	func stop(pause: Bool) {
         guard captureDevice != nil else { return }
-        
+
 		torchActiveOnStop = captureDevice.isTorchActive
 		captureSession.stopRunning()
 		if !pause {
@@ -209,19 +220,19 @@ class BarcodeReader: NSObject {
 	}
 
 	func pauseIfRequired() {
-		switch detectionMode {
-		case .continuous: return
-		case .pauseDetection:
+        switch configuration.detectionMode {
+        case .continuous: return
+        case .pauseDetection:
 			captureSession.removeOutput(metadataOutput)
-		case .pauseVideo:
+        case .pauseVideo:
 			stop(pause: true)
 		}
 	}
 
 	func resume() throws {
-		switch detectionMode {
-		case .continuous: return
-		case .pauseDetection:
+        switch configuration.detectionMode {
+        case .continuous: return
+        case .pauseDetection:
             guard !captureSession.outputs.contains(metadataOutput) else { return }
 
             let types = metadataOutput.metadataObjectTypes
@@ -229,7 +240,7 @@ class BarcodeReader: NSObject {
             metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
             metadataOutput.metadataObjectTypes = types
 			captureSession.addOutput(metadataOutput)
-		case .pauseVideo:
+        case .pauseVideo:
 			try start(fromPause: true)
 		}
 	}
