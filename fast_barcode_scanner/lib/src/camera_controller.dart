@@ -51,7 +51,7 @@ class CameraState {
 }
 
 class CameraController {
-  CameraController._() : this.state = CameraState();
+  CameraController._() : state = CameraState();
 
   static final _instance = CameraController._();
   static CameraController get instance => _instance;
@@ -96,7 +96,7 @@ class CameraController {
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
-      print(error);
+      debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
       return;
     }
@@ -113,7 +113,7 @@ class CameraController {
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
-      print(error);
+      debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
     }
   }
@@ -128,7 +128,7 @@ class CameraController {
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
-      print(error);
+      debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
     }
   }
@@ -143,7 +143,7 @@ class CameraController {
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
-      print(error);
+      debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
     }
   }
@@ -160,7 +160,7 @@ class CameraController {
       } catch (error, stack) {
         state._error = error;
         state.eventNotifier.value = CameraEvent.error;
-        print(error);
+        debugPrint(error.toString());
         debugPrintStack(stackTrace: stack);
       }
 
@@ -174,7 +174,7 @@ class CameraController {
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
-      print(error);
+      debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
     }
   }

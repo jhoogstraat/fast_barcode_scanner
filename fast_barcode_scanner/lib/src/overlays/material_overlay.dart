@@ -27,11 +27,11 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
 
     if (widget.animateDetection) {
       _controller = AnimationController(
-          duration: Duration(milliseconds: 1100), vsync: this);
+          duration: const Duration(milliseconds: 1100), vsync: this);
 
-      final fadeIn = 20.0;
-      final wait = 2.0;
-      final expand = 25.0;
+      const fadeIn = 20.0;
+      const wait = 2.0;
+      const expand = 25.0;
 
       _opacitySequence = TweenSequence([
         TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: fadeIn),

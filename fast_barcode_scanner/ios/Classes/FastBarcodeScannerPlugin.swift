@@ -13,7 +13,7 @@ struct StartArgs {
 			else {
 				return nil
 		}
-        
+
         self.position = position
 		self.framerate = framerate
 		self.resolution = resolution
@@ -33,7 +33,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	let textureRegistry: FlutterTextureRegistry
 	let channel: FlutterMethodChannel
 
-	var reader: BarcodeReader? = nil
+	var reader: BarcodeReader?
 
 	init(channel: FlutterMethodChannel, textureRegistry: FlutterTextureRegistry) {
 		self.textureRegistry = textureRegistry
@@ -86,7 +86,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 			result([
 				"surfaceWidth": reader!.previewSize.height,
 				"surfaceHeight": reader!.previewSize.width,
-				"surfaceOrientation": 0, //TODO: check on iPad
+				"surfaceOrientation": 0,
 				"textureId": reader!.textureId!
 			])
 
@@ -94,9 +94,12 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 			result(FlutterError(code: "AV_NO_INPUT_DEVICE",
 													message: "No input device found",
 													details: "Are you using a simulator?"))
-		} catch ReaderError.cameraNotSuitable(let res, let fps){
+		} catch ReaderError.cameraNotSuitable(let res, let fps) {
 			result(FlutterError(code: "CAMERA_NOT_SUITABLE",
-													message: "The camera does not support the requested resolution (\(res)) and framerate (\(fps)) combination",
+													message: """
+                                                        The camera does not support the requested resolution (\(res)) \
+                                                        and framerate (\(fps)) combination
+                                                        """,
 													details: "try to lower your settings"))
         } catch ReaderError.unauthorized {
                 result(FlutterError(code: "UNAUTHORIZED",
@@ -129,6 +132,3 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 		result(nil)
 	}
 }
-
-
-

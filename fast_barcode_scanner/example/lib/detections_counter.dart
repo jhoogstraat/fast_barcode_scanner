@@ -3,6 +3,8 @@ import 'package:fast_barcode_scanner_example/scanner_screen.dart';
 import 'package:flutter/material.dart';
 
 class DetectionsCounter extends StatefulWidget {
+  const DetectionsCounter({Key? key}) : super(key: key);
+
   @override
   _DetectionsCounterState createState() => _DetectionsCounterState();
 }
@@ -25,7 +27,7 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.all(Radius.circular(15)),
       ),
