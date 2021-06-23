@@ -12,14 +12,14 @@ import Flutter
 let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 	[
 		"aztec": .aztec,
-		"code128":.code128,
+		"code128": .code128,
 		"code39": .code39,
 		"code39mod43": .code39Mod43,
 		"code93": .code93,
 		"dataMatrix": .dataMatrix,
 		"ean13": .ean13,
 		"ean8": .ean8,
-		"itf":  .itf14,
+		"itf": .itf14,
 		"pdf417": .pdf417,
 		"qr": .qr,
 		"upcE": .upce,
@@ -94,7 +94,9 @@ class BarcodeReader: NSObject {
 	var torchActiveBeforeStop = false
 	var previewSize: CMVideoDimensions!
 
-	init(textureRegistry: FlutterTextureRegistry, arguments: StartArgs, codeCallback: @escaping ([String]) -> Void) throws {
+	init(textureRegistry: FlutterTextureRegistry,
+      arguments: StartArgs,
+      codeCallback: @escaping ([String]) -> Void) throws {
 		self.textureRegistry = textureRegistry
 		self.codeCallback = codeCallback
 		self.captureSession = AVCaptureSession()
@@ -125,7 +127,7 @@ class BarcodeReader: NSObject {
         captureSession.addOutput(metadataOutput)
 
 		dataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-		dataOutput.connection(with: .video)?.videoOrientation = .portrait // TODO: Get real interface orientation
+		dataOutput.connection(with: .video)?.videoOrientation = .portrait
 		dataOutput.alwaysDiscardsLateVideoFrames = true
 		dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue.global(qos: .default))
 
@@ -144,6 +146,7 @@ class BarcodeReader: NSObject {
 			throw ReaderError.cameraNotSuitable(arguments.resolution, arguments.framerate)
 		}
 
+        // swiftlint:disable:next force_try
 		try! captureDevice.lockForConfiguration()
 		captureDevice.activeFormat = optimalFormat
 		captureDevice.activeVideoMinFrameDuration = optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
@@ -160,7 +163,8 @@ class BarcodeReader: NSObject {
 			self.textureId = textureRegistry.register(self)
 		}
 
-		if (torchActiveBeforeStop) {
+		if torchActiveBeforeStop {
+            // swiftlint:disable:next force_try
 			try! captureDevice.lockForConfiguration()
 			captureDevice.torchMode = .on
 			captureDevice.unlockForConfiguration()
@@ -179,6 +183,7 @@ class BarcodeReader: NSObject {
 	}
 
 	func toggleTorch() -> Bool {
+        // swiftlint:disable:next force_try
 		try! captureDevice.lockForConfiguration()
 		captureDevice.torchMode = captureDevice.isTorchActive ? .off : .on
 		captureDevice.unlockForConfiguration()
@@ -215,7 +220,9 @@ extension BarcodeReader: FlutterTexture {
 
 extension BarcodeReader: AVCaptureVideoDataOutputSampleBufferDelegate {
 	// runs on dispatch queue
-	func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+	func captureOutput(_ output: AVCaptureOutput,
+                    didOutput sampleBuffer: CMSampleBuffer,
+                    from connection: AVCaptureConnection) {
 		pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
 		textureRegistry.textureFrameAvailable(textureId)
 	}
@@ -223,7 +230,9 @@ extension BarcodeReader: AVCaptureVideoDataOutputSampleBufferDelegate {
 
 extension BarcodeReader: AVCaptureMetadataOutputObjectsDelegate {
 	// runs on dispatch queue
-	func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+    func metadataOutput(_ output: AVCaptureMetadataOutput,
+                        didOutput metadataObjects: [AVMetadataObject],
+                        from connection: AVCaptureConnection) {
 		guard
 			let metadata = metadataObjects.first,
 			let readableCode = metadata as? AVMetadataMachineReadableCodeObject
@@ -246,4 +255,3 @@ extension FourCharCode {
 		])
 	}
 }
-
