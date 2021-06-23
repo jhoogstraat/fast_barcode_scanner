@@ -10,10 +10,11 @@ import 'fast_barcode_scanner_platform_interface.dart';
 
 class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =
-      const MethodChannel('com.jhoogstraat/fast_barcode_scanner');
+      MethodChannel('com.jhoogstraat/fast_barcode_scanner');
 
   void Function(Barcode)? _onDetectHandler;
 
+  @override
   Future<PreviewConfiguration> init(
       List<BarcodeType> types,
       Resolution resolution,
@@ -26,7 +27,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
           // This might fail if the code type is not present in the list of available code types.
           // Barcode init will throw in this case.
           final barcode = Barcode(call.arguments);
-          this._onDetectHandler?.call(barcode);
+          _onDetectHandler?.call(barcode);
           break;
         default:
           assert(true,
@@ -45,23 +46,29 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     return PreviewConfiguration(response);
   }
 
+  @override
   Future<void> pause() => _channel.invokeMethod('pause');
 
+  @override
   Future<void> resume() => _channel.invokeMethod('resume');
 
+  @override
   Future<void> dispose() {
     _channel.setMethodCallHandler(null);
     _onDetectHandler = null;
     return _channel.invokeMethod('stop');
   }
 
+  @override
   Future<bool> toggleTorch() =>
       _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
 
+  @override
   Future<bool> changeCamera(CameraPosition position) => _channel
       .invokeMethod('changeCamera', describeEnum(position))
       .then<bool>((success) => success);
 
+  @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
       _onDetectHandler = handler;
 }

@@ -6,29 +6,29 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-typedef Widget ErrorCallback(BuildContext context, Object? error);
+typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
-final ErrorCallback _defaultOnError = (BuildContext context, Object? error) {
+Widget _defaultOnError(BuildContext context, Object? error) {
   debugPrint("Error reading from camera: $error");
-  return Center(child: Text("Error reading from camera..."));
-};
+  return const Center(child: Text("Error reading from camera..."));
+}
 
 /// The main class connecting the platform code to the UI.
 ///
 /// This class is used in the widget tree and connects to the camera
 /// as soon as didChangeDependencies gets called.
 class BarcodeCamera extends StatefulWidget {
-  BarcodeCamera(
-      {Key? key,
-      required this.types,
-      this.mode = DetectionMode.pauseVideo,
-      this.resolution = Resolution.hd720,
-      this.framerate = Framerate.fps30,
-      this.position = CameraPosition.back,
-      this.onScan,
-      this.children = const [],
-      ErrorCallback? onError})
-      : onError = onError ?? _defaultOnError,
+  const BarcodeCamera({
+    Key? key,
+    required this.types,
+    this.mode = DetectionMode.pauseVideo,
+    this.resolution = Resolution.hd720,
+    this.framerate = Framerate.fps30,
+    this.position = CameraPosition.back,
+    this.onScan,
+    this.children = const [],
+    ErrorCallback? onError,
+  })  : onError = onError ?? _defaultOnError,
         super(key: key);
 
   final List<BarcodeType> types;

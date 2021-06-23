@@ -7,9 +7,8 @@ import '../../fast_barcode_scanner_platform_interface.dart';
 class Barcode {
   /// Creates a [Barcode] from a Flutter Message Protocol
   Barcode(List<dynamic> data)
-      : this.type =
-            BarcodeType.values.firstWhere((e) => describeEnum(e) == data[0]),
-        this.value = data[1];
+      : type = BarcodeType.values.firstWhere((e) => describeEnum(e) == data[0]),
+        value = data[1];
 
   /// The type of the barcode.
   final BarcodeType type;
@@ -17,6 +16,9 @@ class Barcode {
   /// The actual value of the barcode.
   final String value;
 
-  bool operator ==(o) => o is Barcode && o.type == type && o.value == value;
+  @override
+  bool operator ==(Object other) =>
+      other is Barcode && other.type == type && other.value == value;
+  @override
   int get hashCode => super.hashCode ^ type.hashCode ^ value.hashCode;
 }

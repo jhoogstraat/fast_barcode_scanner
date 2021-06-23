@@ -7,6 +7,8 @@ import 'detections_counter.dart';
 final codeStream = StreamController<Barcode>.broadcast();
 
 class ScannerScreen extends StatefulWidget {
+  const ScannerScreen({Key? key}) : super(key: key);
+
   @override
   _ScannerScreenState createState() => _ScannerScreenState();
 }
@@ -43,7 +45,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       ),
       body: BarcodeCamera(
-        types: [
+        types: const [
           BarcodeType.ean8,
           BarcodeType.ean13,
           BarcodeType.code128,
@@ -55,8 +57,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
         position: CameraPosition.back,
         onScan: (code) => codeStream.add(code),
         children: [
-          MaterialPreviewOverlay(animateDetection: false),
-          BlurPreviewOverlay(),
+          const MaterialPreviewOverlay(animateDetection: false),
+          const BlurPreviewOverlay(),
           Positioned(
             bottom: 50,
             left: 0,
@@ -64,11 +66,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: Column(
               children: [
                 ElevatedButton(
-                  child: Text("Resume"),
+                  child: const Text("Resume"),
                   onPressed: () => CameraController.instance.resumeDetector(),
                 ),
-                SizedBox(height: 20),
-                DetectionsCounter()
+                const SizedBox(height: 20),
+                const DetectionsCounter()
               ],
             ),
           )
