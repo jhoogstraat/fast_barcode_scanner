@@ -170,7 +170,7 @@ class CameraController {
 
   Future<void> changeCamera(CameraPosition position) async {
     try {
-      await _platform.changeCamera(position);
+      await _platform.updateConfiguration(position: position);
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;
