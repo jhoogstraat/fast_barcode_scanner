@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
@@ -30,24 +31,42 @@ class CameraConfiguration {
 
   /// The physical position of the camera being used.
   final CameraPosition position;
+
+  CameraConfiguration copyWith({
+    List<BarcodeType>? types,
+    Resolution? resolution,
+    Framerate? framerate,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+  }) {
+    return CameraConfiguration(
+      types ?? this.types,
+      resolution ?? this.resolution,
+      framerate ?? this.framerate,
+      detectionMode ?? this.detectionMode,
+      position ?? this.position,
+    );
+  }
 }
 
 enum CameraEvent { uninitialized, init, paused, resumed, codeFound, error }
 
 class CameraState {
   PreviewConfiguration? _previewConfig;
+  CameraConfiguration? _cameraConfig;
   bool _torchState = false;
   bool _togglingTorch = false;
+  bool _configuring = false;
   Object? _error;
 
   Object? get error => _error;
   PreviewConfiguration? get previewConfig => _previewConfig;
-
-  final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
-
+  CameraConfiguration? get cameraConfig => _cameraConfig;
   bool get torchState => _torchState;
   bool get isInitialized => _previewConfig != null;
   bool get hasError => error != null;
+
+  final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
 }
 
 class CameraController {
@@ -91,6 +110,9 @@ class CameraController {
         state.eventNotifier.value = CameraEvent.codeFound;
         onScan?.call(code);
       });
+
+      state._cameraConfig = CameraConfiguration(
+          types, resolution, framerate, detectionMode, position);
 
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {
@@ -157,6 +179,7 @@ class CameraController {
 
       try {
         state._torchState = await _platform.toggleTorch();
+        log(state._torchState.toString());
       } catch (error, stack) {
         state._error = error;
         state.eventNotifier.value = CameraEvent.error;
@@ -168,14 +191,42 @@ class CameraController {
     }
   }
 
-  Future<void> changeCamera(CameraPosition position) async {
-    try {
-      await _platform.updateConfiguration(position: position);
-    } catch (error, stack) {
-      state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+  Future<void> changeConfiguration({
+    List<BarcodeType>? types,
+    Resolution? resolution,
+    Framerate? framerate,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+  }) async {
+    final _cameraConfig = state._cameraConfig;
+
+    if (_cameraConfig != null && !state._configuring) {
+      state._configuring = true;
+
+      try {
+        await _platform.updateConfiguration(
+          types: types,
+          resolution: resolution,
+          framerate: framerate,
+          detectionMode: detectionMode,
+          position: position,
+        );
+
+        state._cameraConfig = _cameraConfig.copyWith(
+          types: types,
+          resolution: resolution,
+          framerate: framerate,
+          detectionMode: detectionMode,
+          position: position,
+        );
+      } catch (error, stack) {
+        state._error = error;
+        state.eventNotifier.value = CameraEvent.error;
+        debugPrint(error.toString());
+        debugPrintStack(stackTrace: stack);
+      }
+
+      state._configuring = false;
     }
   }
 }

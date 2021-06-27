@@ -23,7 +23,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       CameraPosition position) async {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
-        case 'read':
+        case 'r':
           // This might fail if the code type is not present in the list of available code types.
           // Barcode init will throw in this case.
           final barcode = Barcode(call.arguments);
@@ -71,16 +71,14 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) =>
-      _channel.invokeMethod('updateConfig', {
-        {
-          if (types != null)
-            'types': types.map((e) => describeEnum(e)).toList(growable: false),
-          if (detectionMode != null) 'mode': describeEnum(detectionMode),
-          if (resolution != null) 'res': describeEnum(resolution),
-          if (framerate != null) 'fps': describeEnum(framerate),
-          if (position != null) 'pos': describeEnum(position)
-        }
-      }).then<bool>((success) => success);
+      _channel.invokeMethod('config', {
+        if (types != null)
+          'types': types.map((e) => describeEnum(e)).toList(growable: false),
+        if (detectionMode != null) 'mode': describeEnum(detectionMode),
+        if (resolution != null) 'res': describeEnum(resolution),
+        if (framerate != null) 'fps': describeEnum(framerate),
+        if (position != null) 'pos': describeEnum(position),
+      });
 
   @override
   void setOnDetectHandler(void Function(Barcode) handler) =>

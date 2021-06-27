@@ -38,7 +38,7 @@ class PreviewConfiguration {
 
   PreviewConfiguration(Map<dynamic, dynamic> response)
       : textureId = response["textureId"],
-        sensorOrientation = response["surfaceOrientation"],
-        height = response["surfaceHeight"],
-        width = response["surfaceWidth"];
+        sensorOrientation = response["orientation"],
+        height = response["height"],
+        width = response["width"];
 }
