@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
@@ -91,7 +92,89 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         ),
                       ),
                       ElevatedButton(
-                          onPressed: () {}, child: Text('updateConfiguration'))
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Configuration'),
+                                actions: [
+                                  ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(ctx).pop();
+                                      },
+                                      child: Text('Apply'))
+                                ],
+                                content: Column(
+                                  children: [
+                                    ElevatedButton(
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: Text('Types'),
+                                              content: SizedBox(
+                                                width: 200,
+                                                height: 500,
+                                                child: ListView(
+                                                  children: BarcodeType.values
+                                                      .map((e) =>
+                                                          CheckboxListTile(
+                                                            value: false,
+                                                            onChanged:
+                                                                (value) {},
+                                                            title: Text(
+                                                                describeEnum(
+                                                                    e)),
+                                                          ))
+                                                      .toList(),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Text('Types')),
+                                    DropdownButton<Framerate>(
+                                        value: CameraController.instance.state
+                                            .cameraConfig!.framerate,
+                                        onChanged: (value) {},
+                                        items: Framerate.values
+                                            .map((v) => DropdownMenuItem(
+                                                value: v,
+                                                child: Text(describeEnum(v))))
+                                            .toList()),
+                                    DropdownButton<Resolution>(
+                                        value: CameraController.instance.state
+                                            .cameraConfig!.resolution,
+                                        onChanged: (value) {},
+                                        items: Resolution.values
+                                            .map((v) => DropdownMenuItem(
+                                                value: v,
+                                                child: Text(describeEnum(v))))
+                                            .toList()),
+                                    DropdownButton(
+                                        value: CameraController.instance.state
+                                            .cameraConfig!.detectionMode,
+                                        onChanged: (value) {},
+                                        items: DetectionMode.values
+                                            .map((v) => DropdownMenuItem(
+                                                value: v,
+                                                child: Text(describeEnum(v))))
+                                            .toList()),
+                                    DropdownButton<CameraPosition>(
+                                        value: CameraController.instance.state
+                                            .cameraConfig!.position,
+                                        onChanged: (value) {},
+                                        items: CameraPosition.values
+                                            .map((v) => DropdownMenuItem(
+                                                value: v,
+                                                child: Text(describeEnum(v))))
+                                            .toList()),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text('updateConfiguration'))
                     ],
                   ),
                 ],
