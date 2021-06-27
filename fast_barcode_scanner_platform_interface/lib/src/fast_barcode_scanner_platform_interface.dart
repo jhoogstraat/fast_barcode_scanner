@@ -71,7 +71,7 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) {
-    throw UnimplementedError('changeCamera() has not been implemented');
+    throw UnimplementedError('updateConfiguration() has not been implemented');
   }
 
   /// Set the method to be called when a barcode is detected

@@ -29,19 +29,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: _torchIconState,
-            builder: (context, state, _) => IconButton(
-              icon: state
-                  ? const Icon(Icons.flash_on)
-                  : const Icon(Icons.flash_off),
-              onPressed: () async {
-                await CameraController.instance.toggleTorch();
-                _torchIconState.value =
-                    CameraController.instance.state.torchState;
-              },
-            ),
-          ),
+          IconButton(
+            icon: const Icon(Icons.info),
+            onPressed: () {},
+          )
         ],
       ),
       body: BarcodeCamera(
@@ -56,26 +47,57 @@ class _ScannerScreenState extends State<ScannerScreen> {
         mode: DetectionMode.pauseVideo,
         position: CameraPosition.back,
         onScan: (code) => codeStream.add(code),
-        children: [
-          const MaterialPreviewOverlay(animateDetection: false),
-          const BlurPreviewOverlay(),
-          Positioned(
-            bottom: 50,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                ElevatedButton(
-                  child: const Text("Resume"),
-                  onPressed: () => CameraController.instance.resumeDetector(),
-                ),
-                const SizedBox(height: 20),
-                const DetectionsCounter()
-              ],
-            ),
-          )
+        children: const [
+          MaterialPreviewOverlay(animateDetection: false),
+          BlurPreviewOverlay()
         ],
       ),
+      bottomSheet: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const DetectionsCounter(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      ElevatedButton(
+                          onPressed: () {
+                            CameraController.instance.pauseDetector();
+                          },
+                          child: Text('pause')),
+                      ElevatedButton(
+                          onPressed: () {
+                            CameraController.instance.resumeDetector();
+                          },
+                          child: Text('resume')),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _torchIconState,
+                        builder: (context, isTorchActive, _) => ElevatedButton(
+                          onPressed: () async {
+                            await CameraController.instance.toggleTorch();
+                            _torchIconState.value =
+                                CameraController.instance.state.torchState;
+                          },
+                          child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
+                        ),
+                      ),
+                      ElevatedButton(
+                          onPressed: () {}, child: Text('updateConfiguration'))
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          )),
     );
   }
 }

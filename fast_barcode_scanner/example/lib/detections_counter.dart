@@ -35,10 +35,7 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
         padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 12),
         child: ValueListenableBuilder(
           valueListenable: detectionInfo,
-          builder: (context, dynamic info, child) => Text(
-            info,
-            textAlign: TextAlign.center,
-          ),
+          builder: (context, dynamic info, child) => Text("Detection: " + info),
         ),
       ),
     );

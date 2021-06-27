@@ -11,7 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  fast_barcode_scanner_platform_interface: ^1.0.4
+  fast_barcode_scanner_platform_interface: 
+    path: ../fast_barcode_scanner_platform_interface
 
 # dependency_overrides:
 #   fast_barcode_scanner_platform_interface:
