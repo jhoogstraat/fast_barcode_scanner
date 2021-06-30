@@ -203,28 +203,28 @@ class CameraController {
     if (_cameraConfig != null && !state._configuring) {
       state._configuring = true;
 
-      try {
-        await _platform.updateConfiguration(
-          types: types,
-          resolution: resolution,
-          framerate: framerate,
-          detectionMode: detectionMode,
-          position: position,
-        );
+      // try {
+      await _platform.updateConfiguration(
+        types: types,
+        resolution: resolution,
+        framerate: framerate,
+        detectionMode: detectionMode,
+        position: position,
+      );
 
-        state._cameraConfig = _cameraConfig.copyWith(
-          types: types,
-          resolution: resolution,
-          framerate: framerate,
-          detectionMode: detectionMode,
-          position: position,
-        );
-      } catch (error, stack) {
-        state._error = error;
-        state.eventNotifier.value = CameraEvent.error;
-        debugPrint(error.toString());
-        debugPrintStack(stackTrace: stack);
-      }
+      state._cameraConfig = _cameraConfig.copyWith(
+        types: types,
+        resolution: resolution,
+        framerate: framerate,
+        detectionMode: detectionMode,
+        position: position,
+      );
+      // } catch (error, stack) {
+      //   state._error = error;
+      //   state.eventNotifier.value = CameraEvent.error;
+      //   debugPrint(error.toString());
+      //   debugPrintStack(stackTrace: stack);
+      // }
 
       state._configuring = false;
     }
