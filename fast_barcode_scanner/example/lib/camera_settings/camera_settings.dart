@@ -28,35 +28,34 @@ class _CameraSettingsState extends State<CameraSettings> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuration'),
+        leading: BackButton(
+          onPressed: () async {
+            final shouldReturn = await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Apply Changes?'),
+                content: const Text('Return without applying changes?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Ok'),
+                  ),
+                ],
+              ),
+            );
+
+            if (shouldReturn == true) {
+              Navigator.pop(context);
+            }
+          },
+        ),
         actions: [
           TextButton(
             child: const Text(
               'Apply',
               style: TextStyle(color: Colors.white),
             ),
-            onPressed: () async {
-              try {
-                await CameraController.instance.changeConfiguration(
-                  types: _config.types,
-                  framerate: _config.framerate,
-                  resolution: _config.resolution,
-                  detectionMode: _config.detectionMode,
-                  position: _config.position,
-                );
-              } catch (error) {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: Text('Fehler'),
-                    content: Text(error.toString()),
-                  ),
-                );
-
-                return;
-              }
-
-              Navigator.pop(context, _config);
-            },
+            onPressed: applyChanges,
           )
         ],
       ),
@@ -134,4 +133,28 @@ class _CameraSettingsState extends State<CameraSettings> {
       enumCases
           .map((v) => DropdownMenuItem(value: v, child: Text(describeEnum(v))))
           .toList();
+
+  Future<void> applyChanges() async {
+    try {
+      await CameraController.instance.changeConfiguration(
+        types: _config.types,
+        framerate: _config.framerate,
+        resolution: _config.resolution,
+        detectionMode: _config.detectionMode,
+        position: _config.position,
+      );
+    } catch (error) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Fehler'),
+          content: Text(error.toString()),
+        ),
+      );
+
+      return;
+    }
+
+    Navigator.pop(context, _config);
+  }
 }

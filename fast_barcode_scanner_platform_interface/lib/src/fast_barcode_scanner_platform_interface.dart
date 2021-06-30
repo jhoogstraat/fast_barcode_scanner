@@ -64,14 +64,14 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
-  Future<void> updateConfiguration({
+  Future<PreviewConfiguration> changeConfiguration({
     List<BarcodeType>? types,
     Resolution? resolution,
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) {
-    throw UnimplementedError('updateConfiguration() has not been implemented');
+    throw UnimplementedError('changeConfiguration() has not been implemented');
   }
 
   /// Set the method to be called when a barcode is detected

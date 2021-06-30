@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_example/camera_settings.dart';
-import 'package:fast_barcode_scanner_example/type_selector.dart';
+import 'camera_settings/camera_settings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
@@ -33,7 +32,25 @@ class _ScannerScreenState extends State<ScannerScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.info),
-            onPressed: () {},
+            onPressed: () {
+              final preview = CameraController.instance.state.previewConfig;
+              if (preview != null) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Preview Config"),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text("Texture Id: ${preview.textureId}"),
+                        Text("Size (wxh): ${preview.width}x${preview.height}"),
+                        Text("Orientation: ${preview.sensorOrientation}")
+                      ],
+                    ),
+                  ),
+                );
+              }
+            },
           )
         ],
       ),
@@ -74,12 +91,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
                           onPressed: () {
                             CameraController.instance.pauseDetector();
                           },
-                          child: Text('pause')),
+                          child: const Text('pause')),
                       ElevatedButton(
                           onPressed: () {
                             CameraController.instance.resumeDetector();
                           },
-                          child: Text('resume')),
+                          child: const Text('resume')),
                     ],
                   ),
                   Column(
@@ -96,19 +113,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         ),
                       ),
                       ElevatedButton(
-                          onPressed: () {
-                            final config =
-                                CameraController.instance.state.cameraConfig;
-                            if (config != null) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => CameraSettings(config),
-                                ),
-                              );
-                            }
-                          },
-                          child: Text('updateConfiguration'))
+                        onPressed: () {
+                          final config =
+                              CameraController.instance.state.cameraConfig;
+                          if (config != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CameraSettings(config),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('updateConfiguration'),
+                      )
                     ],
                   ),
                 ],

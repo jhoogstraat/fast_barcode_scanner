@@ -120,7 +120,7 @@ class CameraController {
       state.eventNotifier.value = CameraEvent.error;
       debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
-      return;
+      rethrow;
     }
   }
 
@@ -137,6 +137,7 @@ class CameraController {
       state.eventNotifier.value = CameraEvent.error;
       debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
+      rethrow;
     }
   }
 
@@ -152,6 +153,7 @@ class CameraController {
       state.eventNotifier.value = CameraEvent.error;
       debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
+      rethrow;
     }
   }
 
@@ -167,6 +169,7 @@ class CameraController {
       state.eventNotifier.value = CameraEvent.error;
       debugPrint(error.toString());
       debugPrintStack(stackTrace: stack);
+      rethrow;
     }
   }
 
@@ -185,6 +188,7 @@ class CameraController {
         state.eventNotifier.value = CameraEvent.error;
         debugPrint(error.toString());
         debugPrintStack(stackTrace: stack);
+        rethrow;
       }
 
       state._togglingTorch = false;
@@ -203,28 +207,29 @@ class CameraController {
     if (_cameraConfig != null && !state._configuring) {
       state._configuring = true;
 
-      // try {
-      await _platform.updateConfiguration(
-        types: types,
-        resolution: resolution,
-        framerate: framerate,
-        detectionMode: detectionMode,
-        position: position,
-      );
+      try {
+        state._previewConfig = await _platform.changeConfiguration(
+          types: types,
+          resolution: resolution,
+          framerate: framerate,
+          detectionMode: detectionMode,
+          position: position,
+        );
 
-      state._cameraConfig = _cameraConfig.copyWith(
-        types: types,
-        resolution: resolution,
-        framerate: framerate,
-        detectionMode: detectionMode,
-        position: position,
-      );
-      // } catch (error, stack) {
-      //   state._error = error;
-      //   state.eventNotifier.value = CameraEvent.error;
-      //   debugPrint(error.toString());
-      //   debugPrintStack(stackTrace: stack);
-      // }
+        state._cameraConfig = _cameraConfig.copyWith(
+          types: types,
+          resolution: resolution,
+          framerate: framerate,
+          detectionMode: detectionMode,
+          position: position,
+        );
+      } catch (error, stack) {
+        state._error = error;
+        state.eventNotifier.value = CameraEvent.error;
+        debugPrint(error.toString());
+        debugPrintStack(stackTrace: stack);
+        rethrow;
+      }
 
       state._configuring = false;
     }

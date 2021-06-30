@@ -64,21 +64,23 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
 
   @override
-  Future<void> updateConfiguration({
+  Future<PreviewConfiguration> changeConfiguration({
     List<BarcodeType>? types,
     Resolution? resolution,
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
-  }) =>
-      _channel.invokeMethod('config', {
-        if (types != null)
-          'types': types.map((e) => describeEnum(e)).toList(growable: false),
-        if (detectionMode != null) 'mode': describeEnum(detectionMode),
-        if (resolution != null) 'res': describeEnum(resolution),
-        if (framerate != null) 'fps': describeEnum(framerate),
-        if (position != null) 'pos': describeEnum(position),
-      });
+  }) async {
+    final response = await _channel.invokeMethod('config', {
+      if (types != null) 'types': types.map((e) => describeEnum(e)).toList(),
+      if (detectionMode != null) 'mode': describeEnum(detectionMode),
+      if (resolution != null) 'res': describeEnum(resolution),
+      if (framerate != null) 'fps': describeEnum(framerate),
+      if (position != null) 'pos': describeEnum(position),
+    });
+    print(response);
+    return PreviewConfiguration(response);
+  }
 
   @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
