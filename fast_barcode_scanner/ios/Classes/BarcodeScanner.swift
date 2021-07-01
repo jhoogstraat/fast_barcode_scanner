@@ -212,12 +212,14 @@ extension BarcodeScanner: AVCaptureMetadataOutputObjectsDelegate {
                         from connection: AVCaptureConnection) {
 		guard
 			let metadata = metadataObjects.first,
-			let readableCode = metadata as? AVMetadataMachineReadableCodeObject
+			let readableCode = metadata as? AVMetadataMachineReadableCodeObject,
+            let type = flutterMetadataObjectTypes[readableCode.type],
+            let value = readableCode.stringValue
 			else { return }
 
 		try? pauseIfRequired()
 
-		codeCallback([flutterMetadataObjectTypes[readableCode.type]!, readableCode.stringValue!])
+		codeCallback([type, value])
 	}
 }
 
