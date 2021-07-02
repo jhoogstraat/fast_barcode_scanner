@@ -19,21 +19,22 @@ enum class Framerate {
 enum class Resolution {
     sd480, hd720, hd1080, hd4k;
 
-    fun width() : Int = when(this) {
+    private fun width() : Int = when(this) {
         sd480 -> 640
         hd720 -> 1280
         hd1080 -> 1920
         hd4k -> 3840
     }
 
-    fun height() : Int = when(this) {
-        sd480 -> 360
+    private fun height() : Int = when(this) {
+        sd480 -> 480
         hd720 -> 720
         hd1080 -> 1080
         hd4k -> 2160
     }
 
-    fun size() : Size = Size(width(), height())
+    fun landscape() : Size = Size(width(), height())
+    fun portrait() : Size = Size(height(), width())
 }
 
 enum class DetectionMode {

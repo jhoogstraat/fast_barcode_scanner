@@ -43,8 +43,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text("Texture Id: ${preview.textureId}"),
-                        Text("Size (wxh): ${preview.width}x${preview.height}"),
-                        Text("Orientation: ${preview.sensorOrientation}")
+                        Text(
+                            "Preview (WxH): ${preview.width}x${preview.height}"),
+                        Text("Analysis (WxH): ${preview.analysisResolution}"),
+                        Text(
+                            "Target Rotation (unused): ${preview.targetRotation}"),
                       ],
                     ),
                   ),
@@ -113,10 +116,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         ),
                       ),
                       ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           final config =
                               CameraController.instance.state.cameraConfig;
                           if (config != null) {
+                            await CameraController.instance.pauseDetector();
                             Navigator.push(
                               context,
                               MaterialPageRoute(

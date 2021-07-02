@@ -2,11 +2,8 @@ package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.content.res.Resources
-import android.util.DisplayMetrics
 import android.util.Log
-import android.util.Rational
-import android.view.Display
+import android.view.OrientationEventListener
 import android.view.Surface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -24,7 +21,7 @@ import java.util.concurrent.Executors
 
 data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, val position: CameraPosition)
 
-class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
+class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
     private var activity: FlutterActivity? = null
 
@@ -35,7 +32,8 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     private lateinit var cameraSelector: CameraSelector
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var cameraSurfaceProvider: Preview.SurfaceProvider
-    private lateinit var usecases: UseCaseGroup
+    private lateinit var preview: Preview
+    private lateinit var imageAnalysis: ImageAnalysis
 
     /* ML Kit */
     private lateinit var barcodeDetector: MLKitBarcodeDetector
@@ -147,30 +145,21 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
                 listener(codes)
             }
         }, {
-            Log.e(TAG, "Error in MLKit", it)
+            Log.e(TAG, "Error in Scanner", it)
         })
 
         // Select camera
-        val selectorBuilder = CameraSelector.Builder()
-        when (cameraConfig.position) {
-            CameraPosition.front -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-            }
-            CameraPosition.back -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
-            }
-        }
-
-        cameraSelector = selectorBuilder.build()
+        cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(
+                if (cameraConfig.position == CameraPosition.back)
+                    CameraSelector.LENS_FACING_BACK
+                else
+                    CameraSelector.LENS_FACING_FRONT
+            )
+            .build()
 
         // Create Camera Thread
         cameraExecutor = Executors.newSingleThreadExecutor()
-
-        // Setup Surface
-        cameraSurfaceProvider = Preview.SurfaceProvider {
-            val surfaceTexture = flutterTextureEntry.surfaceTexture()
-            it.provideSurface(Surface(surfaceTexture), cameraExecutor, {})
-        }
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
         cameraProviderFuture.addListener({
@@ -178,49 +167,50 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
             isInitialized = true
             try { bindCameraUseCases() }
             catch (exc: Exception) { Log.e(TAG, "Use case binding failed", exc) }
+
+            // Make sure detections are allowed
+            pauseDetection = false
+
             result?.let {
-                val res = (usecases.useCases.first() as Preview).resolutionInfo!!
-                Log.d(TAG, "initCamera: ${res.resolution} ${res.cropRect.width()}x${res.cropRect.height()}")
-                it.success(hashMapOf("textureId" to flutterTextureEntry.id(), "orientation" to 0, "height" to res.cropRect.height(), "width" to res.cropRect.width()))
+                val res = preview.resolutionInfo!!.resolution
+                Log.d(TAG, "Preview resolution: ${res.width}x${res.height}")
+                Log.d(TAG, "Analysis resolution: ${imageAnalysis.resolutionInfo!!.resolution}")
+                // TODO: Handle Rotation properly
+                it.success(hashMapOf("textureId" to flutterTextureEntry.id(), "targetRotation" to 0, "width" to res.height, "height" to res.width, "analysis" to imageAnalysis.resolutionInfo!!.resolution.toString()))
             }
         }, ContextCompat.getMainExecutor(activity!!))
     }
 
     private fun bindCameraUseCases() {
-        val preview = Preview.Builder()
-                .setTargetResolution(cameraConfig.resolution.size())
-                .setTargetRotation(Surface.ROTATION_90)
+        Log.d(TAG, "Requested Resolution: ${cameraConfig.resolution.portrait()}")
+
+        // TODO: Handle rotation properly
+        preview = Preview.Builder()
+                .setTargetRotation(Surface.ROTATION_0)
+                .setTargetResolution(cameraConfig.resolution.portrait())
                 .build()
 
-        val imageAnalyzer = ImageAnalysis.Builder()
-                .setTargetResolution(cameraConfig.resolution.size())
-                .setTargetRotation(Surface.ROTATION_90)
+        imageAnalysis = ImageAnalysis.Builder()
+                .setTargetRotation(Surface.ROTATION_0)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also { it.setAnalyzer(cameraExecutor, barcodeDetector) }
-
-        val metrics = DisplayMetrics()
-        activity!!.windowManager.defaultDisplay.getRealMetrics(metrics);
-
-        Log.d(TAG, "bindCameraUseCases: ${metrics.widthPixels}x${metrics.heightPixels}")
-
-        usecases = UseCaseGroup.Builder()
-                .addUseCase(preview)
-                .addUseCase(imageAnalyzer)
-                .setViewPort(ViewPort.Builder(Rational(metrics.widthPixels, metrics.heightPixels), Surface.ROTATION_90).build())
-                .build()
 
         // As required by CameraX, unbinds all use cases before trying to re-bind any of them.
         cameraProvider.unbindAll()
 
         // Bind camera to Lifecycle
-        camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, usecases)
+        camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, preview, imageAnalysis)
+
+        // Setup Surface
+        cameraSurfaceProvider = Preview.SurfaceProvider {
+            val surfaceTexture = flutterTextureEntry.surfaceTexture()
+            surfaceTexture.setDefaultBufferSize(it.resolution.width, it.resolution.height)
+            it.provideSurface(Surface(surfaceTexture), cameraExecutor, {})
+        }
 
         // Attach the viewfinder's surface provider to preview use case
         preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
-
-        // Make sure detections are allowed
-        pauseDetection = false
     }
 
     companion object {

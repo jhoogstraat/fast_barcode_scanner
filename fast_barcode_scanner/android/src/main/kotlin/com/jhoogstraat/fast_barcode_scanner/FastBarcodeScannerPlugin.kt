@@ -16,12 +16,12 @@ import io.flutter.plugin.common.MethodChannel.Result
 /** FastBarcodeScannerPlugin */
 class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel : MethodChannel
-  private lateinit var reader: BarcodeReader
+  private lateinit var scanner: BarcodeScanner
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
 
-    reader = BarcodeReader(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
+    scanner = BarcodeScanner(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
       barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("r", listOf(barcodeStringMap[barcode.format], barcode.rawValue)) }
     }
   }
@@ -33,14 +33,14 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   // https://flutter.dev/docs/development/packages-and-plugins/plugin-api-migration#uiactivity-plugin
   // https://github.com/flutter/plugins/blob/master/packages/camera/android/src/main/java/io/flutter/plugins/camera/CameraPlugin.java
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    reader.attachToActivity(binding.activity as FlutterActivity)
-    binding.addRequestPermissionsResultListener(reader)
+    scanner.attachToActivity(binding.activity as FlutterActivity)
+    binding.addRequestPermissionsResultListener(scanner)
     channel.setMethodCallHandler(this)
   }
 
   override fun onDetachedFromActivity() {
     channel.setMethodCallHandler(null)
-    reader.detachFromActivity()
+    scanner.detachFromActivity()
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
@@ -54,12 +54,12 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     @Suppress("UNCHECKED_CAST")
     when (call.method) {
-      "start" -> reader.start(call.arguments as HashMap<String, Any>, result)
-      "stop" -> reader.stop(result)
-      "pause" -> reader.stop(result)
-      "resume" -> reader.resume(result)
-      "toggleTorch" -> reader.toggleTorch(result)
-      "config" -> reader.changeConfiguration(call.arguments as HashMap<String, Any>, result)
+      "start" -> scanner.start(call.arguments as HashMap<String, Any>, result)
+      "stop" -> scanner.stop(result)
+      "pause" -> scanner.stop(result)
+      "resume" -> scanner.resume(result)
+      "toggleTorch" -> scanner.toggleTorch(result)
+      "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
       else -> result.notImplemented()
     }
   }

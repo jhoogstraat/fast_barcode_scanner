@@ -78,7 +78,6 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       if (framerate != null) 'fps': describeEnum(framerate),
       if (position != null) 'pos': describeEnum(position),
     });
-    print(response);
     return PreviewConfiguration(response);
   }
 

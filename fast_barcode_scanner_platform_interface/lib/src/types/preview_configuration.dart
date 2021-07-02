@@ -4,6 +4,7 @@ enum Resolution { sd480, hd720, hd1080, hd4k }
 /// Supported Framerates. Not all devices support all framerates!
 enum Framerate { fps30, fps60, fps120, fps240 }
 
+/// Dictates how the camera reacts to detections
 enum DetectionMode {
   /// Pauses the detection of further barcodes when a barcode is detected.
   /// The camera feed continues.
@@ -28,17 +29,22 @@ class PreviewConfiguration {
   /// The height of the camera feed in points.
   final int height;
 
-  /// The orientation of the camera feed.
-  final num sensorOrientation;
+  /// Expresses how many quarters the texture has to be rotated to be upright
+  /// in clockwise direction.
+  final int targetRotation;
 
   /// A id of a texture which contains the camera feed.
   ///
   /// Can be consumed by a [Texture] widget.
   final int textureId;
 
+  /// The resolution which is used when scanning for barcodes.
+  final String analysisResolution;
+
   PreviewConfiguration(Map<dynamic, dynamic> response)
       : textureId = response["textureId"],
-        sensorOrientation = response["orientation"],
+        targetRotation = response["targetRotation"],
         height = response["height"],
-        width = response["width"];
+        width = response["width"],
+        analysisResolution = response["analysis"];
 }
