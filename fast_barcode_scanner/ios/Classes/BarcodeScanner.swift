@@ -9,37 +9,32 @@ import AVFoundation
 import Flutter
 
 class BarcodeScanner: NSObject {
-    private let textureRegistry: FlutterTextureRegistry
-	private var textureId: Int64?
-	private var pixelBuffer: CVPixelBuffer?
-
-	private let dataOutput: AVCaptureVideoDataOutput
-    private var metadataOutput: AVCaptureMetadataOutput
+    private let registry: FlutterTextureRegistry
+    lazy private var textureId: Int64 = { registry.register(self) }()
     private let codeCallback: ([String]) -> Void
 
-    private(set) var configuration: CameraConfiguration
-    private var captureDevice: AVCaptureDevice?
-    private var captureSession: AVCaptureSession
-    private var torchActiveOnStop = false
-    private  var previewSize: CMVideoDimensions?
+    private var captureDevice: AVCaptureDevice!
+    private let captureSession: AVCaptureSession
+    private let dataOutput: AVCaptureVideoDataOutput
+    private var metadataOutput: AVCaptureMetadataOutput
+    private var pixelBuffer: CVPixelBuffer?
     
-    public func previewConfiguration() throws -> PreviewConfiguration {
-        guard let preview = previewSize, let id = textureId else { throw ScannerError.notInitialized }
-        return PreviewConfiguration(width: preview.width, height: preview.height, targetRotation: 0, textureId: id)
-    }
+    private(set) var configuration: CameraConfiguration
+    private(set) var preview: PreviewConfiguration!
+    private var torchState = false
     
 	init(textureRegistry: FlutterTextureRegistry,
       configuration: CameraConfiguration,
       codeCallback: @escaping ([String]) -> Void) throws {
-		self.textureRegistry = textureRegistry
+        self.registry = textureRegistry
 		self.codeCallback = codeCallback
 		self.captureSession = AVCaptureSession()
 		self.dataOutput = AVCaptureVideoDataOutput()
 		self.metadataOutput = AVCaptureMetadataOutput()
         self.configuration = configuration
-		super.init()
+        super.init()
         
-        try set(configuration: configuration)
+        preview = try apply(configuration: configuration)
 
         captureSession.addOutput(dataOutput)
         captureSession.addOutput(metadataOutput)
@@ -50,27 +45,26 @@ class BarcodeScanner: NSObject {
         dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue.global(qos: .default))
         
         metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
-        metadataOutput.metadataObjectTypes = configuration.codes.compactMap { avMetadataObjectTypes[$0] }
+        metadataOutput.metadataObjectTypes = try configuration.codes.map {
+            guard let type = avMetadataObjectTypes[$0] else {
+                throw ScannerError.invalidCodeType($0)
+            }
+            return type
+        }
     }
     
-    private func captureDevice(with configuration: CameraConfiguration) throws -> AVCaptureDevice {
+    func apply(configuration: CameraConfiguration) throws -> PreviewConfiguration {
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera,
                                                    for: .video,
                                                    position: configuration.position) else {
             throw ScannerError.noInputDeviceForConfig(configuration)
         }
         
-        return device
-    }
-    
-    func set(configuration: CameraConfiguration) throws {
-        let device = try captureDevice(with: configuration)
-        
         captureSession.beginConfiguration()
         captureSession.inputs.forEach(captureSession.removeInput)
 
         do {
-            let input = try AVCaptureDeviceInput(device: device)
+            let input = try AVCaptureDeviceInput(device: captureDevice)
             captureSession.addInput(input)
             captureDevice = device
         } catch let error as AVError {
@@ -84,7 +78,7 @@ class BarcodeScanner: NSObject {
         dataOutput.connection(with: .video)?.isVideoMirrored = configuration.position == .front
         captureSession.commitConfiguration()
         
-        guard let optimalFormat = device.formats.first(where: {
+        guard let optimalFormat = captureDevice.formats.first(where: {
             let dimensions = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
             let mediaSubType = CMFormatDescriptionGetMediaSubType($0.formatDescription).toString()
 
@@ -97,99 +91,71 @@ class BarcodeScanner: NSObject {
         }
         
         do {
-            try device.lockForConfiguration()
-            device.activeFormat = optimalFormat
-            device.activeVideoMinFrameDuration =
+            try captureDevice.lockForConfiguration()
+            captureDevice.activeFormat = optimalFormat
+            captureDevice.activeVideoMinFrameDuration =
                 optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
-            device.activeVideoMaxFrameDuration =
+            captureDevice.activeVideoMaxFrameDuration =
                 optimalFormat.videoSupportedFrameRateRanges.first!.minFrameDuration
-            device.unlockForConfiguration()
+            captureDevice.unlockForConfiguration()
         } catch {
-            throw ScannerError.configurationLockError(error)
+            throw ScannerError.configurationError(error)
         }
 
-        previewSize = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
-
+        let previewSize = CMVideoFormatDescriptionGetDimensions(captureDevice.activeFormat.formatDescription)
+        
         self.configuration = configuration
+        
+        preview = PreviewConfiguration(width: previewSize.width,
+                             height: previewSize.height,
+                             targetRotation: 0,
+                             textureId: textureId)
+        return preview
     }
 
-	func start(fromPause: Bool) throws {
-        guard let device = captureDevice else { throw ScannerError.notInitialized }
-
+	func start() throws {
+        guard !captureSession.isRunning else {
+            throw ScannerError.alreadyRunning
+        }
+        
+        switch configuration.detectionMode {
+        case .pauseDetection:
+            guard !captureSession.outputs.contains(metadataOutput) else { break }
+            let _metadataOutput = AVCaptureMetadataOutput()
+            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
+            metadataOutput.metadataObjectTypes = metadataOutput.metadataObjectTypes
+            metadataOutput = _metadataOutput
+            captureSession.addOutput(metadataOutput)
+        case .continuous: break
+        case .pauseVideo: break
+        }
+        
 		captureSession.startRunning()
 
-		if !fromPause {
-			self.textureId = textureRegistry.register(self)
-		}
-
-		if torchActiveOnStop {
+		if torchState {
             do {
-                try device.lockForConfiguration()
-                device.torchMode = .on
-                device.unlockForConfiguration()
-                torchActiveOnStop = false
+                try captureDevice.lockForConfiguration()
+                captureDevice.torchMode = .on
+                captureDevice.unlockForConfiguration()
             } catch {
-                throw ScannerError.configurationLockError(error)
+                throw ScannerError.configurationError(error)
             }
 		}
 	}
-
-	func stop(pause: Bool) throws {
-        guard let device = captureDevice, let textureId = textureId else {
-            throw ScannerError.notInitialized
-        }
-
-		torchActiveOnStop = device.isTorchActive
+    
+	func stop() {
+		torchState = captureDevice.isTorchActive
 		captureSession.stopRunning()
-        
-		if !pause {
-			pixelBuffer = nil
-			textureRegistry.unregisterTexture(textureId)
-            self.textureId = nil
-		}
 	}
 
 	func toggleTorch() throws -> Bool {
-        guard let device = captureDevice else { throw ScannerError.notInitialized }
-        guard device.isTorchAvailable else { return false }
+        guard captureDevice.isTorchAvailable else { return false }
 
-        try device.lockForConfiguration()
-        device.torchMode = device.isTorchActive ? .off : .on
-        device.unlockForConfiguration()
-
-        return device.torchMode == .on
-	}
-
-	func pauseIfRequired() throws {
-        switch configuration.detectionMode {
-        case .continuous: return
-        case .pauseDetection:
-			captureSession.removeOutput(metadataOutput)
-        case .pauseVideo:
-			try stop(pause: true)
-		}
-	}
-
-	func resume() throws {
-        switch configuration.detectionMode {
-        case .continuous: return
-        case .pauseDetection:
-            guard !captureSession.outputs.contains(metadataOutput) else { return }
-
-            let types = metadataOutput.metadataObjectTypes
-            metadataOutput = AVCaptureMetadataOutput()
-            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
-            metadataOutput.metadataObjectTypes = types
-			captureSession.addOutput(metadataOutput)
-        case .pauseVideo:
-			let _ = try start(fromPause: true)
-		}
-	}
-}
-
-extension BarcodeScanner: FlutterTexture {
-	func copyPixelBuffer() -> Unmanaged<CVPixelBuffer>? {
-		pixelBuffer == nil ? nil : .passRetained(pixelBuffer!)
+        try captureDevice.lockForConfiguration()
+        captureDevice.torchMode = captureDevice.isTorchActive ? .off : .on
+        captureDevice.unlockForConfiguration()
+        
+        return captureDevice.torchMode == .on
 	}
 }
 
@@ -198,8 +164,8 @@ extension BarcodeScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
 	func captureOutput(_ output: AVCaptureOutput,
                     didOutput sampleBuffer: CMSampleBuffer,
                     from connection: AVCaptureConnection) {
-		pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
-		textureRegistry.textureFrameAvailable(textureId!)
+        pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+		registry.textureFrameAvailable(textureId)
 	}
 }
 
@@ -215,10 +181,22 @@ extension BarcodeScanner: AVCaptureMetadataOutputObjectsDelegate {
             let value = readableCode.stringValue
 			else { return }
 
-		try? pauseIfRequired()
+        switch configuration.detectionMode {
+        case .pauseDetection:
+            captureSession.removeOutput(metadataOutput)
+        case .pauseVideo:
+            stop()
+        case .continuous: break
+        }
 
 		codeCallback([type, value])
 	}
+}
+
+extension BarcodeScanner: FlutterTexture {
+    func copyPixelBuffer() -> Unmanaged<CVPixelBuffer>? {
+        return pixelBuffer == nil ? nil : .passRetained(pixelBuffer!)
+    }
 }
 
 extension FourCharCode {

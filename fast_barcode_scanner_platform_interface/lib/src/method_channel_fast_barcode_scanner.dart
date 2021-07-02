@@ -35,7 +35,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       }
     });
 
-    final response = await _channel.invokeMethod('start', {
+    final response = await _channel.invokeMethod('init', {
       'types': types.map((e) => describeEnum(e)).toList(growable: false),
       'mode': describeEnum(detectionMode),
       'res': describeEnum(resolution),
@@ -47,10 +47,10 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   }
 
   @override
-  Future<void> pause() => _channel.invokeMethod('pause');
+  Future<void> start() => _channel.invokeMethod('start');
 
   @override
-  Future<void> resume() => _channel.invokeMethod('resume');
+  Future<void> stop() => _channel.invokeMethod('stop');
 
   @override
   Future<void> dispose() {

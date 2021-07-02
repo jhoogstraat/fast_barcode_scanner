@@ -32,9 +32,8 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  /// Returns a [PreviewConfiguration] containing the parameters with
-  /// which the camera is set up.
-  ///
+  /// Initializes and starts the native camera interface.
+  /// Returns a [PreviewConfiguration] the camera is setup with.
   Future<PreviewConfiguration> init(
       List<BarcodeType> types,
       Resolution resolution,
@@ -44,17 +43,17 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('init() has not been implemented');
   }
 
-  /// Pauses the camera on the platform.
-  Future<void> pause() {
-    throw UnimplementedError('pause() has not been implemented');
-  }
-
-  /// Resumes the camera from the paused state on the platform.
-  Future<void> resume() {
+  /// Resumes the camera from the stopped state on the platform.
+  Future<void> start() {
     throw UnimplementedError('resume() has not been implemented');
   }
 
-  /// Stops and clears the camera ressources.
+  /// Stops the camera on the platform.
+  Future<void> stop() {
+    throw UnimplementedError('stop() has not been implemented');
+  }
+
+  /// Stops and clears the camera resources.
   Future<void> dispose() {
     throw UnimplementedError('dispose() has not been implemented');
   }
@@ -64,6 +63,8 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('toggleTorch() has not been implemented');
   }
 
+  /// Changes the supplied camera settings.
+  /// Nil values are ignored and stay unchanged.
   Future<PreviewConfiguration> changeConfiguration({
     List<BarcodeType>? types,
     Resolution? resolution,

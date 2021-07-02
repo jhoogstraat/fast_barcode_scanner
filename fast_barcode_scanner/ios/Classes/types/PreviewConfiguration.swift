@@ -11,7 +11,7 @@ struct PreviewConfiguration {
     let targetRotation: Int
     let textureId: Int64
     
-    var dict: [String: Any] {
+    var asDict: [String: Any] {
         ["width": height,
          "height": width,
          "analysis": "\(width)x\(height)",
