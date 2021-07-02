@@ -64,7 +64,7 @@ class BarcodeScanner: NSObject {
         captureSession.inputs.forEach(captureSession.removeInput)
 
         do {
-            let input = try AVCaptureDeviceInput(device: captureDevice)
+            let input = try AVCaptureDeviceInput(device: device)
             captureSession.addInput(input)
             captureDevice = device
         } catch let error as AVError {
@@ -132,7 +132,7 @@ class BarcodeScanner: NSObject {
         
 		captureSession.startRunning()
 
-		if torchState {
+        if torchState && captureDevice.isTorchAvailable {
             do {
                 try captureDevice.lockForConfiguration()
                 captureDevice.torchMode = .on

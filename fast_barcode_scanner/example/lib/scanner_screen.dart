@@ -120,13 +120,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
                           final config =
                               CameraController.instance.state.cameraConfig;
                           if (config != null) {
-                            await CameraController.instance.pauseDetector();
-                            Navigator.push(
+                            CameraController.instance.pauseDetector();
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => CameraSettings(config),
                               ),
                             );
+                            CameraController.instance.resumeDetector();
                           }
                         },
                         child: const Text('updateConfiguration'),
