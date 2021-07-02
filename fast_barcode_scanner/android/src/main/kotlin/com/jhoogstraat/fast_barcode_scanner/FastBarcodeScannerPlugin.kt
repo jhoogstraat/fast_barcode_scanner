@@ -54,11 +54,11 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     @Suppress("UNCHECKED_CAST")
     when (call.method) {
-      "start" -> scanner.start(call.arguments as HashMap<String, Any>, result)
+      "init" -> scanner.initialize(call.arguments as HashMap<String, Any>, result)
+      "start" -> scanner.start(result)
       "stop" -> scanner.stop(result)
       "pause" -> scanner.stop(result)
-      "resume" -> scanner.resume(result)
-      "toggleTorch" -> scanner.toggleTorch(result)
+      "torch" -> scanner.toggleTorch(result)
       "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
       else -> result.notImplemented()
     }

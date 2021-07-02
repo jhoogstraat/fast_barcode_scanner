@@ -3,7 +3,6 @@ package com.jhoogstraat.fast_barcode_scanner
 import android.Manifest
 import android.content.pm.PackageManager
 import android.util.Log
-import android.view.OrientationEventListener
 import android.view.Surface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -51,7 +50,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         this.activity = null
     }
 
-    fun start(args: HashMap<String, Any>, result: Result) {
+    fun initialize(args: HashMap<String, Any>, result: Result) {
         // Make sure we are connected to an activity
         if (activity == null)
             return result.error("0", "Activity not connected!", null)
@@ -79,16 +78,16 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         }
     }
 
+    fun start(result: Result) {
+        if (!isInitialized) return
+        bindCameraUseCases()
+        result.success(null)
+    }
+
     fun stop(result: Result? = null) {
         if (!isInitialized) return
         cameraProvider.unbindAll()
         result?.success(null)
-    }
-
-    fun resume(result: Result) {
-        if (!isInitialized) return
-        bindCameraUseCases()
-        result.success(null)
     }
 
     fun toggleTorch(result: Result) {
