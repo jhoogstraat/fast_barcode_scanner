@@ -151,7 +151,7 @@ class CameraController {
   ///
   Future<void> pauseDetector() async {
     try {
-      await _platform.pause();
+      await _platform.stop();
       state.eventNotifier.value = CameraEvent.paused;
     } catch (error, stack) {
       state._error = error;
@@ -167,7 +167,7 @@ class CameraController {
   ///
   Future<void> resumeDetector() async {
     try {
-      await _platform.resume();
+      await _platform.start();
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {
       state._error = error;

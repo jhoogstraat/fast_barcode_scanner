@@ -20,24 +20,21 @@ extension Error {
 }
 
 enum ScannerError: Error {
-    case notRunning
     case notInitialized
     case alreadyRunning
     case noInputDeviceForConfig(CameraConfiguration)
     case cameraNotSuitable(Resolution, Framerate)
     case unauthorized
-    case configurationLockError(Error)
+    case configurationError(Error)
     case invalidArguments(Any?)
+    case invalidCodeType(String)
+    
     
     var flutterError: FlutterError {
         switch self {
         case .notInitialized:
             return FlutterError(code: "NOT_INITIALIZED",
                                 message: "Camera has not been initialized",
-                                details: nil)
-        case .notRunning:
-            return FlutterError(code: "NOT_RUNNING",
-                                message: "Camera cannot be changed when not running",
                                 details: nil)
         case .alreadyRunning:
             return FlutterError(code: "ALREADY_RUNNING",
@@ -50,7 +47,7 @@ enum ScannerError: Error {
                                     and framerate (\(fps)) combination
                                     """,
                                 details: "Try to lower your settings")
-        case .configurationLockError(let error):
+        case .configurationError(let error):
             return FlutterError(code: "CONFIGURATION_FAILED",
                                 message: "The configuration could not be applied (\(error))",
                                 details: nil)
@@ -65,6 +62,10 @@ enum ScannerError: Error {
         case .invalidArguments(let args):
             return FlutterError(code: "INVALID_ARGUMENT",
                                 message: "Invalid arguments provided (\(String(describing: args)))",
+                                details: nil)
+        case .invalidCodeType(let type):
+            return FlutterError(code: "INVALID_CODE",
+                                message: "Invalid code type \(type)",
                                 details: nil)
         }
     }

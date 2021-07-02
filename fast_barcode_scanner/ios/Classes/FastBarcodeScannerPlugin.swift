@@ -2,10 +2,10 @@ import Flutter
 import AVFoundation
 
 public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
-	let textureRegistry: FlutterTextureRegistry
-	let channel: FlutterMethodChannel
+    let textureRegistry: FlutterTextureRegistry
+    let channel: FlutterMethodChannel
 
-	var reader: BarcodeScanner?
+    var scanner: BarcodeScanner?
 
 	init(channel: FlutterMethodChannel, textureRegistry: FlutterTextureRegistry) {
 		self.textureRegistry = textureRegistry
@@ -26,13 +26,13 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             var response: Any?
             
             switch call.method {
-            case "start": response = try start(configArgs: call.arguments).dict
+            case "init": response = try initialize(configArgs: call.arguments).asDict
+            case "start": try start()
             case "stop": try stop()
-            case "pause": try pause()
-            case "resume": try resume()
-            case "toggleTorch": response = try toggleTorch()
-            case "config":  try updateConfiguration(call: call)
-            default: result(FlutterMethodNotImplemented)
+            case "torch": response = try toggleTorch()
+            case "config":  response = try updateConfiguration(call: call)
+            case "dispose": dispose()
+            default: response = FlutterMethodNotImplemented
             }
             
             result(response)
@@ -41,57 +41,48 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             result(error.flutterError)
         }
 	}
-
-    func start(configArgs: Any?) throws -> PreviewConfiguration {
-        if let reader = reader {
-            try reader.stop(pause: false)
-        }
-
+    
+    func initialize(configArgs: Any?) throws -> PreviewConfiguration {
         guard let configuration = CameraConfiguration(configArgs) else {
             throw ScannerError.invalidArguments(configArgs)
         }
         
-        reader = try BarcodeScanner(textureRegistry: textureRegistry, configuration: configuration) { [unowned self] code in
+        scanner = try BarcodeScanner(textureRegistry: textureRegistry, configuration: configuration) { [unowned self] code in
             self.channel.invokeMethod("r", arguments: code)
         }
 
-        try reader!.start(fromPause: false)
+        try scanner!.start()
         
-        return try reader!.previewConfiguration()
-	}
-
-	func pause() throws {
-        guard let reader = reader else { throw ScannerError.notRunning }
-        return try reader.pauseIfRequired()
-	}
-
-	func resume() throws {
-        guard let reader = reader else { throw ScannerError.notRunning }
-        return try reader.resume()
-	}
+        return scanner!.preview
+    }
     
+    func start() throws {
+        guard let reader = scanner else { throw ScannerError.notInitialized }
+        try reader.start()
+	}
+
     func stop() throws {
-        guard let reader = reader else { throw ScannerError.notRunning }
-        try reader.stop(pause: false)
-        self.reader = nil
+        guard let reader = scanner else { throw ScannerError.notInitialized }
+        reader.stop()
+    }
+    
+    func dispose() {
+        scanner?.stop()
+        scanner = nil
     }
 
 	func toggleTorch() throws -> Bool {
-        guard let reader = reader else { throw ScannerError.notRunning }
+        guard let reader = scanner else { throw ScannerError.notInitialized }
         return try reader.toggleTorch()
 	}
 
     func updateConfiguration(call: FlutterMethodCall) throws -> PreviewConfiguration {
-        guard let reader = reader else {
-            throw ScannerError.notRunning
-        }
+        guard let reader = scanner else { throw ScannerError.notInitialized }
 
         guard let config = reader.configuration.copy(with: call.arguments) else {
             throw ScannerError.invalidArguments(call.arguments)
         }
 
-        try reader.set(configuration: config)
-        
-        return try reader.previewConfiguration()
+        return try reader.apply(configuration: config)
     }
 }
