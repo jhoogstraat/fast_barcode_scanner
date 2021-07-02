@@ -30,7 +30,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "start": try start()
             case "stop": try stop()
             case "torch": response = try toggleTorch()
-            case "config":  response = try updateConfiguration(call: call)
+            case "config":  response = try updateConfiguration(call: call).asDict
             case "dispose": dispose()
             default: response = FlutterMethodNotImplemented
             }
@@ -57,13 +57,13 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
     }
     
     func start() throws {
-        guard let reader = scanner else { throw ScannerError.notInitialized }
-        try reader.start()
+        guard let scanner = scanner else { throw ScannerError.notInitialized }
+        try scanner.start()
 	}
 
     func stop() throws {
-        guard let reader = scanner else { throw ScannerError.notInitialized }
-        reader.stop()
+        guard let scanner = scanner else { throw ScannerError.notInitialized }
+        scanner.stop()
     }
     
     func dispose() {
@@ -72,17 +72,17 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
     }
 
 	func toggleTorch() throws -> Bool {
-        guard let reader = scanner else { throw ScannerError.notInitialized }
-        return try reader.toggleTorch()
+        guard let scanner = scanner else { throw ScannerError.notInitialized }
+        return try scanner.toggleTorch()
 	}
 
     func updateConfiguration(call: FlutterMethodCall) throws -> PreviewConfiguration {
-        guard let reader = scanner else { throw ScannerError.notInitialized }
+        guard let scanner = scanner else { throw ScannerError.notInitialized }
 
-        guard let config = reader.configuration.copy(with: call.arguments) else {
+        guard let config = scanner.configuration.copy(with: call.arguments) else {
             throw ScannerError.invalidArguments(call.arguments)
         }
 
-        return try reader.apply(configuration: config)
+        return try scanner.apply(configuration: config)
     }
 }

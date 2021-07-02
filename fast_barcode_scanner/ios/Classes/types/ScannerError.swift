@@ -52,7 +52,7 @@ enum ScannerError: Error {
                                 message: "The configuration could not be applied (\(error))",
                                 details: nil)
         case .noInputDeviceForConfig(let config):
-            return FlutterError(code: "AV_NO_INPUT_DEVICE",
+            return FlutterError(code: "NO_INPUT_DEVICE",
                                 message: "No input device found for configuration (\(config)",
                                 details: "Are you using a simulator?")
         case .unauthorized:

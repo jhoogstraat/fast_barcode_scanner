@@ -61,7 +61,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   @override
   Future<bool> toggleTorch() =>
-      _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
+      _channel.invokeMethod('torch').then<bool>((isOn) => isOn);
 
   @override
   Future<PreviewConfiguration> changeConfiguration({
