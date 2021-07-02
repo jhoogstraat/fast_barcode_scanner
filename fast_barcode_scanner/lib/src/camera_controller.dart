@@ -6,8 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 class CameraConfiguration {
-  const CameraConfiguration(this.types, this.resolution, this.framerate,
-      this.detectionMode, this.position);
+  const CameraConfiguration(
+    this.types,
+    this.resolution,
+    this.framerate,
+    this.detectionMode,
+    this.position,
+  );
 
   /// The types the scanner should look out for.
   ///
