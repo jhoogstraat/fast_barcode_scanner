@@ -55,7 +55,9 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             self.channel.invokeMethod("r", arguments: code)
         }
 
-        return try reader!.start(fromPause: false)
+        try reader!.start(fromPause: false)
+        
+        return try reader!.previewConfiguration()
 	}
 
 	func pause() throws {
@@ -79,7 +81,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         return try reader.toggleTorch()
 	}
 
-    func updateConfiguration(call: FlutterMethodCall) throws {
+    func updateConfiguration(call: FlutterMethodCall) throws -> PreviewConfiguration {
         guard let reader = reader else {
             throw ScannerError.notRunning
         }
@@ -89,5 +91,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         }
 
         try reader.set(configuration: config)
+        
+        return try reader.previewConfiguration()
     }
 }

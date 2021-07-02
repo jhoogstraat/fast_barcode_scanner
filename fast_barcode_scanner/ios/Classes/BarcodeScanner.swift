@@ -23,6 +23,11 @@ class BarcodeScanner: NSObject {
     private var torchActiveOnStop = false
     private  var previewSize: CMVideoDimensions?
     
+    public func previewConfiguration() throws -> PreviewConfiguration {
+        guard let preview = previewSize, let id = textureId else { throw ScannerError.notInitialized }
+        return PreviewConfiguration(width: preview.width, height: preview.height, targetRotation: 0, textureId: id)
+    }
+    
 	init(textureRegistry: FlutterTextureRegistry,
       configuration: CameraConfiguration,
       codeCallback: @escaping ([String]) -> Void) throws {
@@ -108,10 +113,8 @@ class BarcodeScanner: NSObject {
         self.configuration = configuration
     }
 
-	func start(fromPause: Bool) throws -> PreviewConfiguration {
-        guard let device = captureDevice,
-              let preview = previewSize
-        else { throw ScannerError.notInitialized }
+	func start(fromPause: Bool) throws {
+        guard let device = captureDevice else { throw ScannerError.notInitialized }
 
 		captureSession.startRunning()
 
@@ -129,11 +132,6 @@ class BarcodeScanner: NSObject {
                 throw ScannerError.configurationLockError(error)
             }
 		}
-        
-        return PreviewConfiguration(width: preview.width,
-                                    height: preview.height,
-                                    orientation: 0,
-                                    textureId: textureId!)
 	}
 
 	func stop(pause: Bool) throws {
