@@ -38,7 +38,7 @@ enum ScannerError: Error {
                                 details: nil)
         case .alreadyRunning:
             return FlutterError(code: "ALREADY_RUNNING",
-                                message: "Start cannot be called when already running",
+                                message: "Camera is already running",
                                 details: nil)
         case .cameraNotSuitable(let res, let fps):
             return FlutterError(code: "CAMERA_NOT_SUITABLE",
