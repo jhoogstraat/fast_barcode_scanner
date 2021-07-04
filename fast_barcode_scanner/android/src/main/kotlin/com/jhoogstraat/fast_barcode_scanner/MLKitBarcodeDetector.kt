@@ -19,8 +19,7 @@ class MLKitBarcodeDetector(
 
     @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
-        val inputImage = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees);
-        scanner.process(inputImage)
+        scanner.process(InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees))
                 .addOnSuccessListener(successListener)
                 .addOnFailureListener(failureListener)
                 .addOnCompleteListener { imageProxy.close() }

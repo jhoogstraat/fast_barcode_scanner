@@ -2,6 +2,7 @@ package com.jhoogstraat.fast_barcode_scanner
 
 
 import androidx.annotation.NonNull
+import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 import io.flutter.embedding.android.FlutterActivity
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
