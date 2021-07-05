@@ -58,6 +58,12 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   }
 
   @override
+  void dispose() {
+    CameraController.instance.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cameraState = CameraController.instance.state;
     return ColoredBox(

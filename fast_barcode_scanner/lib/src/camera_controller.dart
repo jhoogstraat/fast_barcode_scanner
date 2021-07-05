@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
@@ -181,13 +180,12 @@ class CameraController {
   /// Toggles the torch, if available.
   ///
   ///
-  Future<void> toggleTorch() async {
+  Future<bool> toggleTorch() async {
     if (!state._togglingTorch) {
       state._togglingTorch = true;
 
       try {
         state._torchState = await _platform.toggleTorch();
-        log(state._torchState.toString());
       } catch (error, stack) {
         state._error = error;
         state.eventNotifier.value = CameraEvent.error;
@@ -198,6 +196,8 @@ class CameraController {
 
       state._togglingTorch = false;
     }
+
+    return state._torchState;
   }
 
   Future<void> changeConfiguration({

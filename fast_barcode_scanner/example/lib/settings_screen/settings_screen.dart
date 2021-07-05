@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 
 import 'type_selector.dart';
 
-class CameraSettings extends StatefulWidget {
-  const CameraSettings(this._currentConfiguration, {Key? key})
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen(this._currentConfiguration, {Key? key})
       : super(key: key);
 
   final ScannerConfiguration _currentConfiguration;
 
   @override
-  State<CameraSettings> createState() => _CameraSettingsState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _CameraSettingsState extends State<CameraSettings> {
+class _SettingsScreenState extends State<SettingsScreen> {
   late ScannerConfiguration _config;
 
   @override

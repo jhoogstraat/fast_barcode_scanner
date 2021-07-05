@@ -1,21 +1,21 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'camera_settings/camera_settings.dart';
+import 'package:fast_barcode_scanner_example/settings_screen/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
 
 final codeStream = StreamController<Barcode>.broadcast();
 
-class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({Key? key}) : super(key: key);
+class ScanningScreen extends StatefulWidget {
+  const ScanningScreen({Key? key}) : super(key: key);
 
   @override
-  _ScannerScreenState createState() => _ScannerScreenState();
+  _ScanningScreenState createState() => _ScanningScreenState();
 }
 
-class _ScannerScreenState extends State<ScannerScreen> {
+class _ScanningScreenState extends State<ScanningScreen> {
   final _torchIconState = ValueNotifier(false);
 
   @override
@@ -75,8 +75,6 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       ),
       bottomSheet: SafeArea(
-        // minimum: const EdgeInsets.only(bottom: 20),
-        // bottom: false,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -85,21 +83,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const DetectionsCounter(),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Column(
                     children: [
                       ElevatedButton(
-                          onPressed: () {
-                            CameraController.instance.pauseDetector();
-                          },
-                          child: const Text('pause')),
+                        onPressed: () =>
+                            CameraController.instance.pauseDetector(),
+                        child: const Text('pause'),
+                      ),
                       ElevatedButton(
-                          onPressed: () {
-                            CameraController.instance.resumeDetector();
-                          },
-                          child: const Text('resume')),
+                        onPressed: () =>
+                            CameraController.instance.resumeDetector(),
+                        child: const Text('resume'),
+                      ),
                     ],
                   ),
                   Column(
@@ -108,9 +108,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
                           onPressed: () async {
-                            await CameraController.instance.toggleTorch();
                             _torchIconState.value =
-                                CameraController.instance.state.torchState;
+                                await CameraController.instance.toggleTorch();
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
                         ),
@@ -124,7 +123,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => CameraSettings(config),
+                                builder: (_) => SettingsScreen(config),
                               ),
                             );
                             CameraController.instance.resumeDetector();

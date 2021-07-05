@@ -109,4 +109,5 @@ Attribute    |Description
 `position`   | Choose between back and front camera
 `mode`       | Whether to pause the camera on detection
 `onScan`     | The callback when a barcode is scanned
+`onError`    | A Widget to display when an error occurs
 `children`   | Widgets to display on top of the preview

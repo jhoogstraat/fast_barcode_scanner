@@ -105,9 +105,10 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     }
 
     fun start(result: Result) {
+        Log.d(TAG, "start: ")
         if (!isInitialized)
             return ScannerError.NotInitialized().throwFlutterError(result)
-        if (camera.cameraInfo.cameraState.value?.type != CameraState.Type.CLOSED)
+        if (cameraProvider.isBound(preview))
             return ScannerError.AlreadyRunning().throwFlutterError(result)
 
         bindCameraUseCases()
