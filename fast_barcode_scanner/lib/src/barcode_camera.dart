@@ -53,7 +53,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
 
     CameraController.instance
         .initialize(widget.types, widget.resolution, widget.framerate,
-            widget.mode, widget.position, widget.onScan)
+            widget.position, widget.mode, widget.onScan)
         .whenComplete(() => setState(() => _opacity = 1.0));
   }
 

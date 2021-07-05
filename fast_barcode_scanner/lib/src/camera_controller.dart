@@ -10,8 +10,8 @@ class ScannerConfiguration {
     this.types,
     this.resolution,
     this.framerate,
-    this.detectionMode,
     this.position,
+    this.detectionMode,
   );
 
   /// The types the scanner should look out for.
@@ -31,11 +31,11 @@ class ScannerConfiguration {
   /// than necessary.
   final Framerate framerate;
 
-  /// Determines how the camera reacts to detected barcodes.
-  final DetectionMode detectionMode;
-
   /// The physical position of the camera being used.
   final CameraPosition position;
+
+  /// Determines how the camera reacts to detected barcodes.
+  final DetectionMode detectionMode;
 
   ScannerConfiguration copyWith({
     List<BarcodeType>? types,
@@ -48,8 +48,8 @@ class ScannerConfiguration {
       types ?? this.types,
       resolution ?? this.resolution,
       framerate ?? this.framerate,
-      detectionMode ?? this.detectionMode,
       position ?? this.position,
+      detectionMode ?? this.detectionMode,
     );
   }
 }
@@ -100,8 +100,8 @@ class CameraController {
       List<BarcodeType> types,
       Resolution resolution,
       Framerate framerate,
-      DetectionMode detectionMode,
       CameraPosition position,
+      DetectionMode detectionMode,
       void Function(Barcode)? onScan) async {
     state.eventNotifier.value = CameraEvent.init;
 
@@ -117,7 +117,7 @@ class CameraController {
       });
 
       state._scannerConfig = ScannerConfiguration(
-          types, resolution, framerate, detectionMode, position);
+          types, resolution, framerate, position, detectionMode);
 
       state.eventNotifier.value = CameraEvent.resumed;
     } catch (error, stack) {

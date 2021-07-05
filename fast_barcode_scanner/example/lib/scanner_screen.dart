@@ -70,8 +70,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
         position: CameraPosition.back,
         onScan: (code) => codeStream.add(code),
         children: const [
-          MaterialPreviewOverlay(animateDetection: false),
-          BlurPreviewOverlay()
+          MaterialPreviewOverlay(showSensing: true),
+          // BlurPreviewOverlay()
         ],
       ),
       bottomSheet: SafeArea(

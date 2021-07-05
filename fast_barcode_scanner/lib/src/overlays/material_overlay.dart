@@ -5,10 +5,10 @@ import 'material_scanner_painter/material_sensing_painter.dart';
 
 class MaterialPreviewOverlay extends StatefulWidget {
   const MaterialPreviewOverlay(
-      {Key? key, this.animateDetection = true, this.aspectRatio = 16 / 9})
+      {Key? key, this.showSensing = true, this.aspectRatio = 16 / 9})
       : super(key: key);
 
-  final bool animateDetection;
+  final bool showSensing;
   final double aspectRatio;
 
   @override
@@ -25,7 +25,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
   void initState() {
     super.initState();
 
-    if (widget.animateDetection) {
+    if (widget.showSensing) {
       _controller = AnimationController(
           duration: const Duration(milliseconds: 1100), vsync: this);
 
@@ -40,7 +40,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
             tween: Tween(begin: 1.0, end: 0.0)
                 .chain(CurveTween(curve: Curves.easeOutCubic)),
             weight: expand),
-        // TweenSequenceItem(tween: ConstantTween(0.0), weight: idle),
+        // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
       ]).animate(_controller);
 
       _inflateSequence = TweenSequence([
@@ -49,8 +49,18 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
             tween: Tween(begin: 0.0, end: 1.0)
                 .chain(CurveTween(curve: Curves.easeOutCubic)),
             weight: expand),
-        // TweenSequenceItem(tween: ConstantTween(0.0), weight: idle),
+        // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
       ]).animate(_controller);
+
+      _controller.addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+            _controller.forward(from: _controller.lowerBound);
+          });
+        }
+      });
+
+      _controller.forward();
     }
   }
 
@@ -58,7 +68,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: SizedBox.expand(
-          child: widget.animateDetection
+          child: widget.showSensing
               ? _buildAnimation(context)
               : CustomPaint(
                   painter: MaterialBarcodeFramePainter(widget.aspectRatio))),
@@ -71,7 +81,9 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       builder: (context, child) => CustomPaint(
         painter: MaterialBarcodeFramePainter(widget.aspectRatio),
         foregroundPainter: MaterialBarcodeSensingPainter(
-            inflate: _inflateSequence.value, opacity: _opacitySequence.value),
+            aspectRatio: widget.aspectRatio,
+            inflate: _inflateSequence.value,
+            opacity: _opacitySequence.value),
       ),
     );
   }

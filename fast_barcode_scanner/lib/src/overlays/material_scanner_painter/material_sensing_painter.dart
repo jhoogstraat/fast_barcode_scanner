@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 class MaterialBarcodeSensingPainter extends CustomPainter {
-  MaterialBarcodeSensingPainter({required this.inflate, required this.opacity});
+  MaterialBarcodeSensingPainter(
+      {required this.aspectRatio,
+      required this.inflate,
+      required this.opacity});
 
+  final double aspectRatio;
   final double inflate;
   final double opacity;
 
@@ -12,11 +16,15 @@ class MaterialBarcodeSensingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
+    final cutOutWidth = screenRect.width - 45;
+    final cutOutHeight = 1 / aspectRatio * cutOutWidth;
     final cutOut = RRect.fromRectXY(
         Rect.fromCenter(
-            center: rect.center, width: rect.width - 45, height: 165),
+            center: screenRect.center,
+            width: cutOutWidth,
+            height: cutOutHeight),
         12,
         12);
 
