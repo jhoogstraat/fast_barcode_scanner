@@ -68,7 +68,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         // Convert arguments to CameraConfig
         try {
             scannerConfiguration = ScannerConfiguration(
-                (args["types"] as ArrayList<String>).map { barcodeFormatMap[it] ?: throw ScannerError.InvalidCodeType(it) }.toIntArray(),
+                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }.toIntArray(),
                 DetectionMode.valueOf(args["mode"] as String),
                 Resolution.valueOf(args["res"] as String),
                 Framerate.valueOf(args["fps"] as String),
