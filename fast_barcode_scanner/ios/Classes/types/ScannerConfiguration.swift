@@ -75,7 +75,7 @@ let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 ]
 
 // AVFoundation -> Flutter
-let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map({ ($1, $0) }))
+let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map { ($1, $0) })
 
 let cameraPositions: [String: AVCaptureDevice.Position] =
 [

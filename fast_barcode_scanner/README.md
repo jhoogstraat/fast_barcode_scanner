@@ -97,11 +97,11 @@ The `BarcodeCamera` is a widget showing a preview of the camera feed. It calls t
 An overview of all possible configurations (either passed to `BarcodeCamera` or `CameraController.initialize`):
 
 Attribute    |Description                                              
--------------|---------------------------------------------------------
-`types`      | See code types to scan (see `BarcodeType`)              
-`mode`       | Whether to pause the camera on detection                          
-`resolution` | The resolution of the camera feed                        
-`framerate`  | The framerate of the camera feed                        
-`position`   | Choose between back and front camera (iOS)         
-`onScan`     | The callback when a barcode is scanned                  
-`children`   | Widgets to display on top of the preview
+-------------|-------------------------------------------
+`types`      | See code types to scan (see `BarcodeType`)
+`mode`       | Whether to pause the camera on detection
+`resolution` | The resolution of the camera feed
+`framerate`  | The framerate of the camera feed
+`position`   | Choose between back and front camera
+`onScan`     | The callback when a barcode is scanned
+`children`   | Widgets to display on top of the preview‚
