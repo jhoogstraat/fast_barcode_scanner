@@ -8,14 +8,14 @@ class CameraSettings extends StatefulWidget {
   const CameraSettings(this._currentConfiguration, {Key? key})
       : super(key: key);
 
-  final CameraConfiguration _currentConfiguration;
+  final ScannerConfiguration _currentConfiguration;
 
   @override
   State<CameraSettings> createState() => _CameraSettingsState();
 }
 
 class _CameraSettingsState extends State<CameraSettings> {
-  late CameraConfiguration _config;
+  late ScannerConfiguration _config;
 
   @override
   void initState() {

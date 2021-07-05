@@ -22,7 +22,7 @@ extension Error {
 enum ScannerError: Error {
     case notInitialized
     case alreadyRunning
-    case noInputDeviceForConfig(CameraConfiguration)
+    case noInputDeviceForConfig(ScannerConfiguration)
     case cameraNotSuitable(Resolution, Framerate)
     case unauthorized
     case configurationError(Error)

@@ -43,7 +43,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	}
 
     func initialize(configArgs: Any?) throws -> PreviewConfiguration {
-        guard let configuration = CameraConfiguration(configArgs) else {
+        guard let configuration = ScannerConfiguration(configArgs) else {
             throw ScannerError.invalidArguments(configArgs)
         }
 

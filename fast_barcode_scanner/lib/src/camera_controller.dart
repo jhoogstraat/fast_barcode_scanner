@@ -5,8 +5,8 @@ import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
-class CameraConfiguration {
-  const CameraConfiguration(
+class ScannerConfiguration {
+  const ScannerConfiguration(
     this.types,
     this.resolution,
     this.framerate,
@@ -37,14 +37,14 @@ class CameraConfiguration {
   /// The physical position of the camera being used.
   final CameraPosition position;
 
-  CameraConfiguration copyWith({
+  ScannerConfiguration copyWith({
     List<BarcodeType>? types,
     Resolution? resolution,
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) {
-    return CameraConfiguration(
+    return ScannerConfiguration(
       types ?? this.types,
       resolution ?? this.resolution,
       framerate ?? this.framerate,
@@ -58,7 +58,7 @@ enum CameraEvent { uninitialized, init, paused, resumed, codeFound, error }
 
 class CameraState {
   PreviewConfiguration? _previewConfig;
-  CameraConfiguration? _cameraConfig;
+  ScannerConfiguration? _scannerConfig;
   bool _torchState = false;
   bool _togglingTorch = false;
   bool _configuring = false;
@@ -66,7 +66,7 @@ class CameraState {
 
   Object? get error => _error;
   PreviewConfiguration? get previewConfig => _previewConfig;
-  CameraConfiguration? get cameraConfig => _cameraConfig;
+  ScannerConfiguration? get scannerConfig => _scannerConfig;
   bool get torchState => _torchState;
   bool get isInitialized => _previewConfig != null;
   bool get hasError => error != null;
@@ -116,7 +116,7 @@ class CameraController {
         onScan?.call(code);
       });
 
-      state._cameraConfig = CameraConfiguration(
+      state._scannerConfig = ScannerConfiguration(
           types, resolution, framerate, detectionMode, position);
 
       state.eventNotifier.value = CameraEvent.resumed;
@@ -207,9 +207,9 @@ class CameraController {
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) async {
-    final _cameraConfig = state._cameraConfig;
+    final _scannerConfig = state._scannerConfig;
 
-    if (_cameraConfig != null && !state._configuring) {
+    if (_scannerConfig != null && !state._configuring) {
       state._configuring = true;
 
       try {
@@ -221,7 +221,7 @@ class CameraController {
           position: position,
         );
 
-        state._cameraConfig = _cameraConfig.copyWith(
+        state._scannerConfig = _scannerConfig.copyWith(
           types: types,
           resolution: resolution,
           framerate: framerate,
