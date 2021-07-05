@@ -1,0 +1,107 @@
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:flutter/material.dart';
+
+import 'material_finder_painter.dart';
+
+class MaterialPreviewOverlay extends StatefulWidget {
+  const MaterialPreviewOverlay(
+      {Key? key, this.showSensing = true, this.aspectRatio = 16 / 9})
+      : super(key: key);
+
+  final bool showSensing;
+  final double aspectRatio;
+
+  @override
+  MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
+}
+
+class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacitySequence;
+  late Animation<double> _inflateSequence;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.showSensing) {
+      _controller = AnimationController(
+          duration: const Duration(milliseconds: 1100), vsync: this);
+
+      const fadeIn = 20.0;
+      const wait = 2.0;
+      const expand = 25.0;
+
+      _opacitySequence = TweenSequence([
+        TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: fadeIn),
+        TweenSequenceItem(tween: ConstantTween(1.0), weight: wait),
+        TweenSequenceItem(
+            tween: Tween(begin: 1.0, end: 0.0)
+                .chain(CurveTween(curve: Curves.easeOutCubic)),
+            weight: expand),
+        // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
+      ]).animate(_controller);
+
+      _inflateSequence = TweenSequence([
+        TweenSequenceItem(tween: ConstantTween(0.0), weight: fadeIn + wait),
+        TweenSequenceItem(
+            tween: Tween(begin: 0.0, end: 1.0)
+                .chain(CurveTween(curve: Curves.easeOutCubic)),
+            weight: expand),
+        // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
+      ]).animate(_controller);
+
+      _controller.addStatusListener((status) {
+        if (status == AnimationStatus.completed &&
+            CameraController.instance.state.eventNotifier.value ==
+                CameraEvent.resumed) {
+          Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+            _controller.forward(from: _controller.lowerBound);
+          });
+        }
+      });
+
+      CameraController.instance.state.eventNotifier.addListener(() {
+        if (CameraController.instance.state.eventNotifier.value ==
+            CameraEvent.resumed) {
+          _controller.forward();
+        } else {
+          _controller.reset();
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(
+              painter: MaterialFinderPainter(
+                aspectRatio: widget.aspectRatio,
+                borderPaint: MaterialFinderPainter.defaultBorderPaint,
+              ),
+            ),
+            if (widget.showSensing)
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) => CustomPaint(
+                  foregroundPainter: MaterialFinderPainter(
+                    aspectRatio: widget.aspectRatio,
+                    inflate: _inflateSequence.value,
+                    opacity: _opacitySequence.value,
+                    drawBackground: false,
+                    borderPaint: MaterialFinderPainter.sensingBorderPaint,
+                  ),
+                ),
+              )
+          ],
+        ),
+      ),
+    );
+  }
+}
