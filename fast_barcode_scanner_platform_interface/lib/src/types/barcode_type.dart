@@ -39,7 +39,7 @@ enum BarcodeType {
   /// Android, iOS
   qr,
 
-  /// Android
+  /// Android, iOS
   upcA,
 
   /// Android, iOS

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'scanner_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -16,7 +17,8 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
     _streamToken = codeStream.stream.listen((event) {
       final count = detectionCount.update(event.value, (value) => value + 1,
           ifAbsent: () => 1);
-      detectionInfo.value = "${count}x\n${event.value}";
+      detectionInfo.value =
+          "${count}x\n${describeEnum(event.type)}: ${event.value}";
     });
   }
 
@@ -28,9 +30,9 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: ValueListenableBuilder(
+      child: ValueListenableBuilder<String>(
         valueListenable: detectionInfo,
-        builder: (context, dynamic info, child) => Text("Detection: " + info),
+        builder: (context, info, child) => Text(info),
       ),
     );
   }

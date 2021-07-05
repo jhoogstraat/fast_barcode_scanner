@@ -1,3 +1,10 @@
+# 2.0.0
+* Added ability to change the scanner configuration while running
+* Restructured and simplified native code on iOS and Android
+* Fully implemented error handling
+* UPC-A is now correctly reported on iOS (EAN-13 with a leading 0 is regarded as UPC-A).
+* ...
+
 ## 1.1.1
 
 * Camera position now taken into account on Android.

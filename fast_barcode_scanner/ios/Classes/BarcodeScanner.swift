@@ -16,7 +16,10 @@ class BarcodeScanner: NSObject {
     private var captureDevice: AVCaptureDevice!
     private let captureSession: AVCaptureSession
     private let dataOutput: AVCaptureVideoDataOutput
-    private var metadataOutput: AVCaptureMetadataOutput
+    private let metadataOutput: AVCaptureMetadataOutput
+    private let metadataQueue: DispatchQueue
+    private let dataQueue: DispatchQueue
+
     private var pixelBuffer: CVPixelBuffer?
     
     private(set) var configuration: CameraConfiguration
@@ -31,26 +34,19 @@ class BarcodeScanner: NSObject {
 		self.captureSession = AVCaptureSession()
 		self.dataOutput = AVCaptureVideoDataOutput()
 		self.metadataOutput = AVCaptureMetadataOutput()
+        self.metadataQueue = DispatchQueue(label: "fast_barcode_scanner.metadata.serial")
+        self.dataQueue = DispatchQueue(label: "fast_barcode_scanner.data.serial")
         self.configuration = configuration
         super.init()
         
-        preview = try apply(configuration: configuration)
-
         captureSession.addOutput(dataOutput)
         captureSession.addOutput(metadataOutput)
-
         dataOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         dataOutput.connection(with: .video)?.videoOrientation = .portrait
-        dataOutput.alwaysDiscardsLateVideoFrames = true
-        dataOutput.setSampleBufferDelegate(self, queue: DispatchQueue.global(qos: .default))
+        dataOutput.setSampleBufferDelegate(self, queue: dataQueue)
+        metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
         
-        metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
-        metadataOutput.metadataObjectTypes = try configuration.codes.map {
-            guard let type = avMetadataObjectTypes[$0] else {
-                throw ScannerError.invalidCodeType($0)
-            }
-            return type
-        }
+        preview = try apply(configuration: configuration)
     }
     
     func apply(configuration: CameraConfiguration) throws -> PreviewConfiguration {
@@ -76,7 +72,17 @@ class BarcodeScanner: NSObject {
         
         dataOutput.connection(with: .video)?.videoOrientation = .portrait
         dataOutput.connection(with: .video)?.isVideoMirrored = configuration.position == .front
+        
         captureSession.commitConfiguration()
+
+        metadataOutput.metadataObjectTypes = configuration.codes.compactMap {
+            return avMetadataObjectTypes[$0]
+        }
+        
+        // UPC-A is reported as EAN-13
+        if configuration.codes.contains("upcA") && !metadataOutput.metadataObjectTypes.contains(.ean13) {
+            metadataOutput.metadataObjectTypes.append(.ean13)
+        }
         
         guard let optimalFormat = captureDevice.formats.first(where: {
             let dimensions = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
@@ -110,6 +116,7 @@ class BarcodeScanner: NSObject {
                              height: previewSize.height,
                              targetRotation: 0,
                              textureId: textureId)
+        
         return preview
     }
 
@@ -118,16 +125,8 @@ class BarcodeScanner: NSObject {
             throw ScannerError.alreadyRunning
         }
         
-        switch configuration.detectionMode {
-        case .pauseDetection:
-            guard !captureSession.outputs.contains(metadataOutput) else { break }
-            let _metadataOutput = AVCaptureMetadataOutput()
-            metadataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.global(qos: .default))
-            metadataOutput.metadataObjectTypes = metadataOutput.metadataObjectTypes
-            metadataOutput = _metadataOutput
-            captureSession.addOutput(metadataOutput)
-        case .continuous: break
-        case .pauseVideo: break
+        if configuration.detectionMode == .pauseDetection {
+            metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
         }
         
 		captureSession.startRunning()
@@ -177,19 +176,33 @@ extension BarcodeScanner: AVCaptureMetadataOutputObjectsDelegate {
 		guard
 			let metadata = metadataObjects.first,
 			let readableCode = metadata as? AVMetadataMachineReadableCodeObject,
-            let type = flutterMetadataObjectTypes[readableCode.type],
-            let value = readableCode.stringValue
-			else { return }
-
+            var type = flutterMetadataObjectTypes[readableCode.type],
+            var value = readableCode.stringValue
+        else { return }
+        
+        // Fix UPC-A, see https://developer.apple.com/library/archive/technotes/tn2325/_index.html#//apple_ref/doc/uid/DTS40013824-CH1-IS_UPC_A_SUPPORTED_
+        print(configuration.codes)
+        if readableCode.type == .ean13 {
+            if value.hasPrefix("0") {
+                // Code is UPC-A
+                guard configuration.codes.contains("upcA") else { return }
+                type = "upcA"
+                value.removeFirst()
+            } else {
+                // Code is EAN-13
+                guard configuration.codes.contains(type) else { return }
+            }
+        }
+        
         switch configuration.detectionMode {
         case .pauseDetection:
-            captureSession.removeOutput(metadataOutput)
+            metadataOutput.setMetadataObjectsDelegate(nil, queue: nil)
         case .pauseVideo:
             stop()
         case .continuous: break
         }
-
-		codeCallback([type, value])
+        
+        codeCallback([type, value])
 	}
 }
 
