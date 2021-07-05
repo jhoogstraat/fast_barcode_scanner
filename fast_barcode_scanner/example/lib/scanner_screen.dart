@@ -118,7 +118,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       ElevatedButton(
                         onPressed: () async {
                           final config =
-                              CameraController.instance.state.cameraConfig;
+                              CameraController.instance.state.scannerConfig;
                           if (config != null) {
                             CameraController.instance.pauseDetector();
                             await Navigator.push(

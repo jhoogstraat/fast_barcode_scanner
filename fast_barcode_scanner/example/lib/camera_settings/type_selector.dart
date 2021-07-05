@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class BarcodeTypeSelector extends StatefulWidget {
   const BarcodeTypeSelector(this._config, {Key? key}) : super(key: key);
 
-  final CameraConfiguration _config;
+  final ScannerConfiguration _config;
 
   @override
   State<BarcodeTypeSelector> createState() => _BarcodeTypeSelectorState();
