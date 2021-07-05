@@ -1,8 +1,5 @@
 /// Contains all currently on iOS and Android supported barcode types.
 enum BarcodeType {
-  /// Android
-  // all,
-
   /// Android, iOS
   aztec,
 

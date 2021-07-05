@@ -20,7 +20,7 @@ EXTERNAL SOURCES:
     :path: Flutter
 
 SPEC CHECKSUMS:
-  fast_barcode_scanner: 0df01447443e9f9c7a6859844d8c4719887100b4
+  fast_barcode_scanner: 1c1cb51eccce89ad32444eb67eccf83cf50d984e
   Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
   SwiftLint: 99f82d07b837b942dd563c668de129a03fc3fb52
 

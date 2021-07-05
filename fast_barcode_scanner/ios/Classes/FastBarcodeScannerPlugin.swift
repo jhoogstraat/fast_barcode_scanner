@@ -17,14 +17,14 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
                                            binaryMessenger: registrar.messenger())
 		let instance = FastBarcodeScannerPlugin(channel: channel,
                                                 textureRegistry: registrar.textures())
-        
+
 		registrar.addMethodCallDelegate(instance, channel: channel)
 	}
 
 	public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         do {
             var response: Any?
-            
+
             switch call.method {
             case "init": response = try initialize(configArgs: call.arguments).asDict
             case "start": try start()
@@ -34,28 +34,29 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "dispose": dispose()
             default: response = FlutterMethodNotImplemented
             }
-            
+
             result(response)
         } catch {
             print(error)
             result(error.flutterError)
         }
 	}
-    
+
     func initialize(configArgs: Any?) throws -> PreviewConfiguration {
         guard let configuration = CameraConfiguration(configArgs) else {
             throw ScannerError.invalidArguments(configArgs)
         }
-        
-        scanner = try BarcodeScanner(textureRegistry: textureRegistry, configuration: configuration) { [unowned self] code in
+
+        scanner = try BarcodeScanner(textureRegistry: textureRegistry,
+                                     configuration: configuration) { [unowned self] code in
             self.channel.invokeMethod("r", arguments: code)
         }
 
         try scanner!.start()
-        
+
         return scanner!.preview
     }
-    
+
     func start() throws {
         guard let scanner = scanner else { throw ScannerError.notInitialized }
         try scanner.start()
@@ -65,7 +66,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         guard let scanner = scanner else { throw ScannerError.notInitialized }
         scanner.stop()
     }
-    
+
     func dispose() {
         scanner?.stop()
         scanner = nil

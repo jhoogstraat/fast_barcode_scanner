@@ -7,16 +7,20 @@
 
 import AVFoundation
 
-struct CameraConfiguration {
-    
-    init(position: AVCaptureDevice.Position, framerate: Framerate, resolution: Resolution, mode: DetectionMode, codes: [String]) {
+struct ScannerConfiguration {
+
+    init(position: AVCaptureDevice.Position,
+         framerate: Framerate,
+         resolution: Resolution,
+         mode: DetectionMode,
+         codes: [String]) {
         self.position = position
         self.framerate = framerate
         self.resolution = resolution
         self.detectionMode = mode
         self.codes = codes
     }
-    
+
     init?(_ args: Any?) {
         guard
             let dict = args as? [String: Any],
@@ -28,7 +32,7 @@ struct CameraConfiguration {
             else {
                 return nil
         }
-        
+
         self.init(position: position,
                   framerate: framerate,
                   resolution: resolution,
@@ -42,11 +46,11 @@ struct CameraConfiguration {
     let resolution: Resolution
     let detectionMode: DetectionMode
     let codes: [String]
-    
-    func copy(with args: Any?) -> CameraConfiguration? {
+
+    func copy(with args: Any?) -> ScannerConfiguration? {
         guard let dict = args as? [String: Any] else { return nil }
-        
-        return CameraConfiguration.init(
+
+        return ScannerConfiguration.init(
             position: cameraPositions[dict["pos"] as? String ?? ""] ?? position,
             framerate: Framerate(rawValue: dict["fps"] as? String ?? "") ?? framerate,
             resolution: Resolution(rawValue: dict["res"] as? String ?? "") ?? resolution,

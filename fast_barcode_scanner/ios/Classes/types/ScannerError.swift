@@ -28,8 +28,7 @@ enum ScannerError: Error {
     case configurationError(Error)
     case invalidArguments(Any?)
     case invalidCodeType(String)
-    
-    
+
     var flutterError: FlutterError {
         switch self {
         case .notInitialized:

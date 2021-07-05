@@ -10,7 +10,7 @@ struct PreviewConfiguration {
     let height: Int32
     let targetRotation: Int
     let textureId: Int64
-    
+
     var asDict: [String: Any] {
         ["width": height,
          "height": width,
@@ -18,5 +18,4 @@ struct PreviewConfiguration {
          "targetRotation": targetRotation,
          "textureId": textureId]
     }
-    
 }
