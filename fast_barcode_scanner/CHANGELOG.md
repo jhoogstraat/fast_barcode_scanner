@@ -1,10 +1,12 @@
 
 # 2.0.0
+
 * Added ability to change the scanner configuration while running
 * Restructured and simplified native code on iOS and Android
 * Fully implemented error handling
 * UPC-A is now correctly reported on iOS (EAN-13 with a leading 0 is regarded as UPC-A).
-* ...
+* Massively improved sample app with controls over all features.
+* Updated CameraX and ML Kit to the newest versions
 
 ## 1.1.2
 
