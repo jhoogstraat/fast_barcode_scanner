@@ -108,8 +108,9 @@ class _ScanningScreenState extends State<ScanningScreen> {
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
                           onPressed: () async {
+                            await CameraController.instance.toggleTorch();
                             _torchIconState.value =
-                                await CameraController.instance.toggleTorch();
+                                CameraController.instance.state.torchState;
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
                         ),
