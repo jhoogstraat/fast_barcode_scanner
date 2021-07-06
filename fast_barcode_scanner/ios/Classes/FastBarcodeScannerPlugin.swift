@@ -2,22 +2,24 @@ import Flutter
 import AVFoundation
 
 public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
-    let textureRegistry: FlutterTextureRegistry
     let channel: FlutterMethodChannel
+    let factory: PreviewViewFactory
 
     var scanner: BarcodeScanner?
 
-	init(channel: FlutterMethodChannel, textureRegistry: FlutterTextureRegistry) {
-		self.textureRegistry = textureRegistry
+    init(channel: FlutterMethodChannel, factory: PreviewViewFactory) {
 		self.channel = channel
+        self.factory = factory
 	}
 
 	public static func register(with registrar: FlutterPluginRegistrar) {
 		let channel = FlutterMethodChannel(name: "com.jhoogstraat/fast_barcode_scanner",
                                            binaryMessenger: registrar.messenger())
-		let instance = FastBarcodeScannerPlugin(channel: channel,
-                                                textureRegistry: registrar.textures())
 
+        let instance = FastBarcodeScannerPlugin(channel: channel,
+                                                factory: PreviewViewFactory())
+
+        registrar.register(instance.factory, withId: "fast_barcode_scanner.preview")
 		registrar.addMethodCallDelegate(instance, channel: channel)
 	}
 
@@ -47,14 +49,15 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             throw ScannerError.invalidArguments(configArgs)
         }
 
-        scanner = try BarcodeScanner(textureRegistry: textureRegistry,
-                                     configuration: configuration) { [unowned self] code in
+        scanner = try BarcodeScanner(configuration: configuration) { [unowned self] code in
             self.channel.invokeMethod("r", arguments: code)
         }
 
+        factory.session = scanner!.captureSession
+
         try scanner!.start()
 
-        return scanner!.preview
+        return scanner!.previewConfiguration
     }
 
     func start() throws {

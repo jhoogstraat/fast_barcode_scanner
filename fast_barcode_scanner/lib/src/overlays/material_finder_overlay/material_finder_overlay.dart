@@ -3,10 +3,22 @@ import 'package:flutter/material.dart';
 
 import 'material_finder_painter.dart';
 
+/// Mimics the official Material Design Barcode Scanner
+/// (https://material.io/design/machine-learning/barcode-scanning.html)
+///
 class MaterialPreviewOverlay extends StatefulWidget {
-  const MaterialPreviewOverlay(
-      {Key? key, this.showSensing = true, this.aspectRatio = 16 / 9})
-      : super(key: key);
+  /// Creates a material barcode overlay.
+  ///
+  /// * `showSensing` animates the finder border.
+  /// (Increased cpu usage confirmed on iOS when enabled)
+  ///
+  /// * `aspectRatio` of the finder border.
+  ///
+  const MaterialPreviewOverlay({
+    Key? key,
+    this.showSensing = false,
+    this.aspectRatio = 16 / 9,
+  }) : super(key: key);
 
   final bool showSensing;
   final double aspectRatio;
