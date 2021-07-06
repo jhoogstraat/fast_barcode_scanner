@@ -5,6 +5,7 @@ import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
@@ -91,9 +92,23 @@ class BarcodeCameraState extends State<BarcodeCamera> {
       child: SizedBox(
         width: config.width.toDouble(),
         height: config.height.toDouble(),
-        child: Texture(
-          textureId: config.textureId,
-          filterQuality: FilterQuality.none,
+        child: Builder(
+          builder: (_) {
+            switch (defaultTargetPlatform) {
+              case TargetPlatform.android:
+                return Texture(
+                  textureId: config.textureId,
+                  filterQuality: FilterQuality.none,
+                );
+              case TargetPlatform.iOS:
+                return const UiKitView(
+                  viewType: "fast_barcode_scanner.preview",
+                  creationParamsCodec: StandardMessageCodec(),
+                );
+              default:
+                throw UnsupportedError("Unsupported platform view");
+            }
+          },
         ),
       ),
     );
