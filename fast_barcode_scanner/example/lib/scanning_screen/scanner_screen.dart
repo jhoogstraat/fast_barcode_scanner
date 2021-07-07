@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_example/scan_history.dart';
 import 'package:fast_barcode_scanner_example/settings_screen/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -100,6 +101,20 @@ class _ScanningScreenState extends State<ScanningScreen> {
                             CameraController.instance.resumeDetector(),
                         child: const Text('resume'),
                       ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await CameraController.instance.pauseDetector();
+                            final barcode = await CameraController.instance
+                                .pickImageToAnalyze();
+                            history.add(barcode);
+                            CameraController.instance.resumeDetector();
+                          } catch (error) {
+                            presentErrorAlert(error);
+                          }
+                        },
+                        child: const Text('Pick image'),
+                      ),
                     ],
                   ),
                   Column(
@@ -139,6 +154,22 @@ class _ScanningScreenState extends State<ScanningScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void presentErrorAlert(Object error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(error.toString()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Ok'),
+          )
+        ],
       ),
     );
   }

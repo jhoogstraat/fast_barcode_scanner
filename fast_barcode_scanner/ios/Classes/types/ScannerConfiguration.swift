@@ -6,6 +6,7 @@
 //
 
 import AVFoundation
+import Vision
 
 struct ScannerConfiguration {
 
@@ -78,8 +79,27 @@ let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
     "interleaved": .interleaved2of5
 ]
 
+// Flutter -> Vision
+let vnBarcodeSymbols: [String: VNBarcodeSymbology] =
+[
+    "aztec": .Aztec,
+    "code128": .Code128,
+    "code39": .Code39, // Which one?
+    "code93": .Code93, // Which one?
+    "dataMatrix": .DataMatrix,
+    "ean13": .EAN13,
+    "ean8": .EAN8,
+    "itf": .ITF14,
+    "pdf417": .PDF417,
+    "qr": .QR,
+    "upcE": .UPCE,
+    "interleaved": .I2of5 // Which one?
+]
+
 // AVFoundation -> Flutter
 let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map { ($1, $0) })
+// Vision -> Flutter
+let flutterVNSymbols = Dictionary(uniqueKeysWithValues: vnBarcodeSymbols.map { ($1, $0) })
 
 let cameraPositions: [String: AVCaptureDevice.Position] =
 [

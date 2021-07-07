@@ -84,4 +84,10 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
       _onDetectHandler = handler;
+
+  @override
+  Future<Barcode> pickImageToAnalyze() async {
+    final response = await _channel.invokeMethod('pick');
+    return Barcode(response);
+  }
 }
