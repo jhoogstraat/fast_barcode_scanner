@@ -79,4 +79,8 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   void setOnDetectHandler(void Function(Barcode) handler) {
     throw UnimplementedError('setOnReadHandler() has not been implemented');
   }
+
+  Future<Barcode> pickImageToAnalyze() {
+    throw UnimplementedError('pickImageToAnalyze() has not been implemented');
+  }
 }

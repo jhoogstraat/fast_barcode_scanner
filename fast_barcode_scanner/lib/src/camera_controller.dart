@@ -239,4 +239,16 @@ class CameraController {
       state._configuring = false;
     }
   }
+
+  Future<Barcode> pickImageToAnalyze() async {
+    try {
+      return _platform.pickImageToAnalyze();
+    } catch (error, stack) {
+      state._error = error;
+      state.eventNotifier.value = CameraEvent.error;
+      debugPrint(error.toString());
+      debugPrintStack(stackTrace: stack);
+      rethrow;
+    }
+  }
 }
