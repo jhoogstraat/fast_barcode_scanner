@@ -88,22 +88,32 @@ class _ScanningScreenState extends State<ScanningScreen> {
                   Column(
                     children: [
                       ElevatedButton(
-                        onPressed: () =>
-                            CameraController.instance.pauseDetector(),
+                        onPressed: () => CameraController.instance
+                            .pauseDetector()
+                            .onError((error, stackTrace) {
+                          presentErrorAlert(error ?? stackTrace);
+                        }),
                         child: const Text('pause'),
                       ),
                       ElevatedButton(
-                        onPressed: () =>
-                            CameraController.instance.resumeDetector(),
+                        onPressed: () => CameraController.instance
+                            .resumeDetector()
+                            .onError((error, stackTrace) {
+                          presentErrorAlert(error ?? stackTrace);
+                        }),
                         child: const Text('resume'),
                       ),
                       ValueListenableBuilder<bool>(
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
                           onPressed: () async {
-                            await CameraController.instance.toggleTorch();
-                            _torchIconState.value =
-                                CameraController.instance.state.torchState;
+                            CameraController.instance
+                                .toggleTorch()
+                                .then((torchState) {
+                              return _torchIconState.value = torchState;
+                            }).catchError((error, stackTrace) {
+                              presentErrorAlert(error ?? stackTrace);
+                            });
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
                         ),
@@ -114,18 +124,24 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
+                          await CameraController.instance
+                              .pauseDetector()
+                              .onError((error, stackTrace) {});
+
                           try {
-                            await CameraController.instance.pauseDetector();
                             final barcode = await CameraController.instance
                                 .pickImageToAnalyze();
+
                             if (barcode != null) {
                               history.add(barcode);
                             }
-
-                            CameraController.instance.resumeDetector();
                           } catch (error) {
                             presentErrorAlert(error);
                           }
+
+                          CameraController.instance
+                              .resumeDetector()
+                              .onError((error, stackTrace) {});
                         },
                         child: const Text('Pick image'),
                       ),
@@ -134,14 +150,21 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           final config =
                               CameraController.instance.state.scannerConfig;
                           if (config != null) {
-                            CameraController.instance.pauseDetector();
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SettingsScreen(config),
-                              ),
-                            );
-                            CameraController.instance.resumeDetector();
+                            try {
+                              CameraController.instance.pauseDetector();
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SettingsScreen(config),
+                                ),
+                              );
+                              CameraController.instance.resumeDetector();
+                            } catch (error) {
+                              presentErrorAlert(error);
+                            }
+                          } else {
+                            presentErrorAlert(
+                                "No configuration set.\nIs the scanner initialized?");
                           }
                         },
                         child: const Text('updateConfiguration'),
