@@ -11,7 +11,15 @@ typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
   debugPrint("Error reading from camera: $error");
-  return const Center(child: Text("Error reading from camera..."));
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Center(
+      child: Text(
+        "Error reading from camera...\n$error",
+        style: TextStyle(color: Colors.white),
+      ),
+    ),
+  );
 }
 
 /// The main class connecting the platform code to the UI.
@@ -55,12 +63,15 @@ class BarcodeCameraState extends State<BarcodeCamera> {
     CameraController.instance
         .initialize(widget.types, widget.resolution, widget.framerate,
             widget.position, widget.mode, widget.onScan)
-        .whenComplete(() => setState(() => _opacity = 1.0));
+        .whenComplete(() => setState(() => _opacity = 1.0))
+        .onError((error, stackTrace) => setState(() {}));
   }
 
   @override
   void dispose() {
-    CameraController.instance.dispose();
+    CameraController.instance
+        .dispose()
+        .onError((error, stackTrace) => setState(() {}));
     super.dispose();
   }
 
@@ -106,7 +117,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
                   creationParamsCodec: StandardMessageCodec(),
                 );
               default:
-                throw UnsupportedError("Unsupported platform view");
+                throw UnsupportedError("Unsupported platform");
             }
           },
         ),
