@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:fast_barcode_scanner_example/history_screen/history_screen.dart';
 import 'package:fast_barcode_scanner_example/scan_history.dart';
 import 'package:flutter/foundation.dart';
-import 'scanner_screen.dart';
 import 'package:flutter/material.dart';
 
 class DetectionsCounter extends StatefulWidget {
@@ -13,20 +11,20 @@ class DetectionsCounter extends StatefulWidget {
 }
 
 class _DetectionsCounterState extends State<DetectionsCounter> {
-  late StreamSubscription _streamToken;
-
   @override
   void initState() {
     super.initState();
-    _streamToken = codeStream.stream.listen((barcode) {
-      setState(() => history.add(barcode));
-    });
+    history.addListener(onBarcodeListener);
   }
 
   @override
   void dispose() {
-    _streamToken.cancel();
+    history.removeListener(onBarcodeListener);
     super.dispose();
+  }
+
+  void onBarcodeListener() {
+    setState(() {});
   }
 
   @override

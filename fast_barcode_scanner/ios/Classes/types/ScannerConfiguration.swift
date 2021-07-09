@@ -1,10 +1,3 @@
-//
-//  ScannerConfiguration.swift
-//  fast_barcode_scanner
-//
-//  Created by Joshua Hoogstraat on 27.06.21.
-//
-
 import AVFoundation
 import Vision
 

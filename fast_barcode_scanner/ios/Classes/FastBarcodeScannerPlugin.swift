@@ -5,8 +5,8 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
     let channel: FlutterMethodChannel
     let factory: PreviewViewFactory
 
-    var liveScanner: BarcodeScanner?
-    var stillScanner: StillBarcodeScanner?
+    var camera: Camera?
+    var picker: ImagePicker?
 
     init(channel: FlutterMethodChannel, factory: PreviewViewFactory) {
 		self.channel = channel
@@ -29,7 +29,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             var response: Any?
 
             switch call.method {
-            case "init": response = try initialize(configArgs: call.arguments).asDict
+            case "init": response = try initialize(args: call.arguments).asDict
             case "start": try start()
             case "stop": try stop()
             case "torch": response = try toggleTorch()
@@ -46,74 +46,86 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         }
 	}
 
-    func initialize(configArgs: Any?) throws -> PreviewConfiguration {
-        guard let configuration = ScannerConfiguration(configArgs) else {
-            throw ScannerError.invalidArguments(configArgs)
+    func initialize(args: Any?) throws -> PreviewConfiguration {
+        guard let configuration = ScannerConfiguration(args) else {
+            throw ScannerError.invalidArguments(args)
         }
 
-        liveScanner = try BarcodeScanner(configuration: configuration) { [unowned self] code in
-            self.channel.invokeMethod("r", arguments: code)
+        let scanner = AVFoundationBarcodeScanner { barcode in
+            if let barcode = barcode {
+                self.channel.invokeMethod("s", arguments: barcode)
+            }
         }
 
-        factory.session = liveScanner!.captureSession
+        camera = try Camera(configuration: configuration, scanner: scanner)
 
-        try liveScanner!.start()
+        factory.session = camera!.session
 
-        return liveScanner!.previewConfiguration
+        try camera!.start()
+
+        return camera!.previewConfiguration
     }
 
     func start() throws {
-        guard let scanner = liveScanner else { throw ScannerError.notInitialized }
-        try scanner.start()
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        try camera.start()
 	}
 
     func stop() throws {
-        guard let scanner = liveScanner else { throw ScannerError.notInitialized }
-        scanner.stop()
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        camera.stop()
     }
 
     func dispose() {
-        liveScanner?.stop()
-        liveScanner = nil
+        camera?.stop()
+        camera = nil
     }
 
 	func toggleTorch() throws -> Bool {
-        guard let scanner = liveScanner else { throw ScannerError.notInitialized }
-        return try scanner.toggleTorch()
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        return try camera.toggleTorch()
 	}
 
     func updateConfiguration(call: FlutterMethodCall) throws -> PreviewConfiguration {
-        guard let scanner = liveScanner else { throw ScannerError.notInitialized }
+        guard let camera = camera else {
+            throw ScannerError.notInitialized
+        }
 
-        guard let config = scanner.configuration.copy(with: call.arguments) else {
+        guard let config = camera.configuration.copy(with: call.arguments) else {
             throw ScannerError.invalidArguments(call.arguments)
         }
 
-        return try scanner.apply(configuration: config)
+        try camera.configureSession(configuration: config)
+
+        return camera.previewConfiguration
     }
 
-    func analyzeImage(on result: @escaping ([String]) -> Void) {
-        stillScanner = nil
-
-        guard stillScanner == nil, let root = UIApplication.shared.delegate?.window??.rootViewController else {
-            result([])
-            return
+    func analyzeImage(on result: @escaping ([String]?) -> Void) {
+        guard picker == nil, let root = UIApplication.shared.delegate?.window??.rootViewController else {
+            return result(nil)
         }
 
-        let scanner = StillBarcodeScanner(symbologies: [.EAN13, .QR, .Code128]) { [weak self] barcode in
-            if let barcode = barcode,
-               let symbol = flutterVNSymbols[barcode.symbology],
-               let value = barcode.payloadStringValue {
-                result([symbol, value])
-            } else {
-                result([])
-            }
-
-            self?.stillScanner = nil
+        let visionResultHandler: BarcodeScanner.ResultHandler = { [weak self] barcode in
+            result(barcode)
+            self?.picker = nil
         }
 
-        scanner.show(over: root)
+        let imageResultHandler: ImagePicker.ResultHandler = { image in
+            guard let uiImage = image,
+                  let cgImage = uiImage.cgImage
+            else { return result(nil) }
 
-        stillScanner = scanner
+            let scanner = VisionBarcodeScanner(resultHandler: visionResultHandler)
+
+            scanner.performVisionRequest(cgImage: cgImage, orientation: .init(uiImage.imageOrientation))
+        }
+
+        if #available(iOS 14, *) {
+            picker = PHImagePicker(resultHandler: imageResultHandler)
+        } else {
+            picker = UIImagePicker(resultHandler: imageResultHandler)
+        }
+
+        picker!.show(over: root)
     }
 }

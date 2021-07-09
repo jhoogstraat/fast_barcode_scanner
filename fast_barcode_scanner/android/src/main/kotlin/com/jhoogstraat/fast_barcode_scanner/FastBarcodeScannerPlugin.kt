@@ -23,7 +23,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
 
     scanner = BarcodeScanner(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
-      barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("r", listOf(barcodeStringMap[barcode.format], barcode.rawValue)) }
+      barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("s", listOf(barcodeStringMap[barcode.format], barcode.rawValue)) }
     }
   }
 

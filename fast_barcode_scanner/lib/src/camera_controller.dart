@@ -240,7 +240,7 @@ class CameraController {
     }
   }
 
-  Future<Barcode> pickImageToAnalyze() async {
+  Future<Barcode?> pickImageToAnalyze() async {
     try {
       return _platform.pickImageToAnalyze();
     } catch (error, stack) {
