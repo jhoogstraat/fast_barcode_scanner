@@ -24,7 +24,7 @@ class MaterialFinderPainter extends CustomPainter {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 5; // strokeWidth is painted 50/50 outwards and inwards.
 
-  static final backgroundPaint = Paint()..color = Colors.black38;
+  static final backgroundPaint = Paint()..color = Colors.black45;
 
   @override
   void paint(Canvas canvas, Size size) {

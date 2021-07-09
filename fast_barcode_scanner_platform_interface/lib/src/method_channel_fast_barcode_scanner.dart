@@ -23,7 +23,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       CameraPosition position) async {
     _channel.setMethodCallHandler((call) async {
       switch (call.method) {
-        case 'r':
+        case 's':
           // This might fail if the code type is not present in the list of available code types.
           // Barcode init will throw in this case.
           final barcode = Barcode(call.arguments);
@@ -86,8 +86,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       _onDetectHandler = handler;
 
   @override
-  Future<Barcode> pickImageToAnalyze() async {
-    final response = await _channel.invokeMethod('pick');
-    return Barcode(response);
+  Future<Barcode?> pickImageToAnalyze() async {
+    final List<dynamic>? response = await _channel.invokeMethod('pick');
+    return response != null ? Barcode(response) : null;
   }
 }

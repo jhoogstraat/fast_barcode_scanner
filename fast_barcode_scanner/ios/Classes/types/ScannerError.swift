@@ -1,10 +1,3 @@
-//
-//  ScannerError.swift
-//  fast_barcode_scanner
-//
-//  Created by Joshua Hoogstraat on 27.06.21.
-//
-
 import Flutter
 
 extension Error {
@@ -25,7 +18,7 @@ enum ScannerError: Error {
     case noInputDeviceForConfig(ScannerConfiguration)
     case cameraNotSuitable(Resolution, Framerate)
     case unauthorized
-    case configurationError(Error)
+    case configurationError(String)
     case invalidArguments(Any?)
     case invalidCodeType(String)
 
@@ -48,7 +41,7 @@ enum ScannerError: Error {
                                 details: "Try to lower your settings")
         case .configurationError(let error):
             return FlutterError(code: "CONFIGURATION_FAILED",
-                                message: "The configuration could not be applied (\(error))",
+                                message: "Configuration failed (\(error))",
                                 details: nil)
         case .noInputDeviceForConfig(let config):
             return FlutterError(code: "NO_INPUT_DEVICE",

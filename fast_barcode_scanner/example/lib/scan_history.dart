@@ -15,4 +15,10 @@ class ScanHistory extends ChangeNotifier {
     counter.update(barcode.value, (value) => value + 1, ifAbsent: () => 1);
     notifyListeners();
   }
+
+  void clear() {
+    scans.clear();
+    counter.clear();
+    notifyListeners();
+  }
 }

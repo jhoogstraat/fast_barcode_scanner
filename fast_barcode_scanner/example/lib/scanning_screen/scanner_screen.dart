@@ -1,13 +1,9 @@
-import 'dart:async';
-
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner_example/scan_history.dart';
 import 'package:fast_barcode_scanner_example/settings_screen/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'detections_counter.dart';
-
-final codeStream = StreamController<Barcode>.broadcast();
 
 class ScanningScreen extends StatefulWidget {
   const ScanningScreen({Key? key}) : super(key: key);
@@ -69,7 +65,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
         framerate: Framerate.fps30,
         mode: DetectionMode.pauseVideo,
         position: CameraPosition.back,
-        onScan: (code) => codeStream.add(code),
+        onScan: (code) => history.add(code),
         children: const [
           MaterialPreviewOverlay(showSensing: false),
           // BlurPreviewOverlay()
@@ -101,24 +97,6 @@ class _ScanningScreenState extends State<ScanningScreen> {
                             CameraController.instance.resumeDetector(),
                         child: const Text('resume'),
                       ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          try {
-                            await CameraController.instance.pauseDetector();
-                            final barcode = await CameraController.instance
-                                .pickImageToAnalyze();
-                            history.add(barcode);
-                            CameraController.instance.resumeDetector();
-                          } catch (error) {
-                            presentErrorAlert(error);
-                          }
-                        },
-                        child: const Text('Pick image'),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
                       ValueListenableBuilder<bool>(
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
@@ -129,6 +107,27 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
                         ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            await CameraController.instance.pauseDetector();
+                            final barcode = await CameraController.instance
+                                .pickImageToAnalyze();
+                            if (barcode != null) {
+                              history.add(barcode);
+                            }
+
+                            CameraController.instance.resumeDetector();
+                          } catch (error) {
+                            presentErrorAlert(error);
+                          }
+                        },
+                        child: const Text('Pick image'),
                       ),
                       ElevatedButton(
                         onPressed: () async {
