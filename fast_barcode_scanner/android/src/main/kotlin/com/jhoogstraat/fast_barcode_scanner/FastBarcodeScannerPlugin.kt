@@ -1,7 +1,9 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 
+import android.util.Log
 import androidx.annotation.NonNull
+import com.github.dhaval2404.imagepicker.ImagePicker
 import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 import io.flutter.embedding.android.FlutterActivity
 
@@ -23,7 +25,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
 
     scanner = BarcodeScanner(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
-      barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("s", listOf(barcodeStringMap[barcode.format], barcode.rawValue)) }
+      barcodes.firstOrNull().let { barcode -> channel.invokeMethod("s", if (barcode != null) listOf(barcodeStringMap[barcode.format], barcode.rawValue) else null) }
     }
   }
 
@@ -36,6 +38,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
     scanner.attachToActivity(binding.activity as FlutterActivity)
     binding.addRequestPermissionsResultListener(scanner)
+    binding.addActivityResultListener(scanner)
     channel.setMethodCallHandler(this)
   }
 
@@ -61,6 +64,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
       "pause" -> scanner.stop(result)
       "torch" -> scanner.toggleTorch(result)
       "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
+      "pick" -> scanner.pickImageAndAnalyze(result)
       else -> result.notImplemented()
     }
   }

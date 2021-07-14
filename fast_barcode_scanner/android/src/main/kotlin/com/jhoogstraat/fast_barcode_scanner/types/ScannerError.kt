@@ -1,6 +1,9 @@
 package com.jhoogstraat.fast_barcode_scanner.types
 
 import io.flutter.plugin.common.MethodChannel.Result
+import java.io.IOException
+import java.util.*
+import kotlin.collections.HashMap
 
 sealed class ScannerError : Throwable() {
     class NotInitialized : ScannerError()
@@ -11,6 +14,8 @@ sealed class ScannerError : Throwable() {
     class ConfigurationError(val error: Exception) : ScannerError()
     class InvalidArguments(val args: HashMap<String, Any>) : ScannerError()
     class InvalidCodeType(val type: String) : ScannerError()
+    class LoadingFailed(val error: IOException) : ScannerError()
+    class AnalysisFailed(val error: Exception) : ScannerError()
 
     /* Android specific */
     class ActivityNotConnected : ScannerError()
@@ -26,6 +31,8 @@ sealed class ScannerError : Throwable() {
             is InvalidArguments -> result.error("INVALID_ARGUMENT", "Invalid arguments provided", args)
             is InvalidCodeType -> result.error("INVALID_CODE", "Invalid code type", type)
             is ActivityNotConnected -> result.error("NO_ACTIVITY", "No activity is connected", null)
+            is LoadingFailed -> result.error("LOADING_FAILED", "Could not load asset", error.localizedMessage)
+            is AnalysisFailed -> result.error("ANALYSIS_FAILED", "Could not analyse asset", error.localizedMessage)
         }
     }
 }
