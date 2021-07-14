@@ -16,7 +16,7 @@ Widget _defaultOnError(BuildContext context, Object? error) {
     child: Center(
       child: Text(
         "Error reading from camera...\n$error",
-        style: TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white),
       ),
     ),
   );

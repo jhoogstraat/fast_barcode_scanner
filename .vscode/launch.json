@@ -5,32 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "fast_barcode_scanner",
-            "cwd": "fast_barcode_scanner",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "fast_barcode_scanner (profile mode)",
-            "cwd": "fast_barcode_scanner",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "profile"
-        },
-        {
-            "name": "fast_barcode_scanner_platform_interface",
-            "cwd": "fast_barcode_scanner_platform_interface",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "fast_barcode_scanner_platform_interface (profile mode)",
-            "cwd": "fast_barcode_scanner_platform_interface",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "profile"
-        },
-        {
             "name": "example",
             "cwd": "fast_barcode_scanner/example",
             "request": "launch",

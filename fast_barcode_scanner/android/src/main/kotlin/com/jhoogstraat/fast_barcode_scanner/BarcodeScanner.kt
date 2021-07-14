@@ -1,6 +1,8 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
 import android.view.Surface
@@ -11,16 +13,16 @@ import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.jhoogstraat.fast_barcode_scanner.types.*
 import io.flutter.embedding.android.FlutterActivity
-
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import io.flutter.view.TextureRegistry
+import java.io.IOException
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.collections.HashMap
 
-class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
+class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener, ActivityResultListener {
     /* Android Lifecycle */
     private var activity: FlutterActivity? = null
 
@@ -44,6 +46,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     private var isInitialized = false
     private var pauseDetection = false
     private var pendingPermissionsResult: Result? = null
+    private var pendingImageAnalysisResult: Result? = null
 
     fun attachToActivity(activity: FlutterActivity) {
         this.activity = activity
@@ -105,7 +108,6 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     }
 
     fun start(result: Result) {
-        Log.d(TAG, "start: ")
         if (!isInitialized)
             return ScannerError.NotInitialized().throwFlutterError(result)
         if (cameraProvider.isBound(preview))
@@ -250,10 +252,55 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
     }
 
+    fun pickImageAndAnalyze(result: Result) {
+        if (pendingImageAnalysisResult != null) {
+            result.error("ALREADY_PICKING", "Already picking an image for analysis", null);
+            return
+        }
+
+        stop()
+
+        activity?.let {
+            pendingImageAnalysisResult = result
+            val intent = Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+            intent.type = "image/*"
+            it.startActivityForResult(intent, 1)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != 1 || pendingImageAnalysisResult == null) {
+            return false
+        }
+
+        when(resultCode) {
+            Activity.RESULT_OK -> {
+                try {
+                    barcodeDetector.analyze(activity!!.context, data?.data!!)
+                        .addOnSuccessListener { barcodes ->
+                            val encoded = barcodes.firstOrNull().let { if (it != null) listOf(barcodeStringMap[it.format], it.rawValue) else null }
+                            pendingImageAnalysisResult!!.success(encoded)
+                        }
+                        .addOnFailureListener {
+                            ScannerError.AnalysisFailed(it).throwFlutterError(pendingImageAnalysisResult!!)
+                        }
+                        .addOnCompleteListener { pendingImageAnalysisResult = null }
+                } catch (e: IOException) {
+                    ScannerError.LoadingFailed(e).throwFlutterError(pendingImageAnalysisResult!!)
+                }
+            }
+            else -> {
+                pendingImageAnalysisResult!!.success(null)
+                pendingImageAnalysisResult = null
+            }
+        }
+
+        return true
+    }
+
     companion object {
         private const val TAG = "fast_barcode_scanner"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
-
 }
