@@ -3,7 +3,6 @@ package com.jhoogstraat.fast_barcode_scanner
 
 import android.util.Log
 import androidx.annotation.NonNull
-import com.github.dhaval2404.imagepicker.ImagePicker
 import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 import io.flutter.embedding.android.FlutterActivity
 
