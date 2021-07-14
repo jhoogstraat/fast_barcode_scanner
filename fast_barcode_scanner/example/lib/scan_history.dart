@@ -1,7 +1,7 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/cupertino.dart';
 
-var history = ScanHistory();
+final history = ScanHistory();
 
 class ScanHistory extends ChangeNotifier {
   final scans = <Barcode>[];

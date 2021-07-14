@@ -70,12 +70,14 @@ As you can see, there are two overlays in the childrens list. These two are incl
 The `CameraController`-singleton manages the camera. It handles all the low level stuff like communicating with native code. It is implemented as a singleton to guarantee that there is always one and the same controller managing the camera. You can access the controller via the `CameraController.instance` attribute. These are the accessible methods:
 
 method          |Description                                      
-----------------|-------------------------------------------------
-`initialize`    | Initializes the scanner with the provided config
-`pauseDetector` | Actively pauses the scanner
-`resumeDetector`| Resumes the scanner from the paused state
-`toggleTorch`   | toggles the torch on and off
-`dispose`       | Stops and resets the camera on platform level
+----------------------|-------------------------------------------------
+`initialize`          | Initializes the scanner with the provided config
+`pauseDetector`       | Actively pauses the scanner
+`resumeDetector`      | Resumes the scanner from the paused state
+`toggleTorch`         | toggles the torch on and off
+`changeConfiguration` | Push an updated `ScannerConfiguration`
+`analyzeImage`
+`dispose`             | Stops and resets the camera on platform level
 
 You do not have to call `initialize` yourself, if you use the `BarcodeCamera` widget.
 Calling these methods are throwing. For possible error codes have a look at ScannerError.swift or ScannerError.kt.

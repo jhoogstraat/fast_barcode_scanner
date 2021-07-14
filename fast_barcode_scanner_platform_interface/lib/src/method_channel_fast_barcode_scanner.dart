@@ -21,20 +21,6 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       Framerate framerate,
       DetectionMode detectionMode,
       CameraPosition position) async {
-    _channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 's':
-          // This might fail if the code type is not present in the list of available code types.
-          // Barcode init will throw in this case.
-          final barcode = Barcode(call.arguments);
-          _onDetectHandler?.call(barcode);
-          break;
-        default:
-          assert(true,
-              "FastBarcodeScanner: Unknown method call received: ${call.method}");
-      }
-    });
-
     final response = await _channel.invokeMethod('init', {
       'types': types.map((e) => describeEnum(e)).toList(growable: false),
       'mode': describeEnum(detectionMode),
@@ -42,6 +28,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       'fps': describeEnum(framerate),
       'pos': describeEnum(position)
     });
+
+    _channel.setMethodCallHandler(handlePlatformMethodCall);
 
     return PreviewConfiguration(response);
   }
@@ -86,8 +74,26 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       _onDetectHandler = handler;
 
   @override
-  Future<Barcode?> pickImageToAnalyze() async {
+  Future<Barcode?> analyzeImage() async {
     final List<dynamic>? response = await _channel.invokeMethod('pick');
     return response != null ? Barcode(response) : null;
+  }
+
+  Future<void> handlePlatformMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 's':
+        // This might fail if the code type is not present in the list of available code types.
+        // Barcode init will throw in this case.
+        try {
+          final barcode = Barcode(call.arguments);
+          _onDetectHandler?.call(barcode);
+          // ignore: empty_catches
+        } catch (e) {}
+
+        break;
+      default:
+        assert(true,
+            "FastBarcodeScanner: Unknown method call received: ${call.method}");
+    }
   }
 }

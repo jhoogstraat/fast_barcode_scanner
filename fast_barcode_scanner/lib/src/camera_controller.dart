@@ -240,9 +240,9 @@ class CameraController {
     }
   }
 
-  Future<Barcode?> pickImageToAnalyze() async {
+  Future<Barcode?> analyzeImage() async {
     try {
-      return _platform.pickImageToAnalyze();
+      return _platform.analyzeImage();
     } catch (error, stack) {
       state._error = error;
       state.eventNotifier.value = CameraEvent.error;

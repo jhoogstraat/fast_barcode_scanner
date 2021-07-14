@@ -1,7 +1,8 @@
-import 'package:fast_barcode_scanner_example/history_screen/history_screen.dart';
-import 'package:fast_barcode_scanner_example/scan_history.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../history_screen/history_screen.dart';
+import '../scan_history.dart';
 
 class DetectionsCounter extends StatefulWidget {
   const DetectionsCounter({Key? key}) : super(key: key);

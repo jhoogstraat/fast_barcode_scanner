@@ -1,6 +1,7 @@
-import 'package:fast_barcode_scanner_example/scan_history.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../scan_history.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({Key? key}) : super(key: key);
