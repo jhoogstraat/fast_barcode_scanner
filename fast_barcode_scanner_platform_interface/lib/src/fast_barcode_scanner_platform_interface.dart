@@ -8,8 +8,7 @@ import 'method_channel_fast_barcode_scanner.dart';
 /// The interface that implementations of fast_barcode_scanner must implement.
 ///
 /// Platform implementations should extend this class rather than implement it as `fast_barcode_scanner`
-/// does not consider newly added methods to be breaking changes. Extending this class
-/// (using `extends`) ensures that the subclass will get the default implementation, while
+/// Extending this class (using `extends`) ensures that the subclass will get the default implementation, while
 /// platform implementations that `implements` this interface will be broken by newly added
 /// [FastBarcodeScannerPlatform] methods.
 abstract class FastBarcodeScannerPlatform extends PlatformInterface {
@@ -80,7 +79,7 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('setOnDetectHandler() has not been implemented');
   }
 
-  Future<Barcode?> pickImageToAnalyze() {
-    throw UnimplementedError('pickImageToAnalyze() has not been implemented');
+  Future<Barcode?> analyzeImage() {
+    throw UnimplementedError('analyzeImage() has not been implemented');
   }
 }

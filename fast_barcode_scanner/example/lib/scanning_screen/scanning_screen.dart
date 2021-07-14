@@ -1,8 +1,8 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_example/scan_history.dart';
-import 'package:fast_barcode_scanner_example/settings_screen/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../scan_history.dart';
+import '../settings_screen/settings_screen.dart';
 import 'detections_counter.dart';
 
 class ScanningScreen extends StatefulWidget {
@@ -109,9 +109,9 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           onPressed: () async {
                             CameraController.instance
                                 .toggleTorch()
-                                .then((torchState) {
-                              return _torchIconState.value = torchState;
-                            }).catchError((error, stackTrace) {
+                                .then((torchState) =>
+                                    _torchIconState.value = torchState)
+                                .catchError((error, stackTrace) {
                               presentErrorAlert(error ?? stackTrace);
                             });
                           },
@@ -129,9 +129,9 @@ class _ScanningScreenState extends State<ScanningScreen> {
                               .onError((error, stackTrace) {});
 
                           try {
-                            final barcode = await CameraController.instance
-                                .pickImageToAnalyze();
-
+                            final barcode =
+                                await CameraController.instance.analyzeImage();
+                            print("PICK COMPLETED");
                             if (barcode != null) {
                               history.add(barcode);
                             }

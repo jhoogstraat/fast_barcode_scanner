@@ -258,8 +258,6 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
             return
         }
 
-        stop()
-
         activity?.let {
             pendingImageAnalysisResult = result
             val intent = Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.INTERNAL_CONTENT_URI)

@@ -47,4 +47,22 @@ class PreviewConfiguration {
         height = response["height"],
         width = response["width"],
         analysisResolution = response["analysis"];
+
+  @override
+  bool operator ==(Object other) =>
+      other is PreviewConfiguration &&
+      other.textureId == textureId &&
+      other.height == height &&
+      other.width == width &&
+      other.targetRotation == targetRotation &&
+      other.analysisResolution == analysisResolution;
+
+  @override
+  int get hashCode =>
+      super.hashCode ^
+      textureId.hashCode ^
+      height.hashCode ^
+      width.hashCode ^
+      targetRotation.hashCode ^
+      analysisResolution.hashCode;
 }

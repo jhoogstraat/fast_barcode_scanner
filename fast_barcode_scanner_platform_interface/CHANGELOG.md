@@ -1,3 +1,8 @@
+## 2.0.0
+
+* Add ability to update the scanner configuration.
+* Add ability to request a single image detection.
+
 ## 1.0.4
 
 * Smaller code cleanups
