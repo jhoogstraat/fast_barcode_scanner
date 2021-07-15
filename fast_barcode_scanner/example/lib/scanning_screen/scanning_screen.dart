@@ -15,6 +15,8 @@ class ScanningScreen extends StatefulWidget {
 class _ScanningScreenState extends State<ScanningScreen> {
   final _torchIconState = ValueNotifier(false);
 
+  final cameraController = CameraController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +32,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
           IconButton(
             icon: const Icon(Icons.info),
             onPressed: () {
-              final preview = CameraController.instance.state.previewConfig;
+              final preview = cameraController.state.previewConfig;
               if (preview != null) {
                 showDialog(
                   context: context,
@@ -88,7 +90,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                   Column(
                     children: [
                       ElevatedButton(
-                        onPressed: () => CameraController.instance
+                        onPressed: () => cameraController
                             .pauseDetector()
                             .onError((error, stackTrace) {
                           presentErrorAlert(error ?? stackTrace);
@@ -96,7 +98,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                         child: const Text('pause'),
                       ),
                       ElevatedButton(
-                        onPressed: () => CameraController.instance
+                        onPressed: () => cameraController
                             .resumeDetector()
                             .onError((error, stackTrace) {
                           presentErrorAlert(error ?? stackTrace);
@@ -107,7 +109,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
                           onPressed: () async {
-                            CameraController.instance
+                            cameraController
                                 .toggleTorch()
                                 .then((torchState) =>
                                     _torchIconState.value = torchState)
@@ -124,14 +126,14 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          await CameraController.instance
+                          await cameraController
                               .pauseDetector()
                               .onError((error, stackTrace) {});
 
                           try {
                             final barcode =
-                                await CameraController.instance.analyzeImage();
-                            print("PICK COMPLETED");
+                                await cameraController.analyzeImage();
+
                             if (barcode != null) {
                               history.add(barcode);
                             }
@@ -139,7 +141,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                             presentErrorAlert(error);
                           }
 
-                          CameraController.instance
+                          cameraController
                               .resumeDetector()
                               .onError((error, stackTrace) {});
                         },
@@ -147,18 +149,17 @@ class _ScanningScreenState extends State<ScanningScreen> {
                       ),
                       ElevatedButton(
                         onPressed: () async {
-                          final config =
-                              CameraController.instance.state.scannerConfig;
+                          final config = cameraController.state.scannerConfig;
                           if (config != null) {
                             try {
-                              CameraController.instance.pauseDetector();
+                              cameraController.pauseDetector();
                               await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => SettingsScreen(config),
                                 ),
                               );
-                              CameraController.instance.resumeDetector();
+                              cameraController.resumeDetector();
                             } catch (error) {
                               presentErrorAlert(error);
                             }

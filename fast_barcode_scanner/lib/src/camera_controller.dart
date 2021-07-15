@@ -4,91 +4,39 @@ import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
-class ScannerConfiguration {
-  const ScannerConfiguration(
-    this.types,
-    this.resolution,
-    this.framerate,
-    this.position,
-    this.detectionMode,
-  );
-
-  /// The types the scanner should look out for.
-  ///
-  /// If a barcode type is not in this list, it will not be detected.
-  final List<BarcodeType> types;
-
-  /// The target resolution of the camera feed.
-  ///
-  /// This is experimental, but functional. Should not be set higher
-  /// than necessary.
-  final Resolution resolution;
-
-  /// The target framerate of the camera feed.
-  ///
-  /// This is experimental, but functional on iOS. Should not be set higher
-  /// than necessary.
-  final Framerate framerate;
-
-  /// The physical position of the camera being used.
-  final CameraPosition position;
-
-  /// Determines how the camera reacts to detected barcodes.
-  final DetectionMode detectionMode;
-
-  ScannerConfiguration copyWith({
-    List<BarcodeType>? types,
-    Resolution? resolution,
-    Framerate? framerate,
-    DetectionMode? detectionMode,
-    CameraPosition? position,
-  }) {
-    return ScannerConfiguration(
-      types ?? this.types,
-      resolution ?? this.resolution,
-      framerate ?? this.framerate,
-      position ?? this.position,
-      detectionMode ?? this.detectionMode,
-    );
-  }
-}
-
-enum CameraEvent { uninitialized, init, paused, resumed, codeFound, error }
+import 'types/scanner_configuration.dart';
+import 'types/scanner_event.dart';
 
 class CameraState {
   PreviewConfiguration? _previewConfig;
   ScannerConfiguration? _scannerConfig;
   bool _torchState = false;
-  bool _togglingTorch = false;
-  bool _configuring = false;
   Object? _error;
 
-  Object? get error => _error;
   PreviewConfiguration? get previewConfig => _previewConfig;
   ScannerConfiguration? get scannerConfig => _scannerConfig;
   bool get torchState => _torchState;
   bool get isInitialized => _previewConfig != null;
-  bool get hasError => error != null;
-
-  final eventNotifier = ValueNotifier(CameraEvent.uninitialized);
+  bool get hasError => _error != null;
+  Object? get error => _error;
 }
 
-class CameraController {
-  CameraController._() : state = CameraState();
+abstract class CameraController {
+  static final _instance = _CameraController._internal();
 
-  static final _instance = CameraController._();
-  static CameraController get instance => _instance;
+  factory CameraController() => _instance;
 
   /// The cumulated state of the barcode scanner.
   ///
   /// Contains information about the configuration, torch,
   /// errors and events.
-  final CameraState state;
+  final state = CameraState();
 
-  FastBarcodeScannerPlatform get _platform =>
-      FastBarcodeScannerPlatform.instance;
-
-  // Intents
+  /// A [ValueNotifier] for camera events.
+  ///
+  ///
+  final ValueNotifier<ScannerEvent> events =
+      ValueNotifier(ScannerEvent.uninitialized);
 
   /// Informs the platform to initialize the camera.
   ///
@@ -96,121 +44,171 @@ class CameraController {
   /// method repeatedly.
   /// Events and errors are received via the current state's eventNotifier.
   Future<void> initialize(
-      List<BarcodeType> types,
-      Resolution resolution,
-      Framerate framerate,
-      CameraPosition position,
-      DetectionMode detectionMode,
-      void Function(Barcode)? onScan) async {
-    state.eventNotifier.value = CameraEvent.init;
+    List<BarcodeType> types,
+    Resolution resolution,
+    Framerate framerate,
+    CameraPosition position,
+    DetectionMode detectionMode,
+    void Function(Barcode)? onScan,
+  );
+
+  /// Disposed the platform camera and resets the whole system.
+  ///
+  ///
+  Future<void> dispose();
+
+  /// Resumes the scanner and preview on the platform level.
+  ///
+  ///
+  Future<void> resumeDetector();
+
+  /// Pauses the scanner and preview on the platform level.
+  ///
+  ///
+  Future<void> pauseDetector();
+
+  /// Toggles the torch, if available.
+  ///
+  ///
+  Future<bool> toggleTorch();
+
+  /// Reconfigure the scanner.
+  ///
+  /// Can be called while running.
+  Future<void> configure({
+    List<BarcodeType>? types,
+    Resolution? resolution,
+    Framerate? framerate,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+  }) {
+    throw UnimplementedError();
+  }
+
+  /// Analyze a still image, which can be chosen from an image picker.
+  ///
+  /// It is recommended to pause the live scanner before calling this.
+  Future<Barcode?> analyzeImage();
+}
+
+class _CameraController implements CameraController {
+  _CameraController._internal() : super();
+
+  final FastBarcodeScannerPlatform _platform =
+      FastBarcodeScannerPlatform.instance;
+
+  @override
+  final state = CameraState();
+
+  @override
+  final events = ValueNotifier(ScannerEvent.uninitialized);
+
+  bool _togglingTorch = false;
+  bool _configuring = false;
+
+  @override
+  Future<void> initialize(
+    List<BarcodeType> types,
+    Resolution resolution,
+    Framerate framerate,
+    CameraPosition position,
+    DetectionMode detectionMode,
+    void Function(Barcode)? onScan,
+  ) async {
+    events.value = ScannerEvent.init;
 
     try {
       if (state.isInitialized) await _platform.dispose();
+
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      /// Notify the overlays when a barcode is detected and then call [onDetect].
       _platform.setOnDetectHandler((code) {
-        state.eventNotifier.value = CameraEvent.codeFound;
+        events.value = ScannerEvent.codeFound;
         onScan?.call(code);
       });
 
       state._scannerConfig = ScannerConfiguration(
           types, resolution, framerate, position, detectionMode);
 
-      state.eventNotifier.value = CameraEvent.resumed;
-    } catch (error, stack) {
+      state._error = null;
+
+      events.value = ScannerEvent.resumed;
+    } catch (error) {
       state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+      events.value = ScannerEvent.error;
       rethrow;
     }
   }
 
-  /// Disposed the platform camera and resets the whole system.
-  ///
-  ///
+  @override
   Future<void> dispose() async {
     try {
       await _platform.dispose();
+      state._scannerConfig = null;
       state._previewConfig = null;
-      state.eventNotifier.value = CameraEvent.uninitialized;
-    } catch (error, stack) {
+      events.value = ScannerEvent.uninitialized;
+    } catch (error) {
       state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+      events.value = ScannerEvent.error;
       rethrow;
     }
   }
 
-  /// Pauses the scanner and preview on the platform level.
-  ///
-  ///
+  @override
   Future<void> pauseDetector() async {
     try {
       await _platform.stop();
-      state.eventNotifier.value = CameraEvent.paused;
-    } catch (error, stack) {
+      events.value = ScannerEvent.paused;
+    } catch (error) {
       state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+      events.value = ScannerEvent.error;
       rethrow;
     }
   }
 
-  /// Resumes the scanner and preview on the platform level.
-  ///
-  ///
+  @override
   Future<void> resumeDetector() async {
     try {
       await _platform.start();
-      state.eventNotifier.value = CameraEvent.resumed;
-    } catch (error, stack) {
+      events.value = ScannerEvent.resumed;
+    } catch (error) {
       state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+      events.value = ScannerEvent.error;
       rethrow;
     }
   }
 
-  /// Toggles the torch, if available.
-  ///
-  ///
+  @override
   Future<bool> toggleTorch() async {
-    if (!state._togglingTorch) {
-      state._togglingTorch = true;
+    if (!_togglingTorch) {
+      _togglingTorch = true;
 
       try {
         state._torchState = await _platform.toggleTorch();
-      } catch (error, stack) {
+      } catch (error) {
         state._error = error;
-        state.eventNotifier.value = CameraEvent.error;
-        debugPrint(error.toString());
-        debugPrintStack(stackTrace: stack);
+        events.value = ScannerEvent.error;
         rethrow;
       }
 
-      state._togglingTorch = false;
+      _togglingTorch = false;
     }
 
     return state._torchState;
   }
 
-  Future<void> changeConfiguration({
+  @override
+  Future<void> configure({
     List<BarcodeType>? types,
     Resolution? resolution,
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
   }) async {
-    final _scannerConfig = state._scannerConfig;
-
-    if (_scannerConfig != null && !state._configuring) {
-      state._configuring = true;
+    if (state.isInitialized && !_configuring) {
+      final _scannerConfig = state._scannerConfig!;
+      _configuring = true;
 
       try {
         state._previewConfig = await _platform.changeConfiguration(
@@ -228,26 +226,23 @@ class CameraController {
           detectionMode: detectionMode,
           position: position,
         );
-      } catch (error, stack) {
+      } catch (error) {
         state._error = error;
-        state.eventNotifier.value = CameraEvent.error;
-        debugPrint(error.toString());
-        debugPrintStack(stackTrace: stack);
+        events.value = ScannerEvent.error;
         rethrow;
       }
 
-      state._configuring = false;
+      _configuring = false;
     }
   }
 
+  @override
   Future<Barcode?> analyzeImage() async {
     try {
       return _platform.analyzeImage();
-    } catch (error, stack) {
+    } catch (error) {
       state._error = error;
-      state.eventNotifier.value = CameraEvent.error;
-      debugPrint(error.toString());
-      debugPrintStack(stackTrace: stack);
+      events.value = ScannerEvent.error;
       rethrow;
     }
   }

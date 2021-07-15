@@ -22,11 +22,11 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       DetectionMode detectionMode,
       CameraPosition position) async {
     final response = await _channel.invokeMethod('init', {
-      'types': types.map((e) => describeEnum(e)).toList(growable: false),
-      'mode': describeEnum(detectionMode),
-      'res': describeEnum(resolution),
-      'fps': describeEnum(framerate),
-      'pos': describeEnum(position)
+      'types': types.map((e) => e.name).toList(growable: false),
+      'mode': detectionMode.name,
+      'res': resolution.name,
+      'fps': framerate.name,
+      'pos': position.name
     });
 
     _channel.setMethodCallHandler(handlePlatformMethodCall);
@@ -60,11 +60,11 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     CameraPosition? position,
   }) async {
     final response = await _channel.invokeMethod('config', {
-      if (types != null) 'types': types.map((e) => describeEnum(e)).toList(),
-      if (detectionMode != null) 'mode': describeEnum(detectionMode),
-      if (resolution != null) 'res': describeEnum(resolution),
-      if (framerate != null) 'fps': describeEnum(framerate),
-      if (position != null) 'pos': describeEnum(position),
+      if (types != null) 'types': types.map((e) => e.name).toList(),
+      if (detectionMode != null) 'mode': detectionMode.name,
+      if (resolution != null) 'res': resolution.name,
+      if (framerate != null) 'fps': framerate.name,
+      if (position != null) 'pos': position.name,
     });
     return PreviewConfiguration(response);
   }

@@ -5,22 +5,20 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('$FastBarcodeScannerPlatform', () {
-    test('$MethodChannelFastBarcodeScanner is the default implementation', () {
-      expect(FastBarcodeScannerPlatform.instance,
-          isA<MethodChannelFastBarcodeScanner>());
-    });
+  test('$MethodChannelFastBarcodeScanner is the default implementation', () {
+    expect(FastBarcodeScannerPlatform.instance,
+        isA<MethodChannelFastBarcodeScanner>());
+  });
 
-    test('Cannot be implemented with `implements`', () {
-      expect(() {
-        FastBarcodeScannerPlatform.instance =
-            ImplementsFastBarcodeScannerPlatform();
-      }, throwsNoSuchMethodError);
-    });
+  test('Cannot be implemented with `implements`', () {
+    expect(() {
+      FastBarcodeScannerPlatform.instance =
+          ImplementsFastBarcodeScannerPlatform();
+    }, throwsNoSuchMethodError);
+  });
 
-    test('Can be extended', () {
-      FastBarcodeScannerPlatform.instance = ExtendsFastBarcodeScannerPlatform();
-    });
+  test('Can be extended', () {
+    FastBarcodeScannerPlatform.instance = ExtendsFastBarcodeScannerPlatform();
   });
 }
 

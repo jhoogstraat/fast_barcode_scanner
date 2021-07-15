@@ -1,4 +1,5 @@
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import '../../camera_controller.dart';
+import '../../types/scanner_event.dart';
 import 'package:flutter/material.dart';
 
 import 'material_finder_painter.dart';
@@ -45,6 +46,8 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       const wait = 2.0;
       const expand = 25.0;
 
+      final cameraController = CameraController();
+
       _opacitySequence = TweenSequence([
         TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: fadeIn),
         TweenSequenceItem(tween: ConstantTween(1.0), weight: wait),
@@ -66,17 +69,15 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
 
       _controller.addStatusListener((status) {
         if (status == AnimationStatus.completed &&
-            CameraController.instance.state.eventNotifier.value ==
-                CameraEvent.resumed) {
+            cameraController.events.value == ScannerEvent.resumed) {
           Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
             _controller.forward(from: _controller.lowerBound);
           });
         }
       });
 
-      CameraController.instance.state.eventNotifier.addListener(() {
-        if (CameraController.instance.state.eventNotifier.value ==
-            CameraEvent.resumed) {
+      cameraController.events.addListener(() {
+        if (cameraController.events.value == ScannerEvent.resumed) {
           _controller.forward();
         } else {
           _controller.reset();

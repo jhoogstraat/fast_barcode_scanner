@@ -1,6 +1,7 @@
 import 'dart:ui';
 
-import 'package:fast_barcode_scanner/src/camera_controller.dart';
+import '../camera_controller.dart';
+import '../types/scanner_event.dart';
 import 'package:flutter/material.dart';
 
 /// Blurs the preview when a barcode is detected
@@ -17,12 +18,12 @@ class BlurPreviewOverlay extends StatelessWidget {
     this.duration = const Duration(milliseconds: 500),
   }) : super(key: key);
 
-  bool shouldBlur(event) => event == CameraEvent.codeFound;
+  bool shouldBlur(event) => event == ScannerEvent.codeFound;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: CameraController.instance.state.eventNotifier,
+      valueListenable: CameraController().events,
       builder: (context, event, child) {
         return TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: shouldBlur(event) ? blurAmount : 0.0),
