@@ -1,8 +1,18 @@
+import 'package:flutter/foundation.dart';
+
 /// Supported resolutions. Not all devices support all resolutions!
 enum Resolution { sd480, hd720, hd1080, hd4k }
 
+extension ResolutionName on Resolution {
+  String get name => describeEnum(this);
+}
+
 /// Supported Framerates. Not all devices support all framerates!
 enum Framerate { fps30, fps60, fps120, fps240 }
+
+extension FramerateName on Framerate {
+  String get name => describeEnum(this);
+}
 
 /// Dictates how the camera reacts to detections
 enum DetectionMode {
@@ -18,8 +28,16 @@ enum DetectionMode {
   continuous
 }
 
+extension DetectionModeName on DetectionMode {
+  String get name => describeEnum(this);
+}
+
 /// The position of the camera.
 enum CameraPosition { front, back }
+
+extension CameraPositionName on CameraPosition {
+  String get name => describeEnum(this);
+}
 
 /// The configuration by which the camera feed can be laid out in the UI.
 class PreviewConfiguration {

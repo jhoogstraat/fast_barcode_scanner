@@ -56,11 +56,13 @@ class BarcodeCamera extends StatefulWidget {
 class BarcodeCameraState extends State<BarcodeCamera> {
   var _opacity = 0.0;
 
+  final cameraController = CameraController();
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    CameraController.instance
+    cameraController
         .initialize(widget.types, widget.resolution, widget.framerate,
             widget.position, widget.mode, widget.onScan)
         .whenComplete(() => setState(() => _opacity = 1.0))
@@ -69,15 +71,13 @@ class BarcodeCameraState extends State<BarcodeCamera> {
 
   @override
   void dispose() {
-    CameraController.instance
-        .dispose()
-        .onError((error, stackTrace) => setState(() {}));
+    cameraController.dispose().onError((error, stackTrace) => setState(() {}));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cameraState = CameraController.instance.state;
+    final cameraState = cameraController.state;
     return ColoredBox(
       color: Colors.black,
       child: AnimatedOpacity(
