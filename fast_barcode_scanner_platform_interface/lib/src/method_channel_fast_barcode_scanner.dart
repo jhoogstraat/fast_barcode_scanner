@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'types/barcode.dart';
@@ -21,36 +20,30 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       Framerate framerate,
       DetectionMode detectionMode,
       CameraPosition position) async {
-    _channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'read':
-          // This might fail if the code type is not present in the list of available code types.
-          // Barcode init will throw in this case.
-          final barcode = Barcode(call.arguments);
-          _onDetectHandler?.call(barcode);
-          break;
-        default:
-          assert(true,
-              "FastBarcodeScanner: Unknown method call received: ${call.method}");
-      }
+    final response = await _channel.invokeMethod('init', {
+      'types': types.map((e) => e.name).toList(growable: false),
+      'mode': detectionMode.name,
+      'res': resolution.name,
+      'fps': framerate.name,
+      'pos': position.name
     });
 
-    final response = await _channel.invokeMethod('start', {
-      'types': types.map((e) => describeEnum(e)).toList(growable: false),
-      'mode': describeEnum(detectionMode),
-      'res': describeEnum(resolution),
-      'fps': describeEnum(framerate),
-      'pos': describeEnum(position)
-    });
+    _channel.setMethodCallHandler(handlePlatformMethodCall);
 
     return PreviewConfiguration(response);
   }
 
   @override
-  Future<void> pause() => _channel.invokeMethod('pause');
+  Future<void> start() => _channel.invokeMethod('start');
 
   @override
-  Future<void> resume() => _channel.invokeMethod('resume');
+  Future<void> stop() => _channel.invokeMethod('stop');
+
+  @override
+  Future<void> startDetector() => _channel.invokeMethod('startDetector');
+
+  @override
+  Future<void> stopDetector() => _channel.invokeMethod('stopDetector');
 
   @override
   Future<void> dispose() {
@@ -61,14 +54,51 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   @override
   Future<bool> toggleTorch() =>
-      _channel.invokeMethod('toggleTorch').then<bool>((isOn) => isOn);
+      _channel.invokeMethod('torch').then<bool>((isOn) => isOn);
 
   @override
-  Future<bool> changeCamera(CameraPosition position) => _channel
-      .invokeMethod('changeCamera', describeEnum(position))
-      .then<bool>((success) => success);
+  Future<PreviewConfiguration> changeConfiguration({
+    List<BarcodeType>? types,
+    Resolution? resolution,
+    Framerate? framerate,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+  }) async {
+    final response = await _channel.invokeMethod('config', {
+      if (types != null) 'types': types.map((e) => e.name).toList(),
+      if (detectionMode != null) 'mode': detectionMode.name,
+      if (resolution != null) 'res': resolution.name,
+      if (framerate != null) 'fps': framerate.name,
+      if (position != null) 'pos': position.name,
+    });
+    return PreviewConfiguration(response);
+  }
 
   @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
       _onDetectHandler = handler;
+
+  @override
+  Future<Barcode?> analyzeImage() async {
+    final List<dynamic>? response = await _channel.invokeMethod('pick');
+    return response != null ? Barcode(response) : null;
+  }
+
+  Future<void> handlePlatformMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 's':
+        // This might fail if the code type is not present in the list of available code types.
+        // Barcode init will throw in this case.
+        try {
+          final barcode = Barcode(call.arguments);
+          _onDetectHandler?.call(barcode);
+          // ignore: empty_catches
+        } catch (e) {}
+
+        break;
+      default:
+        assert(true,
+            "FastBarcodeScanner: Unknown method call received: ${call.method}");
+    }
+  }
 }

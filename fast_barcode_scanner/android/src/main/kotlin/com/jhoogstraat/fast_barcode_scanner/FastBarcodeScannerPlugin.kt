@@ -2,6 +2,7 @@ package com.jhoogstraat.fast_barcode_scanner
 
 
 import androidx.annotation.NonNull
+import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 import io.flutter.embedding.android.FlutterActivity
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -16,13 +17,13 @@ import io.flutter.plugin.common.MethodChannel.Result
 /** FastBarcodeScannerPlugin */
 class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel : MethodChannel
-  private lateinit var reader: BarcodeReader
+  private lateinit var scanner: BarcodeScanner
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
 
-    reader = BarcodeReader(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
-      barcodes.firstOrNull()?.also { barcode -> channel.invokeMethod("read", listOf(barcodeStringMap[barcode.format], barcode.rawValue)) }
+    scanner = BarcodeScanner(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
+      barcodes.firstOrNull().let { barcode -> channel.invokeMethod("s", if (barcode != null) listOf(barcodeStringMap[barcode.format], barcode.rawValue) else null) }
     }
   }
 
@@ -33,14 +34,15 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   // https://flutter.dev/docs/development/packages-and-plugins/plugin-api-migration#uiactivity-plugin
   // https://github.com/flutter/plugins/blob/master/packages/camera/android/src/main/java/io/flutter/plugins/camera/CameraPlugin.java
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    reader.attachToActivity(binding.activity as FlutterActivity)
-    binding.addRequestPermissionsResultListener(reader)
+    scanner.attachToActivity(binding.activity as FlutterActivity)
+    binding.addRequestPermissionsResultListener(scanner)
+    binding.addActivityResultListener(scanner)
     channel.setMethodCallHandler(this)
   }
 
   override fun onDetachedFromActivity() {
     channel.setMethodCallHandler(null)
-    reader.detachFromActivity()
+    scanner.detachFromActivity()
   }
 
   override fun onDetachedFromActivityForConfigChanges() {
@@ -54,11 +56,14 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     @Suppress("UNCHECKED_CAST")
     when (call.method) {
-      "start" -> reader.start(call.arguments as HashMap<String, Any>, result)
-      "stop" -> reader.stop(result)
-      "pause" -> reader.stop(result)
-      "resume" -> reader.resume(result)
-      "toggleTorch" -> reader.toggleTorch(result)
+      "init" -> scanner.initialize(call.arguments as HashMap<String, Any>, result)
+      "start" -> scanner.startCamera(result)
+      "stop" -> scanner.stopCamera(result)
+      "startDetector" -> scanner.startDetector(result)
+      "stopDetector" -> scanner.stopDetector(result)
+      "torch" -> scanner.toggleTorch(result)
+      "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
+      "pick" -> scanner.pickImageAndAnalyze(result)
       else -> result.notImplemented()
     }
   }

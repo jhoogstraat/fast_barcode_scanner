@@ -5,12 +5,21 @@ import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
   debugPrint("Error reading from camera: $error");
-  return const Center(child: Text("Error reading from camera..."));
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Center(
+      child: Text(
+        "Error reading from camera...\n$error",
+        style: const TextStyle(color: Colors.white),
+      ),
+    ),
+  );
 }
 
 /// The main class connecting the platform code to the UI.
@@ -47,19 +56,28 @@ class BarcodeCamera extends StatefulWidget {
 class BarcodeCameraState extends State<BarcodeCamera> {
   var _opacity = 0.0;
 
+  final cameraController = CameraController();
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    CameraController.instance
+    cameraController
         .initialize(widget.types, widget.resolution, widget.framerate,
-            widget.mode, widget.position, widget.onScan)
-        .whenComplete(() => setState(() => _opacity = 1.0));
+            widget.position, widget.mode, widget.onScan)
+        .whenComplete(() => setState(() => _opacity = 1.0))
+        .onError((error, stackTrace) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    cameraController.dispose().onError((error, stackTrace) => setState(() {}));
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cameraState = CameraController.instance.state;
+    final cameraState = cameraController.state;
     return ColoredBox(
       color: Colors.black,
       child: AnimatedOpacity(
@@ -85,9 +103,23 @@ class BarcodeCameraState extends State<BarcodeCamera> {
       child: SizedBox(
         width: config.width.toDouble(),
         height: config.height.toDouble(),
-        child: Texture(
-          textureId: config.textureId,
-          filterQuality: FilterQuality.none,
+        child: Builder(
+          builder: (_) {
+            switch (defaultTargetPlatform) {
+              case TargetPlatform.android:
+                return Texture(
+                  textureId: config.textureId,
+                  filterQuality: FilterQuality.none,
+                );
+              case TargetPlatform.iOS:
+                return const UiKitView(
+                  viewType: "fast_barcode_scanner.preview",
+                  creationParamsCodec: StandardMessageCodec(),
+                );
+              default:
+                throw UnsupportedError("Unsupported platform");
+            }
+          },
         ),
       ),
     );

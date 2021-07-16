@@ -1,139 +1,131 @@
 import Flutter
 import AVFoundation
 
-struct StartArgs {
-	init?(_ args: Any?) {
-		guard
-			let dict = args as? [String: Any],
-            let position = cameraPositions[dict["pos"] as? String ?? ""],
-			let resolution = Resolution(rawValue: dict["res"] as? String ?? ""),
-			let framerate = Framerate(rawValue: dict["fps"] as? String ?? ""),
-			let detectionMode = DetectionMode(rawValue: dict["mode"] as? String ?? ""),
-			let codes = dict["types"] as? [String]
-			else {
-				return nil
-		}
-
-        self.position = position
-		self.framerate = framerate
-		self.resolution = resolution
-		self.detectionMode = detectionMode
-		self.codes = codes
-	}
-
-    let position: AVCaptureDevice.Position
-	let framerate: Framerate
-	let resolution: Resolution
-	let detectionMode: DetectionMode
-	let codes: [String]
-}
-
 public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
+    let channel: FlutterMethodChannel
+    let factory: PreviewViewFactory
 
-	let textureRegistry: FlutterTextureRegistry
-	let channel: FlutterMethodChannel
+    var camera: Camera?
+    var picker: ImagePicker?
 
-	var reader: BarcodeReader?
-
-	init(channel: FlutterMethodChannel, textureRegistry: FlutterTextureRegistry) {
-		self.textureRegistry = textureRegistry
+    init(channel: FlutterMethodChannel, factory: PreviewViewFactory) {
 		self.channel = channel
+        self.factory = factory
 	}
 
 	public static func register(with registrar: FlutterPluginRegistrar) {
 		let channel = FlutterMethodChannel(name: "com.jhoogstraat/fast_barcode_scanner",
-																			 binaryMessenger: registrar.messenger())
-		let instance = FastBarcodeScannerPlugin(channel: channel, textureRegistry: registrar.textures())
+                                           binaryMessenger: registrar.messenger())
+
+        let instance = FastBarcodeScannerPlugin(channel: channel,
+                                                factory: PreviewViewFactory())
+
+        registrar.register(instance.factory, withId: "fast_barcode_scanner.preview")
 		registrar.addMethodCallDelegate(instance, channel: channel)
 	}
 
 	public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         do {
+            var response: Any?
+
             switch call.method {
-            case "start": start(call: call, result: result)
-            case "stop": stop(result: result)
-            case "pause": pause(result: result)
-            case "resume": try resume(result: result)
-            case "toggleTorch": toggleTorch(result: result)
-            case "heartBeat": result(nil)
-            default: result(FlutterMethodNotImplemented)
+            case "init": response = try initialize(args: call.arguments).asDict
+            case "start": try start()
+            case "stop": try stop()
+            case "torch": response = try toggleTorch()
+            case "config":  response = try updateConfiguration(call: call).asDict
+            case "dispose": dispose()
+            case "pick": analyzeImage(on: result); return
+            default: response = FlutterMethodNotImplemented
             }
+
+            result(response)
         } catch {
             print(error)
-            result(FlutterError(code: "THROW", message: "\(error)", details: nil))
+            result(error.flutterError)
         }
 	}
 
-	func start(call: FlutterMethodCall, result: @escaping FlutterResult) {
-		guard reader == nil else {
-			let error = FlutterError(code: "ALREADY_RUNNING",
-															 message: "Start cannot be called when already running",
-															 details: nil)
-			result(error)
-			return
-		}
-
-		guard let args = StartArgs(call.arguments) else {
-			let error = FlutterError(code: "INVALID_ARGUMENT",
-															 message: "Missing a required argument",
-															 details: "Expected resolution, framerate, mode and types")
-			result(error)
-			return
-		}
-
-		do {
-			reader = try BarcodeReader(textureRegistry: textureRegistry, arguments: args) { [unowned self] code in
-				self.channel.invokeMethod("read", arguments: code)
-			}
-
-			try reader!.start(fromPause: false)
-
-			result([
-				"surfaceWidth": reader!.previewSize.height,
-				"surfaceHeight": reader!.previewSize.width,
-				"surfaceOrientation": 0,
-				"textureId": reader!.textureId!
-			])
-
-		} catch ReaderError.noInputDevice {
-			result(FlutterError(code: "AV_NO_INPUT_DEVICE",
-													message: "No input device found",
-													details: "Are you using a simulator?"))
-		} catch ReaderError.cameraNotSuitable(let res, let fps) {
-			result(FlutterError(code: "CAMERA_NOT_SUITABLE",
-													message: """
-                                                        The camera does not support the requested resolution (\(res)) \
-                                                        and framerate (\(fps)) combination
-                                                        """,
-													details: "try to lower your settings"))
-        } catch ReaderError.unauthorized {
-                result(FlutterError(code: "UNAUTHORIZED",
-                                    message: "The application is not authorized to use the camera device",
-                                    details: nil))
-        } catch {
-            result(FlutterError(code: "UNEXPECTED_ERROR",
-                                                    message: "Unknown error occured.",
-                                                    details: nil))
+    func initialize(args: Any?) throws -> PreviewConfiguration {
+        guard let configuration = ScannerConfiguration(args) else {
+            throw ScannerError.invalidArguments(args)
         }
+
+        let scanner = AVFoundationBarcodeScanner { barcode in
+            if let barcode = barcode {
+                self.channel.invokeMethod("s", arguments: barcode)
+            }
+        }
+
+        camera = try Camera(configuration: configuration, scanner: scanner)
+
+        factory.session = camera!.session
+
+        try camera!.start()
+
+        return camera!.previewConfiguration
+    }
+
+    func start() throws {
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        try camera.start()
 	}
 
-	func pause(result: @escaping FlutterResult) {
-		reader?.pauseIfRequired()
-		result(nil)
+    func stop() throws {
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        camera.stop()
+    }
+
+    func dispose() {
+        camera?.stop()
+        camera = nil
+    }
+
+	func toggleTorch() throws -> Bool {
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        return try camera.toggleTorch()
 	}
 
-	func resume(result: @escaping FlutterResult) throws {
-		try reader?.resume()
-		result(nil)
-	}
+    func updateConfiguration(call: FlutterMethodCall) throws -> PreviewConfiguration {
+        guard let camera = camera else {
+            throw ScannerError.notInitialized
+        }
 
-	func toggleTorch(result: @escaping FlutterResult) {
-		result(reader?.toggleTorch())
-	}
+        guard let config = camera.configuration.copy(with: call.arguments) else {
+            throw ScannerError.invalidArguments(call.arguments)
+        }
 
-	func stop(result: @escaping FlutterResult) {
-		reader?.stop(pause: false)
-		reader = nil
-		result(nil)
-	}
+        try camera.configureSession(configuration: config)
+
+        return camera.previewConfiguration
+    }
+
+    func analyzeImage(on result: @escaping ([String]?) -> Void) {
+        guard picker == nil, let root = UIApplication.shared.delegate?.window??.rootViewController else {
+            return result(nil)
+        }
+
+        let visionResultHandler: BarcodeScanner.ResultHandler = { [weak self] barcode in
+            result(barcode)
+            self?.picker = nil
+        }
+
+        let imageResultHandler: ImagePicker.ResultHandler = { image in
+            guard let uiImage = image,
+                  let cgImage = uiImage.cgImage
+            else { return result(nil) }
+
+            let scanner = VisionBarcodeScanner(resultHandler: visionResultHandler)
+
+            scanner.performVisionRequest(cgImage: cgImage, orientation: .init(uiImage.imageOrientation))
+        }
+
+        if #available(iOS 14, *) {
+            picker = PHImagePicker(resultHandler: imageResultHandler)
+        } else {
+            picker = UIImagePicker(resultHandler: imageResultHandler)
+        }
+
+        picker!.show(over: root)
+    }
 }
