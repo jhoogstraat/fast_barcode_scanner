@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'types/barcode.dart';
@@ -39,6 +38,12 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   @override
   Future<void> stop() => _channel.invokeMethod('stop');
+
+  @override
+  Future<void> startDetector() => _channel.invokeMethod('startDetector');
+
+  @override
+  Future<void> stopDetector() => _channel.invokeMethod('stopDetector');
 
   @override
   Future<void> dispose() {

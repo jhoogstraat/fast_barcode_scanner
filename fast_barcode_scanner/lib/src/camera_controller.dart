@@ -57,15 +57,25 @@ abstract class CameraController {
   ///
   Future<void> dispose();
 
-  /// Resumes the scanner and preview on the platform level.
+  /// Resumes the preview on the platform level.
   ///
   ///
-  Future<void> resumeDetector();
+  Future<void> resumeCamera();
 
-  /// Pauses the scanner and preview on the platform level.
+  /// Pauses the preview on the platform level.
   ///
   ///
-  Future<void> pauseDetector();
+  Future<void> pauseCamera();
+
+  /// Resumes the scanner on the platform level.
+  ///
+  ///
+  Future<void> resumeScanner();
+
+  /// Pauses the scanner on the platform level.
+  ///
+  ///
+  Future<void> pauseScanner();
 
   /// Toggles the torch, if available.
   ///
@@ -156,7 +166,7 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<void> pauseDetector() async {
+  Future<void> pauseCamera() async {
     try {
       await _platform.stop();
       events.value = ScannerEvent.paused;
@@ -168,10 +178,32 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<void> resumeDetector() async {
+  Future<void> resumeCamera() async {
     try {
       await _platform.start();
       events.value = ScannerEvent.resumed;
+    } catch (error) {
+      state._error = error;
+      events.value = ScannerEvent.error;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> pauseScanner() async {
+    try {
+      await _platform.stopDetector();
+    } catch (error) {
+      state._error = error;
+      events.value = ScannerEvent.error;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> resumeScanner() async {
+    try {
+      await _platform.startDetector();
     } catch (error) {
       state._error = error;
       events.value = ScannerEvent.error;

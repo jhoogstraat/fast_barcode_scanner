@@ -52,6 +52,16 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('stop() has not been implemented');
   }
 
+  // Starts the detector, if it was paused.
+  Future<void> startDetector() {
+    throw UnimplementedError('startDetector() has not been implemented');
+  }
+
+  // Stops the detector. Keeps the preview running.
+  Future<void> stopDetector() {
+    throw UnimplementedError('stopDetector() has not been implemented');
+  }
+
   /// Stops and clears the camera resources.
   Future<void> dispose() {
     throw UnimplementedError('dispose() has not been implemented');

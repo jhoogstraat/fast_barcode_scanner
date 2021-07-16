@@ -44,7 +44,6 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
 
     /* State */
     private var isInitialized = false
-    private var pauseDetection = false
     private var pendingPermissionsResult: Result? = null
     private var pendingImageAnalysisResult: Result? = null
 
@@ -53,42 +52,8 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     }
 
     fun detachFromActivity() {
-        stop(null)
+        stopCamera(null)
         this.activity = null
-    }
-
-    fun initialize(args: HashMap<String, Any>, result: Result) {
-        // Make sure we are connected to an activity
-        if (activity == null)
-            return ScannerError.ActivityNotConnected().throwFlutterError(result)
-
-        // Stop running camera and start new
-        stop(null)
-
-        // Reset init state.
-        isInitialized = false
-
-        // Convert arguments to CameraConfig
-        try {
-            scannerConfiguration = ScannerConfiguration(
-                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }.toIntArray(),
-                DetectionMode.valueOf(args["mode"] as String),
-                Resolution.valueOf(args["res"] as String),
-                Framerate.valueOf(args["fps"] as String),
-                CameraPosition.valueOf(args["pos"] as String)
-            )
-        } catch (e: ScannerError) {
-            return e.throwFlutterError(result)
-        } catch (e: Exception) {
-            return ScannerError.InvalidArguments(args).throwFlutterError(result)
-        }
-
-        if (allPermissionsGranted(activity!!)) {
-            initCamera(result)
-        } else {
-            pendingPermissionsResult = result
-            activity?.requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
-        }
     }
 
     private fun allPermissionsGranted(activity: FlutterActivity) = REQUIRED_PERMISSIONS.all {
@@ -107,19 +72,76 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         return true
     }
 
-    fun start(result: Result) {
+    fun initialize(args: HashMap<String, Any>, result: Result) {
+        // Only initialize once
+        if (isInitialized)
+            return ScannerError.AlreadyRunning().throwFlutterError(result)
+
+        // Make sure we are connected to an activity
+        else if (activity == null)
+            return ScannerError.ActivityNotConnected().throwFlutterError(result)
+
+        // Convert arguments to CameraConfig
+        try {
+            scannerConfiguration = ScannerConfiguration(
+                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }.toIntArray(),
+                DetectionMode.valueOf(args["mode"] as String),
+                Resolution.valueOf(args["res"] as String),
+                Framerate.valueOf(args["fps"] as String),
+                CameraPosition.valueOf(args["pos"] as String)
+            )
+        } catch (e: ScannerError) {
+            return e.throwFlutterError(result)
+        } catch (e: Exception) {
+            return ScannerError.InvalidArguments(args).throwFlutterError(result)
+        }
+
+        // Initialize the ML KIT Barcode scanner with the options provided
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(0, *scannerConfiguration.formats)
+            .build()
+
+        barcodeDetector = MLKitBarcodeDetector(options, { codes ->
+            if (codes.isNotEmpty()) {
+                if (scannerConfiguration.mode == DetectionMode.pauseDetection) {
+                    stopDetector()
+                } else if (scannerConfiguration.mode == DetectionMode.pauseVideo) {
+                    stopCamera()
+                }
+
+                listener(codes)
+            }
+        }, {
+            Log.e(TAG, "Error in Scanner", it)
+        })
+
+        // Create Camera Thread
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
+        if (allPermissionsGranted(activity!!)) {
+            initCamera(result)
+        } else {
+            pendingPermissionsResult = result
+            activity?.requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        }
+    }
+
+    fun startCamera(result: Result) {
         if (!isInitialized)
             return ScannerError.NotInitialized().throwFlutterError(result)
-        if (cameraProvider.isBound(preview))
+        else if (cameraProvider.isBound(preview))
             return ScannerError.AlreadyRunning().throwFlutterError(result)
 
         bindCameraUseCases()
         result.success(null)
     }
 
-    fun stop(result: Result? = null) {
+    fun stopCamera(result: Result? = null) {
         if (!isInitialized) {
             result?.let { ScannerError.NotInitialized().throwFlutterError(it) }
+            return
+        } else if (!cameraProvider.isBound(preview)) {
+            result?.let {ScannerError.NotRunning().throwFlutterError(result) }
             return
         }
 
@@ -127,15 +149,42 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         result?.success(null)
     }
 
+    fun stopDetector(result: Result? = null) {
+        if (!isInitialized) {
+            result?.let { ScannerError.NotInitialized().throwFlutterError(it) }
+            return
+        } else if (!cameraProvider.isBound(imageAnalysis)) {
+            result?.let { ScannerError.NotRunning().throwFlutterError(it) }
+            return
+        }
+
+        imageAnalysis.clearAnalyzer()
+    }
+
+    fun startDetector(result: Result) {
+        if (!isInitialized)
+            return ScannerError.NotInitialized().throwFlutterError(result)
+        else if (!cameraProvider.isBound(imageAnalysis))
+            return ScannerError.NotRunning().throwFlutterError(result)
+
+        imageAnalysis.setAnalyzer(cameraExecutor, barcodeDetector)
+    }
+
     fun toggleTorch(result: Result) {
         if (!isInitialized)
             return ScannerError.NotInitialized().throwFlutterError(result)
+        else if (!cameraProvider.isBound(preview))
+            return ScannerError.NotRunning().throwFlutterError(result)
+
         camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener({
             result.success(camera.cameraInfo.torchState.value == TorchState.ON)
         }, ContextCompat.getMainExecutor(activity!!))
     }
 
     fun changeConfiguration(args: HashMap<String, Any>, result: Result) {
+        if (!isInitialized)
+            return ScannerError.NotInitialized().throwFlutterError(result)
+
         try {
             val formats = if (args.containsKey("types")) (args["types"] as ArrayList<String>).map { barcodeFormatMap[it] ?: throw ScannerError.InvalidCodeType(it) }.toIntArray() else scannerConfiguration.formats
             val detectionMode = if (args.containsKey("mode")) DetectionMode.valueOf(args["mode"] as String) else scannerConfiguration.mode
@@ -156,29 +205,31 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
             return ScannerError.InvalidArguments(args).throwFlutterError(result)
         }
 
-        initCamera(result)
+        bindCameraUseCases(result)
     }
 
     private fun initCamera(result: Result?) {
-        val options = BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(0, *scannerConfiguration.formats)
-                .build()
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
 
-        barcodeDetector = MLKitBarcodeDetector(options, { codes ->
-            if (!pauseDetection && codes.isNotEmpty()) {
-                if (scannerConfiguration.mode == DetectionMode.pauseDetection) {
-                    pauseDetection = true
-                } else if (scannerConfiguration.mode == DetectionMode.pauseVideo) {
-                    stop()
-                }
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            isInitialized = true
 
-                listener(codes)
+            try {
+                bindCameraUseCases(result)
+            } catch (e: Exception) {
+                result?.let { ScannerError.ConfigurationError(e).throwFlutterError(it) }
+                Log.d(TAG, "initCamera: Error binding use cases")
+                return@addListener
             }
-        }, {
-            Log.e(TAG, "Error in Scanner", it)
-        })
 
-        // Select camera
+        }, ContextCompat.getMainExecutor(activity!!))
+    }
+
+    private fun bindCameraUseCases(result: Result? = null) {
+        Log.d(TAG, "Requested Resolution: ${scannerConfiguration.resolution.portrait()}")
+
+        // CameraSelector
         cameraSelector = CameraSelector.Builder()
             .requireLensFacing(
                 if (scannerConfiguration.position == CameraPosition.back)
@@ -187,41 +238,6 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
                     CameraSelector.LENS_FACING_FRONT
             )
             .build()
-
-        // Create Camera Thread
-        cameraExecutor = Executors.newSingleThreadExecutor()
-
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
-        cameraProviderFuture.addListener({
-            cameraProvider = cameraProviderFuture.get()
-            isInitialized = true
-
-            try {
-                bindCameraUseCases()
-            } catch (e: Exception) {
-                result?.let { ScannerError.ConfigurationError(e).throwFlutterError(it) }
-                Log.d(TAG, "initCamera: Error binding use cases")
-                return@addListener
-            }
-
-            // Make sure detections are allowed
-            pauseDetection = false
-
-            result?.let {
-                val previewRes = preview.resolutionInfo?.resolution ?: return@addListener ScannerError.NotInitialized().throwFlutterError(it)
-                val analysisRes = imageAnalysis.resolutionInfo?.resolution ?: return@addListener ScannerError.NotInitialized().throwFlutterError(it)
-                Log.d(TAG, "Preview resolution: ${previewRes.width}x${previewRes.height}")
-                Log.d(TAG, "Analysis resolution: $analysisRes")
-                // TODO: Handle Rotation properly
-
-                previewConfiguration = PreviewConfiguration(flutterTextureEntry.id(), 0, previewRes.height, previewRes.width, analysis = analysisRes.toString())
-                it.success(previewConfiguration.toMap())
-            }
-        }, ContextCompat.getMainExecutor(activity!!))
-    }
-
-    private fun bindCameraUseCases() {
-        Log.d(TAG, "Requested Resolution: ${scannerConfiguration.resolution.portrait()}")
 
         // TODO: Handle rotation properly
         preview = Preview.Builder()
@@ -250,6 +266,17 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
 
         // Attach the viewfinder's surface provider to preview use case
         preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
+
+        result?.let {
+            val previewRes = preview.resolutionInfo?.resolution ?: return ScannerError.NotInitialized().throwFlutterError(it)
+            val analysisRes = imageAnalysis.resolutionInfo?.resolution ?: return ScannerError.NotInitialized().throwFlutterError(it)
+            Log.d(TAG, "Preview resolution: ${previewRes.width}x${previewRes.height}")
+            Log.d(TAG, "Analysis resolution: $analysisRes")
+            // TODO: Handle Rotation properly
+
+            previewConfiguration = PreviewConfiguration(flutterTextureEntry.id(), 0, previewRes.height, previewRes.width, analysis = analysisRes.toString())
+            it.success(previewConfiguration.toMap())
+        }
     }
 
     fun pickImageAndAnalyze(result: Result) {
