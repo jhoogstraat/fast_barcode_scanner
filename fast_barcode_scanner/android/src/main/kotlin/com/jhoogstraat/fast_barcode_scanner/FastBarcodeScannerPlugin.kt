@@ -1,7 +1,6 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 
-import android.util.Log
 import androidx.annotation.NonNull
 import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 import io.flutter.embedding.android.FlutterActivity
@@ -58,9 +57,10 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
     @Suppress("UNCHECKED_CAST")
     when (call.method) {
       "init" -> scanner.initialize(call.arguments as HashMap<String, Any>, result)
-      "start" -> scanner.start(result)
-      "stop" -> scanner.stop(result)
-      "pause" -> scanner.stop(result)
+      "start" -> scanner.startCamera(result)
+      "stop" -> scanner.stopCamera(result)
+      "startDetector" -> scanner.startDetector(result)
+      "stopDetector" -> scanner.stopDetector(result)
       "torch" -> scanner.toggleTorch(result)
       "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
       "pick" -> scanner.pickImageAndAnalyze(result)

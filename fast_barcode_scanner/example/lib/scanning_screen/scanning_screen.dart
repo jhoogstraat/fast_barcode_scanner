@@ -65,7 +65,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
         ],
         resolution: Resolution.hd720,
         framerate: Framerate.fps30,
-        mode: DetectionMode.pauseVideo,
+        mode: DetectionMode.pauseDetection,
         position: CameraPosition.back,
         onScan: (code) => history.add(code),
         children: const [
@@ -91,19 +91,19 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     children: [
                       ElevatedButton(
                         onPressed: () => cameraController
-                            .pauseDetector()
+                            .resumeCamera()
                             .onError((error, stackTrace) {
                           presentErrorAlert(error ?? stackTrace);
                         }),
-                        child: const Text('pause'),
+                        child: const Text('Resume Camera'),
                       ),
                       ElevatedButton(
                         onPressed: () => cameraController
-                            .resumeDetector()
+                            .resumeScanner()
                             .onError((error, stackTrace) {
                           presentErrorAlert(error ?? stackTrace);
                         }),
-                        child: const Text('resume'),
+                        child: const Text('Resume Scanner'),
                       ),
                       ValueListenableBuilder<bool>(
                         valueListenable: _torchIconState,
@@ -127,7 +127,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                       ElevatedButton(
                         onPressed: () async {
                           await cameraController
-                              .pauseDetector()
+                              .pauseScanner()
                               .onError((error, stackTrace) {});
 
                           try {
@@ -142,7 +142,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           }
 
                           cameraController
-                              .resumeDetector()
+                              .resumeScanner()
                               .onError((error, stackTrace) {});
                         },
                         child: const Text('Pick image'),
@@ -152,14 +152,14 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           final config = cameraController.state.scannerConfig;
                           if (config != null) {
                             try {
-                              cameraController.pauseDetector();
+                              cameraController.pauseScanner();
                               await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => SettingsScreen(config),
                                 ),
                               );
-                              cameraController.resumeDetector();
+                              cameraController.resumeScanner();
                             } catch (error) {
                               presentErrorAlert(error);
                             }
