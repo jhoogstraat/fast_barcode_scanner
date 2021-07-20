@@ -12,7 +12,7 @@ import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
@@ -25,7 +25,7 @@ data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val reso
 
 class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
-    private var activity: FlutterActivity? = null
+    private var activity: FlutterFragmentActivity? = null
 
     /* Camera */
     private lateinit var camera: Camera
@@ -42,7 +42,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     private var isInitialized = false
     private var pauseDetection = false
 
-    fun attachToActivity(activity: FlutterActivity) {
+    fun attachToActivity(activity: FlutterFragmentActivity) {
         this.activity = activity
     }
 
