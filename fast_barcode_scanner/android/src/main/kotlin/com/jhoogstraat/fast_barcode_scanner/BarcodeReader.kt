@@ -1,6 +1,7 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.util.Log
 import android.view.Surface
@@ -8,11 +9,11 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
+import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import io.flutter.embedding.android.FlutterFragmentActivity
 
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
@@ -25,7 +26,7 @@ data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val reso
 
 class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
-    private var activity: FlutterFragmentActivity? = null
+    private var activity: Activity? = null
 
     /* Camera */
     private lateinit var camera: Camera
@@ -42,7 +43,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     private var isInitialized = false
     private var pauseDetection = false
 
-    fun attachToActivity(activity: FlutterFragmentActivity) {
+    fun attachToActivity(activity: Activity) {
         this.activity = activity
     }
 
@@ -192,7 +193,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
 
         // Bind camera to Lifecycle
-        camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, preview, imageAnalyzer)
+        camera = cameraProvider.bindToLifecycle(activity!! as LifecycleOwner, cameraSelector, preview, imageAnalyzer)
 
         // Make sure detections are allowed
         pauseDetection = false
