@@ -8,11 +8,12 @@ import android.util.Log
 import android.view.Surface
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.jhoogstraat.fast_barcode_scanner.types.*
-import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
@@ -24,7 +25,7 @@ import java.util.concurrent.Executors
 
 class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener, ActivityResultListener {
     /* Android Lifecycle */
-    private var activity: FlutterActivity? = null
+    private var activity: Activity? = null
 
     /* Scanner configuration */
     private lateinit var scannerConfiguration: ScannerConfiguration
@@ -47,7 +48,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     private var pendingPermissionsResult: Result? = null
     private var pendingImageAnalysisResult: Result? = null
 
-    fun attachToActivity(activity: FlutterActivity) {
+    fun attachToActivity(activity: Activity) {
         this.activity = activity
     }
 
@@ -56,7 +57,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         this.activity = null
     }
 
-    private fun allPermissionsGranted(activity: FlutterActivity) = REQUIRED_PERMISSIONS.all {
+    private fun allPermissionsGranted(activity: Activity) = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(activity.applicationContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -122,7 +123,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
             initCamera(result)
         } else {
             pendingPermissionsResult = result
-            activity?.requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+            ActivityCompat.requestPermissions(activity!!, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
     }
 
@@ -255,7 +256,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         cameraProvider.unbindAll()
 
         // Bind camera to Lifecycle
-        camera = cameraProvider.bindToLifecycle(activity!!, cameraSelector, preview, imageAnalysis)
+        camera = cameraProvider.bindToLifecycle(activity!! as LifecycleOwner, cameraSelector, preview, imageAnalysis)
 
         // Setup Surface
         cameraSurfaceProvider = Preview.SurfaceProvider {
@@ -301,7 +302,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         when(resultCode) {
             Activity.RESULT_OK -> {
                 try {
-                    barcodeDetector.analyze(activity!!.context, data?.data!!)
+                    barcodeDetector.analyze(activity!!.applicationContext, data?.data!!)
                         .addOnSuccessListener { barcodes ->
                             val encoded = barcodes.firstOrNull().let { if (it != null) listOf(barcodeStringMap[it.format], it.rawValue) else null }
                             pendingImageAnalysisResult!!.success(encoded)
