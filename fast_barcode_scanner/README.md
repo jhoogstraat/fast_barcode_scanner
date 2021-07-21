@@ -6,7 +6,7 @@ A fast barcode scanner using **MLKit** (and **CameraX**) on Android and **AVFoun
 
 *Note*: If you have any issues, ideas or recommendendations, don't hesitate to create an issue or pull request on github. I am using this plugin in production myself and will actively develop and maintain it going forward.
 
-**This plugin required iOS 11.0 and Android sdk version 23 or higher.**
+**This plugin required iOS 11.0 and Android sdk version 21 or higher.**
 
 ## Installation
 Add the following line to your **pubspec.yaml**:
@@ -21,9 +21,9 @@ Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist`, like so:
 ```
 
 ### Android
-Change the minimum Android sdk version to 23 (or higher) in your `android/app/build.gradle` file.
+Change the minimum Android sdk version to 21 (or higher) in your `android/app/build.gradle` file.
 ```
-minSdkVersion 23
+minSdkVersion 21
 ```
 
 ## Usage

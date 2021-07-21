@@ -127,7 +127,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                       ElevatedButton(
                         onPressed: () async {
                           await cameraController
-                              .pauseScanner()
+                              .pauseCamera()
                               .onError((error, stackTrace) {});
 
                           try {
@@ -142,7 +142,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                           }
 
                           cameraController
-                              .resumeScanner()
+                              .resumeCamera()
                               .onError((error, stackTrace) {});
                         },
                         child: const Text('Pick image'),
