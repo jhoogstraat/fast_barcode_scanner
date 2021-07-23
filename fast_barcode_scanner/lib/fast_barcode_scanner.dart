@@ -8,6 +8,7 @@ export 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
     show
         Barcode,
         BarcodeType,
+        ImageSource,
         Framerate,
         Resolution,
         DetectionMode,

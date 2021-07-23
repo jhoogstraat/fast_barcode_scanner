@@ -1,17 +1,18 @@
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../history_screen/history_screen.dart';
 import '../scan_history.dart';
 
-class DetectionsCounter extends StatefulWidget {
-  const DetectionsCounter({Key? key}) : super(key: key);
+class ScansCounter extends StatefulWidget {
+  const ScansCounter({Key? key}) : super(key: key);
 
   @override
-  _DetectionsCounterState createState() => _DetectionsCounterState();
+  _ScansCounterState createState() => _ScansCounterState();
 }
 
-class _DetectionsCounterState extends State<DetectionsCounter> {
+class _ScansCounterState extends State<ScansCounter> {
   @override
   void initState() {
     super.initState();
@@ -39,12 +40,17 @@ class _DetectionsCounterState extends State<DetectionsCounter> {
           Expanded(
             child: barcode != null
                 ? Text(
-                    "${history.count(barcode)}x\n${describeEnum(barcode.type)}: ${barcode.value}")
+                    "${history.count(barcode)}x\n${describeEnum(barcode.type)} - ${describeEnum(barcode.valueType)}: ${barcode.value}")
                 : const SizedBox.shrink(),
           ),
           TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const HistoryScreen())),
+              onPressed: () async {
+                final cam = CameraController();
+                cam.pauseCamera();
+                await Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                cam.resumeCamera();
+              },
               child: const Text('History'))
         ],
       ),

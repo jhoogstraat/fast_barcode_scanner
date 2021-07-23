@@ -55,7 +55,7 @@ abstract class CameraController {
   /// Disposed the platform camera and resets the whole system.
   ///
   ///
-  Future<void> dispose();
+  // Future<void> dispose();
 
   /// Resumes the preview on the platform level.
   ///
@@ -98,7 +98,7 @@ abstract class CameraController {
   /// Analyze a still image, which can be chosen from an image picker.
   ///
   /// It is recommended to pause the live scanner before calling this.
-  Future<Barcode?> analyzeImage();
+  Future<List<Barcode>> scanImage(ImageSource source);
 }
 
 class _CameraController implements CameraController {
@@ -128,8 +128,6 @@ class _CameraController implements CameraController {
     events.value = ScannerEvent.init;
 
     try {
-      if (state.isInitialized) await _platform.dispose();
-
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
@@ -151,19 +149,19 @@ class _CameraController implements CameraController {
     }
   }
 
-  @override
-  Future<void> dispose() async {
-    try {
-      await _platform.dispose();
-      state._scannerConfig = null;
-      state._previewConfig = null;
-      events.value = ScannerEvent.uninitialized;
-    } catch (error) {
-      state._error = error;
-      events.value = ScannerEvent.error;
-      rethrow;
-    }
-  }
+  // @override
+  // Future<void> dispose() async {
+  //   try {
+  //     await _platform.dispose();
+  //     state._scannerConfig = null;
+  //     state._previewConfig = null;
+  //     events.value = ScannerEvent.uninitialized;
+  //   } catch (error) {
+  //     state._error = error;
+  //     events.value = ScannerEvent.error;
+  //     rethrow;
+  //   }
+  // }
 
   @override
   Future<void> pauseCamera() async {
@@ -269,9 +267,9 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<Barcode?> analyzeImage() async {
+  Future<List<Barcode>> scanImage(ImageSource source) async {
     try {
-      return _platform.analyzeImage();
+      return _platform.scanImage(source);
     } catch (error) {
       state._error = error;
       events.value = ScannerEvent.error;

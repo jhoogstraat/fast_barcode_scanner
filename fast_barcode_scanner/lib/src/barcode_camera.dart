@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner/src/camera_controller.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/foundation.dart';
@@ -10,12 +11,11 @@ import 'package:flutter/services.dart';
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
-  debugPrint("Error reading from camera: $error");
   return Padding(
     padding: const EdgeInsets.all(8.0),
     child: Center(
       child: Text(
-        "Error reading from camera...\n$error",
+        "Error:\n$error",
         style: const TextStyle(color: Colors.white),
       ),
     ),
@@ -55,6 +55,7 @@ class BarcodeCamera extends StatefulWidget {
 
 class BarcodeCameraState extends State<BarcodeCamera> {
   var _opacity = 0.0;
+  var showingError = false;
 
   final cameraController = CameraController();
 
@@ -66,12 +67,23 @@ class BarcodeCameraState extends State<BarcodeCamera> {
         .initialize(widget.types, widget.resolution, widget.framerate,
             widget.position, widget.mode, widget.onScan)
         .whenComplete(() => setState(() => _opacity = 1.0))
-        .onError((error, stackTrace) => setState(() {}));
+        .onError((error, stackTrace) => setState(() => showingError = true));
+
+    cameraController.events.addListener(onScannerEvent);
+  }
+
+  void onScannerEvent() {
+    if (cameraController.events.value != ScannerEvent.error && showingError) {
+      setState(() => showingError = false);
+    } else if (cameraController.events.value == ScannerEvent.error) {
+      setState(() => showingError = true);
+    }
   }
 
   @override
   void dispose() {
-    cameraController.dispose().onError((error, stackTrace) => setState(() {}));
+    cameraController.pauseCamera();
+    cameraController.events.removeListener(onScannerEvent);
     super.dispose();
   }
 
@@ -83,8 +95,11 @@ class BarcodeCameraState extends State<BarcodeCamera> {
       child: AnimatedOpacity(
         opacity: _opacity,
         duration: const Duration(milliseconds: 260),
-        child: cameraState.hasError
-            ? widget.onError(context, cameraState.error!)
+        child: cameraController.events.value == ScannerEvent.error
+            ? widget.onError(
+                context,
+                cameraState.error ?? "Unknown error occured",
+              )
             : Stack(
                 fit: StackFit.expand,
                 children: [

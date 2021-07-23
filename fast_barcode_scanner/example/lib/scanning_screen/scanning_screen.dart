@@ -1,9 +1,10 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../scan_history.dart';
 import '../settings_screen/settings_screen.dart';
-import 'detections_counter.dart';
+import 'scans_counter.dart';
 
 class ScanningScreen extends StatefulWidget {
   const ScanningScreen({Key? key}) : super(key: key);
@@ -15,7 +16,7 @@ class ScanningScreen extends StatefulWidget {
 class _ScanningScreenState extends State<ScanningScreen> {
   final _torchIconState = ValueNotifier(false);
 
-  final cameraController = CameraController();
+  final cam = CameraController();
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
           IconButton(
             icon: const Icon(Icons.info),
             onPressed: () {
-              final preview = cameraController.state.previewConfig;
+              final preview = cam.state.previewConfig;
               if (preview != null) {
                 showDialog(
                   context: context,
@@ -81,7 +82,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const DetectionsCounter(),
+              const ScansCounter(),
               const Divider(height: 1),
               const SizedBox(height: 10),
               Row(
@@ -90,31 +91,25 @@ class _ScanningScreenState extends State<ScanningScreen> {
                   Column(
                     children: [
                       ElevatedButton(
-                        onPressed: () => cameraController
-                            .resumeCamera()
-                            .onError((error, stackTrace) {
-                          presentErrorAlert(error ?? stackTrace);
-                        }),
+                        onPressed: () =>
+                            cam.resumeCamera().catchError(presentErrorAlert),
                         child: const Text('Resume Camera'),
                       ),
                       ElevatedButton(
-                        onPressed: () => cameraController
-                            .resumeScanner()
-                            .onError((error, stackTrace) {
-                          presentErrorAlert(error ?? stackTrace);
-                        }),
+                        onPressed: () =>
+                            cam.resumeScanner().catchError(presentErrorAlert),
                         child: const Text('Resume Scanner'),
                       ),
                       ValueListenableBuilder<bool>(
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
                           onPressed: () async {
-                            cameraController
+                            cam
                                 .toggleTorch()
                                 .then((torchState) =>
                                     _torchIconState.value = torchState)
                                 .catchError((error, stackTrace) {
-                              presentErrorAlert(error ?? stackTrace);
+                              presentErrorAlert(error, stackTrace);
                             });
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
@@ -126,49 +121,80 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          await cameraController
+                          await cam
                               .pauseCamera()
-                              .onError((error, stackTrace) {});
+                              .catchError((_, __) {}); // swallow errors
 
-                          try {
-                            final barcode =
-                                await cameraController.analyzeImage();
+                          final dialog = SimpleDialog(
+                            children: [
+                              SimpleDialogOption(
+                                child: const Text('Choose path'),
+                                onPressed: () => Navigator.pop(context, 1),
+                              ),
+                              SimpleDialogOption(
+                                child: const Text('Choose image'),
+                                onPressed: () => Navigator.pop(context, 2),
+                              ),
+                              SimpleDialogOption(
+                                child: const Text('Open Picker'),
+                                onPressed: () => Navigator.pop(context, 3),
+                              )
+                            ],
+                          );
 
-                            if (barcode != null) {
-                              history.add(barcode);
-                            }
-                          } catch (error) {
-                            presentErrorAlert(error);
+                          final result = await showDialog<int>(
+                              context: context, builder: (_) => dialog);
+                          final ImageSource source;
+
+                          switch (result) {
+                            case 1:
+                              source = ImageSource.path('path');
+                              break;
+                            case 2:
+                              final bytes = await rootBundle.load(
+                                'assets/barcode.jpg',
+                              );
+                              source = ImageSource.binary(bytes);
+                              break;
+                            case 3:
+                              source = ImageSource.picker();
+                              break;
+                            default:
+                              cam.resumeCamera();
+                              return;
                           }
 
-                          cameraController
-                              .resumeCamera()
-                              .onError((error, stackTrace) {});
+                          try {
+                            final barcodes = await cam.scanImage(source);
+                            for (final barcode in barcodes) {
+                              history.add(barcode);
+                            }
+
+                            await cam.resumeCamera();
+                          } catch (error, stack) {
+                            presentErrorAlert(error, stack);
+                          }
                         },
                         child: const Text('Pick image'),
                       ),
                       ElevatedButton(
                         onPressed: () async {
-                          final config = cameraController.state.scannerConfig;
+                          final config = cam.state.scannerConfig;
                           if (config != null) {
-                            try {
-                              cameraController.pauseScanner();
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => SettingsScreen(config),
-                                ),
-                              );
-                              cameraController.resumeScanner();
-                            } catch (error) {
-                              presentErrorAlert(error);
-                            }
-                          } else {
-                            presentErrorAlert(
-                                "No configuration set.\nIs the scanner initialized?");
+                            // swallow errors
+                            cam.pauseCamera().catchError((_, __) {});
+
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SettingsScreen(config),
+                              ),
+                            );
+
+                            cam.resumeCamera().catchError(presentErrorAlert);
                           }
                         },
-                        child: const Text('updateConfiguration'),
+                        child: const Text('Update Configuration'),
                       )
                     ],
                   ),
@@ -181,7 +207,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
     );
   }
 
-  void presentErrorAlert(Object error) {
+  void presentErrorAlert(Object error, StackTrace stack) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

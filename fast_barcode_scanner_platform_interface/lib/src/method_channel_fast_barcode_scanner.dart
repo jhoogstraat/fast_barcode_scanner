@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:flutter/services.dart';
 
 import 'types/barcode.dart';
@@ -45,12 +46,12 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   @override
   Future<void> stopDetector() => _channel.invokeMethod('stopDetector');
 
-  @override
-  Future<void> dispose() {
-    _channel.setMethodCallHandler(null);
-    _onDetectHandler = null;
-    return _channel.invokeMethod('stop');
-  }
+  // @override
+  // Future<void> dispose() {
+  //   _channel.setMethodCallHandler(null);
+  //   _onDetectHandler = null;
+  //   return _channel.invokeMethod('stop');
+  // }
 
   @override
   Future<bool> toggleTorch() =>
@@ -79,16 +80,19 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       _onDetectHandler = handler;
 
   @override
-  Future<Barcode?> analyzeImage() async {
-    final List<dynamic>? response = await _channel.invokeMethod('pick');
-    return response != null ? Barcode(response) : null;
+  Future<List<Barcode>> scanImage(ImageSource source) async {
+    final List<Object?> response = await _channel.invokeMethod(
+      'scan',
+      source.data,
+    );
+    return response.map((e) => Barcode(e as List<dynamic>)).toList();
   }
 
   Future<void> handlePlatformMethodCall(MethodCall call) async {
     switch (call.method) {
       case 's':
         // This might fail if the code type is not present in the list of available code types.
-        // Barcode init will throw in this case.
+        // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
         try {
           final barcode = Barcode(call.arguments);
           _onDetectHandler?.call(barcode);
