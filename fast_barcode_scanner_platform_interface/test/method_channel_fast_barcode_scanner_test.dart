@@ -241,17 +241,21 @@ void main() {
       mockChannel = MethodChannelMock(
           channelName: 'com.jhoogstraat/fast_barcode_scanner',
           methods: {
-            'scan': ["ean13", "1234"]
+            'scan': [
+              ["ean13", "1234"]
+            ]
           });
 
       final actualBarcode = await scanner.scanImage(ImageSource.picker());
 
       expect(mockChannel.log, [isMethodCall('scan', arguments: null)]);
-      expect(actualBarcode, Barcode(["ean13", "1234"]));
+      expect(actualBarcode, [
+        Barcode(["ean13", "1234"])
+      ]);
     });
 
     test(
-        'Should invoke `scan` with picker and return null if null is responded from the platform',
+        'Should invoke `scan` with picker and return [] if null is responded from the platform',
         () async {
       mockChannel = MethodChannelMock(
           channelName: 'com.jhoogstraat/fast_barcode_scanner',
@@ -260,11 +264,11 @@ void main() {
       final actualBarcode = await scanner.scanImage(ImageSource.picker());
 
       expect(mockChannel.log, [isMethodCall('scan', arguments: null)]);
-      expect(actualBarcode, null);
+      expect(actualBarcode, []);
     });
 
     test(
-        'Should invoke `scan` with path and return null if null is responded from the platform',
+        'Should invoke `scan` with path and return [] if null is responded from the platform',
         () async {
       mockChannel = MethodChannelMock(
           channelName: 'com.jhoogstraat/fast_barcode_scanner',
@@ -276,7 +280,7 @@ void main() {
 
       expect(mockChannel.log,
           [isMethodCall('scan', arguments: "/test/path/img.jpg")]);
-      expect(actualBarcode, null);
+      expect(actualBarcode, []);
     });
 
     test(
@@ -295,7 +299,7 @@ void main() {
       expect(mockChannel.log, [
         isMethodCall('scan', arguments: [bytes.buffer.asUint8List(), 10])
       ]);
-      expect(actualBarcode, null);
+      expect(actualBarcode, []);
     });
 
     test('Should invoke `start`', () async {
