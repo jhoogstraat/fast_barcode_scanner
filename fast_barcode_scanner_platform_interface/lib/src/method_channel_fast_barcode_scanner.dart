@@ -81,11 +81,13 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   @override
   Future<List<Barcode>> scanImage(ImageSource source) async {
-    final List<Object?> response = await _channel.invokeMethod(
+    final List<Object?>? response = await _channel.invokeMethod(
       'scan',
       source.data,
     );
-    return response.map((e) => Barcode(e as List<dynamic>)).toList();
+
+    return response?.map((e) => Barcode(e as List<dynamic>)).toList() ??
+        const [];
   }
 
   Future<void> handlePlatformMethodCall(MethodCall call) async {
