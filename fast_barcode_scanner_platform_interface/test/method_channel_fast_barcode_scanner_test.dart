@@ -1,8 +1,13 @@
+import 'dart:io';
+import 'dart:ui';
+
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:fast_barcode_scanner_platform_interface/src/method_channel_fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'resources/load_resources.dart';
 import 'utils/method_channel_mock.dart';
 
 void main() {
@@ -40,7 +45,7 @@ void main() {
       );
 
       // Assert
-      expect(mockChannel.log, <Matcher>[
+      expect(mockChannel.log, [
         isMethodCall('init', arguments: {
           'types': ['ean13'],
           'mode': 'pauseDetection',
@@ -183,8 +188,7 @@ void main() {
       final response = await scanner.toggleTorch();
 
       // Assert
-      expect(
-          mockChannel.log, <Matcher>[isMethodCall('torch', arguments: null)]);
+      expect(mockChannel.log, [isMethodCall('torch', arguments: null)]);
       expect(true, response);
     });
 
@@ -212,7 +216,7 @@ void main() {
       );
 
       // Assert
-      expect(mockChannel.log, <Matcher>[
+      expect(mockChannel.log, [
         isMethodCall('config', arguments: {
           'mode': 'continuous',
           'fps': 'fps120',
@@ -232,29 +236,65 @@ void main() {
       );
     });
 
-    test('Should invoke `pick` and respond with a detected barcode', () async {
+    test('Should invoke `scan` with picker and respond with a detected barcode',
+        () async {
       mockChannel = MethodChannelMock(
           channelName: 'com.jhoogstraat/fast_barcode_scanner',
           methods: {
-            'pick': ["ean13", "1234"]
+            'scan': ["ean13", "1234"]
           });
 
-      final actualBarcode = await scanner.analyzeImage();
+      final actualBarcode = await scanner.scanImage(ImageSource.picker());
 
-      expect(mockChannel.log, <Matcher>[isMethodCall('pick', arguments: null)]);
+      expect(mockChannel.log, [isMethodCall('scan', arguments: null)]);
       expect(actualBarcode, Barcode(["ean13", "1234"]));
     });
 
     test(
-        'Should invoke `pick` and return null if null is responded from the platform',
+        'Should invoke `scan` with picker and return null if null is responded from the platform',
         () async {
       mockChannel = MethodChannelMock(
           channelName: 'com.jhoogstraat/fast_barcode_scanner',
-          methods: {'pick': null});
+          methods: {'scan': null});
 
-      final actualBarcode = await scanner.analyzeImage();
+      final actualBarcode = await scanner.scanImage(ImageSource.picker());
 
-      expect(mockChannel.log, <Matcher>[isMethodCall('pick', arguments: null)]);
+      expect(mockChannel.log, [isMethodCall('scan', arguments: null)]);
+      expect(actualBarcode, null);
+    });
+
+    test(
+        'Should invoke `scan` with path and return null if null is responded from the platform',
+        () async {
+      mockChannel = MethodChannelMock(
+          channelName: 'com.jhoogstraat/fast_barcode_scanner',
+          methods: {'scan': null});
+
+      final actualBarcode = await scanner.scanImage(
+        ImageSource.path("/test/path/img.jpg"),
+      );
+
+      expect(mockChannel.log,
+          [isMethodCall('scan', arguments: "/test/path/img.jpg")]);
+      expect(actualBarcode, null);
+    });
+
+    test(
+        'Should invoke `scan` with image and return null if null is responded from the platform',
+        () async {
+      mockChannel = MethodChannelMock(
+          channelName: 'com.jhoogstraat/fast_barcode_scanner',
+          methods: {'scan': null});
+
+      final image = await loadBarcodeImage();
+      final bytes = await image.toByteData();
+      final source = ImageSource.binary(bytes!, rotation: 10);
+
+      final actualBarcode = await scanner.scanImage(source);
+
+      expect(mockChannel.log, [
+        isMethodCall('scan', arguments: [bytes.buffer.asUint8List(), 10])
+      ]);
       expect(actualBarcode, null);
     });
 
@@ -270,7 +310,7 @@ void main() {
       // Assert
       expect(
         mockChannel.log,
-        <Matcher>[isMethodCall('start', arguments: null)],
+        [isMethodCall('start', arguments: null)],
       );
     });
 
@@ -286,7 +326,7 @@ void main() {
       // Assert
       expect(
         mockChannel.log,
-        <Matcher>[isMethodCall('stop', arguments: null)],
+        [isMethodCall('stop', arguments: null)],
       );
     });
   });

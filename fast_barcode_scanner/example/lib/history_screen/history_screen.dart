@@ -40,12 +40,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
       body: ListView.separated(
-        itemBuilder: (ctx, idx) => ListTile(
-          title: Text(history.scans[idx].value),
-          subtitle: Text(
-            describeEnum(history.scans[history.scans.length - idx - 1].type),
-          ),
-        ),
+        itemBuilder: (ctx, idx) {
+          final scan = history.scans[history.scans.length - idx - 1];
+          return ListTile(
+            title: Text(scan.value),
+            subtitle: Text(
+                describeEnum(scan.type) + " - " + describeEnum(scan.valueType)),
+          );
+        },
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemCount: history.scans.length,
       ),

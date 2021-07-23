@@ -1,6 +1,8 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.content.Context
+import android.media.Image
+import android.media.ImageReader
 import android.net.Uri
 import android.os.AsyncTask
 import android.util.Log
@@ -30,6 +32,10 @@ class MLKitBarcodeDetector(
                 .addOnSuccessListener(successListener)
                 .addOnFailureListener(failureListener)
                 .addOnCompleteListener { imageProxy.close() }
+    }
+
+    fun analyze(image: InputImage) : Task<List<Barcode>> {
+        return scanner.process(image)
     }
 
     fun analyze(context: Context, uri: Uri) : Task<List<Barcode>> {

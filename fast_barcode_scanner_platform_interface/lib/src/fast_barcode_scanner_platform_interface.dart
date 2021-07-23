@@ -1,3 +1,4 @@
+import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'types/barcode.dart';
@@ -63,9 +64,9 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   }
 
   /// Stops and clears the camera resources.
-  Future<void> dispose() {
-    throw UnimplementedError('dispose() has not been implemented');
-  }
+  // Future<void> dispose() {
+  //   throw UnimplementedError('dispose() has not been implemented');
+  // }
 
   /// Toggles the torch, if available.
   Future<bool> toggleTorch() {
@@ -89,7 +90,7 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('setOnDetectHandler() has not been implemented');
   }
 
-  Future<Barcode?> analyzeImage() {
-    throw UnimplementedError('analyzeImage() has not been implemented');
+  Future<List<Barcode>> scanImage(ImageSource source) {
+    throw UnimplementedError('scanImage() has not been implemented');
   }
 }
