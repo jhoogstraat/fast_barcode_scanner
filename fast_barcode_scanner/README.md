@@ -8,6 +8,9 @@ A fast barcode scanner using **MLKit** (and **CameraX**) on Android and **AVFoun
 
 **This plugin required iOS 11.0 and Android sdk version 21 or higher.**
 
+### If you like my work, please consider to
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jhoogstraat)
+
 ## Installation
 Add the following line to your **pubspec.yaml**:
 ```yaml
