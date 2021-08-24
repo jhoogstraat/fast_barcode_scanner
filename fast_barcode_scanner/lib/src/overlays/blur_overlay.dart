@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// Blurs the preview when a barcode is detected
 ///
 /// NOTICE: Does not work on iOS currently
-/// (see: https://github.com/flutter/flutter/issues/43902)
+/// https://github.com/flutter/flutter/issues/43902
 class BlurPreviewOverlay extends StatelessWidget {
   final double blurAmount;
   final Duration duration;
@@ -18,7 +18,7 @@ class BlurPreviewOverlay extends StatelessWidget {
     this.duration = const Duration(milliseconds: 500),
   }) : super(key: key);
 
-  bool shouldBlur(event) => event == ScannerEvent.codeFound;
+  bool shouldBlur(event) => event == ScannerEvent.detected;
 
   @override
   Widget build(BuildContext context) {

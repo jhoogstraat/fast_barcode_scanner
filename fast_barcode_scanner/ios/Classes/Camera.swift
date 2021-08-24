@@ -88,6 +88,7 @@ class Camera: NSObject {
             case .continuous: break
             }
         }
+        
         session.commitConfiguration()
 
         // Find the optimal settings for the requested resolution and frame rate.
@@ -151,33 +152,12 @@ class Camera: NSObject {
     }
 
     // MARK: KVO and Notifications
-//    private var keyValueObservations = [NSKeyValueObservation]()
-
     func addObservers() {
-//        var keyValueObservation: NSKeyValueObservation
-
-//        keyValueObservation = session.observe(\.isRunning, options: .new) { _, change in
-//            guard let isRunning = change.newValue else { return }
-//            self.changeHandler(.init(isRunning: isRunning, isTorchOn: self.deviceInput.device.torchMode == .on))
-//        }
-//        keyValueObservations.append(keyValueObservation)
-//
-//        keyValueObservation = deviceInput.device.observe(\.torchMode, options: .new) { _, change in
-//            guard let isTorchOn = change.newValue else { return }
-//            self.changeHandler(.init(isRunning: self.session.isRunning, isTorchOn: isTorchOn == .on))
-//        }
-//        keyValueObservations.append(keyValueObservation)
-
         NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError), name: .AVCaptureSessionRuntimeError, object: session)
     }
 
     func removeObservers() {
         NotificationCenter.default.removeObserver(self, name: .AVCaptureSessionRuntimeError, object: session)
-
-//        for keyValueObservation in keyValueObservations {
-//            keyValueObservation.invalidate()
-//        }
-//        keyValueObservations.removeAll()
     }
 
     // MARK: AVError handling
