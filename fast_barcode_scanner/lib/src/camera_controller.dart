@@ -4,23 +4,26 @@ import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+import '../fast_barcode_scanner.dart';
 import 'types/scanner_configuration.dart';
-import 'types/scanner_event.dart';
 
-class CameraState {
+class ScannerState {
   PreviewConfiguration? _previewConfig;
   ScannerConfiguration? _scannerConfig;
-  bool _torchState = false;
+  bool _torch = false;
   Object? _error;
 
   PreviewConfiguration? get previewConfig => _previewConfig;
   ScannerConfiguration? get scannerConfig => _scannerConfig;
-  bool get torchState => _torchState;
+  bool get torchState => _torch;
   bool get isInitialized => _previewConfig != null;
   bool get hasError => _error != null;
   Object? get error => _error;
 }
 
+/// Middleman, handling the communication with native platforms.
+///
+/// Allows for custom backends.
 abstract class CameraController {
   static final _instance = _CameraController._internal();
 
@@ -30,9 +33,9 @@ abstract class CameraController {
   ///
   /// Contains information about the configuration, torch,
   /// errors and events.
-  final state = CameraState();
+  final state = ScannerState();
 
-  /// A [ValueNotifier] for camera events.
+  /// A [ValueNotifier] for camera state events.
   ///
   ///
   final ValueNotifier<ScannerEvent> events =
@@ -52,10 +55,10 @@ abstract class CameraController {
     void Function(Barcode)? onScan,
   );
 
-  /// Disposed the platform camera and resets the whole system.
+  /// Stops the camera and disposes all associated resources.
   ///
   ///
-  // Future<void> dispose();
+  Future<void> dispose();
 
   /// Resumes the preview on the platform level.
   ///
@@ -108,12 +111,19 @@ class _CameraController implements CameraController {
       FastBarcodeScannerPlatform.instance;
 
   @override
-  final state = CameraState();
+  final state = ScannerState();
 
   @override
   final events = ValueNotifier(ScannerEvent.uninitialized);
 
+  /// Indicates if the torch is currently switching.
+  ///
+  /// Used to prevent command-spamming.
   bool _togglingTorch = false;
+
+  /// Indicates if the camera is currently configuring itself.
+  ///
+  /// Used to prevent command-spamming.
   bool _configuring = false;
 
   @override
@@ -125,14 +135,12 @@ class _CameraController implements CameraController {
     DetectionMode detectionMode,
     void Function(Barcode)? onScan,
   ) async {
-    events.value = ScannerEvent.init;
-
     try {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
       _platform.setOnDetectHandler((code) {
-        events.value = ScannerEvent.codeFound;
+        events.value = ScannerEvent.detected;
         onScan?.call(code);
       });
 
@@ -149,19 +157,21 @@ class _CameraController implements CameraController {
     }
   }
 
-  // @override
-  // Future<void> dispose() async {
-  //   try {
-  //     await _platform.dispose();
-  //     state._scannerConfig = null;
-  //     state._previewConfig = null;
-  //     events.value = ScannerEvent.uninitialized;
-  //   } catch (error) {
-  //     state._error = error;
-  //     events.value = ScannerEvent.error;
-  //     rethrow;
-  //   }
-  // }
+  @override
+  Future<void> dispose() async {
+    try {
+      await _platform.dispose();
+      state._scannerConfig = null;
+      state._previewConfig = null;
+      state._torch = false;
+      state._error = null;
+      events.value = ScannerEvent.uninitialized;
+    } catch (error) {
+      state._error = error;
+      events.value = ScannerEvent.error;
+      rethrow;
+    }
+  }
 
   @override
   Future<void> pauseCamera() async {
@@ -215,7 +225,7 @@ class _CameraController implements CameraController {
       _togglingTorch = true;
 
       try {
-        state._torchState = await _platform.toggleTorch();
+        state._torch = await _platform.toggleTorch();
       } catch (error) {
         state._error = error;
         events.value = ScannerEvent.error;
@@ -225,7 +235,7 @@ class _CameraController implements CameraController {
       _togglingTorch = false;
     }
 
-    return state._torchState;
+    return state._torch;
   }
 
   @override

@@ -1,5 +1,8 @@
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 
+/// The configuration of the camera and scanner.
+///
+/// Holds detailed information about the running camera session.
 class ScannerConfiguration {
   const ScannerConfiguration(
     this.types,

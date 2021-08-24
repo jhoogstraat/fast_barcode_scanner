@@ -46,12 +46,12 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   @override
   Future<void> stopDetector() => _channel.invokeMethod('stopDetector');
 
-  // @override
-  // Future<void> dispose() {
-  //   _channel.setMethodCallHandler(null);
-  //   _onDetectHandler = null;
-  //   return _channel.invokeMethod('stop');
-  // }
+  @override
+  Future<void> dispose() {
+    _channel.setMethodCallHandler(null);
+    _onDetectHandler = null;
+    return _channel.invokeMethod('stop');
+  }
 
   @override
   Future<bool> toggleTorch() =>

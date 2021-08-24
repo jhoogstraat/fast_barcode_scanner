@@ -64,9 +64,9 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
   }
 
   /// Stops and clears the camera resources.
-  // Future<void> dispose() {
-  //   throw UnimplementedError('dispose() has not been implemented');
-  // }
+  Future<void> dispose() {
+    throw UnimplementedError('dispose() has not been implemented');
+  }
 
   /// Toggles the torch, if available.
   Future<bool> toggleTorch() {
