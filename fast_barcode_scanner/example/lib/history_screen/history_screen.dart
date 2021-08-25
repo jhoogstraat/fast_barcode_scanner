@@ -44,8 +44,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           final scan = history.scans[history.scans.length - idx - 1];
           return ListTile(
             title: Text(scan.value),
-            subtitle: Text(
-                describeEnum(scan.type) + " - " + describeEnum(scan.valueType)),
+            subtitle: Text(describeEnum(scan.type) +
+                " - " +
+                (scan.valueType != null ? describeEnum(scan.valueType!) : "")),
           );
         },
         separatorBuilder: (_, __) => const Divider(height: 1),

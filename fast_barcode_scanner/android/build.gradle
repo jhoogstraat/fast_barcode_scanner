@@ -52,6 +52,5 @@ dependencies {
     def mlkit_version = "17.0.0"
     implementation "androidx.camera:camera-camera2:$camerax_version"
     implementation "androidx.camera:camera-lifecycle:$camerax_version"
-
     implementation "com.google.mlkit:barcode-scanning:$mlkit_version"
 }

@@ -10,9 +10,7 @@ class Barcode {
   Barcode(List<dynamic> data)
       : type = BarcodeType.values.firstWhere((e) => describeEnum(e) == data[0]),
         value = data[1],
-        valueType = data.length > 2
-            ? BarcodeValueType.values[data[2]]
-            : BarcodeValueType.unknown;
+        valueType = data.length > 2 ? BarcodeValueType.values[data[2]] : null;
 
   /// The type of the barcode.
   ///
@@ -26,13 +24,18 @@ class Barcode {
 
   /// The type of content of the barcode.
   ///
-  ///
-  final BarcodeValueType valueType;
+  /// On available on Android.
+  /// Returns [null] on iOS.
+  final BarcodeValueType? valueType;
 
   @override
   bool operator ==(Object other) =>
-      other is Barcode && other.type == type && other.value == value;
+      other is Barcode &&
+      other.type == type &&
+      other.value == value &&
+      other.valueType == valueType;
 
   @override
-  int get hashCode => super.hashCode ^ type.hashCode ^ value.hashCode;
+  int get hashCode =>
+      super.hashCode ^ type.hashCode ^ value.hashCode ^ valueType.hashCode;
 }
