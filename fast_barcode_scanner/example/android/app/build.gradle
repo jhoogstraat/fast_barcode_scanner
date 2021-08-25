@@ -44,7 +44,7 @@ android {
     defaultConfig {
         applicationId "com.jhoogstraat.fast_barcode_scanner_example"
         minSdkVersion 23
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }

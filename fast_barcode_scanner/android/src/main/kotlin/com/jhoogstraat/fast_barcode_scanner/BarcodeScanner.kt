@@ -85,8 +85,8 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
 
     fun initialize(args: HashMap<String, Any>, result: Result) {
         // Only initialize once
-        // if (isInitialized)
-        // return returnCameraDetails(result)
+        if (isInitialized)
+            return sendCameraDetails(result)
 
         // Make sure we are connected to an activity
         if (activity == null)
