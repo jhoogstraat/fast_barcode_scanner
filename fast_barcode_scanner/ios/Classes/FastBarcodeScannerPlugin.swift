@@ -32,10 +32,12 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "init": response = try initialize(args: call.arguments).asDict
             case "start": try start()
             case "stop": try stop()
+            case "startDetector": try startDetector()
+            case "stopDetector": try stopDetector()
             case "torch": response = try toggleTorch()
-            case "config":  response = try updateConfiguration(call: call).asDict
+            case "config": response = try updateConfiguration(call: call).asDict
+            case "scan": analyzeImage(on: result); return
             case "dispose": dispose()
-            case "pick": analyzeImage(on: result); return
             default: response = FlutterMethodNotImplemented
             }
 
@@ -47,23 +49,28 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	}
 
     func initialize(args: Any?) throws -> PreviewConfiguration {
+        guard camera == nil else {
+            throw ScannerError.alreadyInitialized
+        }
+
         guard let configuration = ScannerConfiguration(args) else {
             throw ScannerError.invalidArguments(args)
         }
 
-        let scanner = AVFoundationBarcodeScanner { barcode in
-            if let barcode = barcode {
-                self.channel.invokeMethod("s", arguments: barcode)
-            }
+        let scanner = AVFoundationBarcodeScanner { [unowned self] barcode in
+            self.channel.invokeMethod("s", arguments: barcode)
         }
 
-        camera = try Camera(configuration: configuration, scanner: scanner)
+        let camera = try Camera(configuration: configuration, scanner: scanner)
 
-        factory.session = camera!.session
+        // AVCaptureVideoPreviewLayer shows the current camera's session
+        factory.session = camera.session
 
-        try camera!.start()
+        try camera.start()
 
-        return camera!.previewConfiguration
+        self.camera = camera
+
+        return camera.previewConfiguration
     }
 
     func start() throws {
@@ -79,6 +86,16 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
     func dispose() {
         camera?.stop()
         camera = nil
+    }
+
+    func startDetector() throws {
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        camera.startDetector()
+    }
+
+    func stopDetector() throws {
+        guard let camera = camera else { throw ScannerError.notInitialized }
+        camera.stopDetector()
     }
 
 	func toggleTorch() throws -> Bool {
@@ -100,24 +117,24 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         return camera.previewConfiguration
     }
 
-    func analyzeImage(on result: @escaping ([String]?) -> Void) {
+    func analyzeImage(on resultHandler: @escaping (Any?) -> Void) {
         guard picker == nil, let root = UIApplication.shared.delegate?.window??.rootViewController else {
-            return result(nil)
+            return resultHandler(nil)
         }
 
-        let visionResultHandler: BarcodeScanner.ResultHandler = { [weak self] barcode in
-            result(barcode)
+        let visionResultHandler: BarcodeScanner.ResultHandler = { [weak self] result in
+            resultHandler(result)
             self?.picker = nil
         }
 
         let imageResultHandler: ImagePicker.ResultHandler = { image in
             guard let uiImage = image,
                   let cgImage = uiImage.cgImage
-            else { return result(nil) }
+            else { return resultHandler(nil) }
 
             let scanner = VisionBarcodeScanner(resultHandler: visionResultHandler)
 
-            scanner.performVisionRequest(cgImage: cgImage, orientation: .init(uiImage.imageOrientation))
+            scanner.process(cgImage)
         }
 
         if #available(iOS 14, *) {

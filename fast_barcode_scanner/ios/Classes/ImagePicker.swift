@@ -1,7 +1,7 @@
 import PhotosUI
 
 protocol ImagePicker {
-    typealias ResultHandler = ((UIImage?) -> Void)
+    typealias ResultHandler = (UIImage?) -> Void
 
     var resultHandler: ResultHandler { get }
 

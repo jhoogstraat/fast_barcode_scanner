@@ -11,7 +11,7 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
     var onDetection: (() -> Void)?
 
     private let output = AVCaptureMetadataOutput()
-    private let metadataQueue = DispatchQueue(label: "fast_barcode_scanner.metadata.serial")
+    private let metadataQueue = DispatchQueue(label: "fast_barcode_scanner.avfoundation_scanner.serial")
     private var _session: AVCaptureSession?
     private var _symbologies = [String]()
     private var isPaused = false

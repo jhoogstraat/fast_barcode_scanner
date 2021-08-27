@@ -1,7 +1,7 @@
 import AVFoundation
 
 protocol BarcodeScanner {
-    typealias ResultHandler = (([String]?) -> Void)
+    typealias ResultHandler = (Any?) -> Void
 
     var session: AVCaptureSession? { get set }
 
@@ -12,6 +12,4 @@ protocol BarcodeScanner {
     func start()
 
     func stop()
-
-    var resultHandler: ResultHandler { get }
 }
