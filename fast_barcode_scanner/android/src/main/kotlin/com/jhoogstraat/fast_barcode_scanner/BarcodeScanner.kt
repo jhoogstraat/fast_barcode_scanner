@@ -74,7 +74,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                initCamera(pendingPermissionsResult)
+                bindCamera(pendingPermissionsResult)
             } else {
                 pendingPermissionsResult?.let { ScannerError.Unauthorized().throwFlutterError(it) }
             }
@@ -83,11 +83,8 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         return true
     }
 
+    // Result is used exclusively for throwing errors.
     fun initialize(args: HashMap<String, Any>, result: Result) {
-        // Only initialize once
-        if (isInitialized)
-            return sendCameraDetails(result)
-
         // Make sure we are connected to an activity
         if (activity == null)
             return ScannerError.ActivityNotConnected().throwFlutterError(result)
@@ -130,7 +127,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         if (allPermissionsGranted(activity!!)) {
-            initCamera(result)
+            bindCamera(result)
         } else {
             pendingPermissionsResult = result
             ActivityCompat.requestPermissions(activity!!, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
@@ -219,7 +216,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         bindCameraUseCases(result)
     }
 
-    private fun initCamera(result: Result?) {
+    private fun bindCamera(result: Result?) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
 
         cameraProviderFuture.addListener({
@@ -229,15 +226,13 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
                 bindCameraUseCases(result)
                 isInitialized = true
             } catch (e: Exception) {
+                Log.d(TAG, "bindCamera: Error binding use cases: $e")
                 result?.let { ScannerError.ConfigurationError(e).throwFlutterError(it) }
-                Log.d(TAG, "initCamera: Error binding use cases")
                 return@addListener
             }
 
         }, ContextCompat.getMainExecutor(activity!!))
     }
-
-
 
     private fun bindCameraUseCases(result: Result? = null) {
         Log.d(TAG, "Requested Resolution: ${scannerConfiguration.resolution.portrait()}")
@@ -280,7 +275,7 @@ class BarcodeScanner(private val flutterTextureEntry: TextureRegistry.SurfaceTex
         // Attach the viewfinder's surface provider to preview use case
         preview.setSurfaceProvider(cameraExecutor, cameraSurfaceProvider)
 
-        result?.also { sendCameraDetails(it) }
+        result?.let { sendCameraDetails(it) }
     }
 
     fun scanImage(source: Any?, result: Result) {
