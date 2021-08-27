@@ -6,8 +6,12 @@
 //
 
 import AVFoundation
+import Flutter
 
-class PreviewView: UIView {
+class PreviewView: UIView, FlutterPlatformView {
+    func view() -> UIView {
+        self
+    }
 
     // MARK: AVFoundation session
     var session: AVCaptureSession? {

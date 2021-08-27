@@ -8,7 +8,17 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
     var onDetection: (() -> Void)?
 
     private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "fast_barcode_scanner.data.serial")
+    private let outputQueue = DispatchQueue(label: "fast_barcode_scanner.data.serial", qos: .userInitiated,
+                                                     attributes: [], autoreleaseFrequency: .workItem)
+    private lazy var visionBarcodesRequests: [VNDetectBarcodesRequest]! = {
+        let request = VNDetectBarcodesRequest(completionHandler: handleVisionRequestUpdate)
+        if #available(iOS 15.0, *) {
+            request.revision = VNDetectBarcodesRequestRevision2
+        }
+        return [request]
+    }()
+    private let visionSequenceHandler = VNSequenceRequestHandler()
+
     private var _session: AVCaptureSession?
     private var _symbologies = [String]()
 
@@ -17,12 +27,12 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
         set {
             _symbologies = newValue
 
-            // This will just ignore all incomptaible types
-            barcodeDetectionRequest.symbologies = newValue.compactMap({ vnBarcodeSymbols[$0] })
+            // This will just ignore all incompatible types
+            visionBarcodesRequests.first!.symbologies = newValue.compactMap({ vnBarcodeSymbols[$0] })
 
             // UPC-A is reported as EAN-13
-            if newValue.contains("upcA") && !barcodeDetectionRequest.symbologies.contains(.EAN13) {
-                barcodeDetectionRequest.symbologies.append(.EAN13)
+            if newValue.contains("upcA") && !visionBarcodesRequests.first!.symbologies.contains(.EAN13) {
+                visionBarcodesRequests.first!.symbologies.append(.EAN13)
             }
         }
     }
@@ -37,11 +47,6 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
         }
     }
 
-    /// - Tag: ConfigureCompletionHandler
-    private lazy var barcodeDetectionRequest: VNDetectBarcodesRequest = {
-        VNDetectBarcodesRequest(completionHandler: self.handleDetectedBarcodes)
-    }()
-
     init(resultHandler: @escaping ResultHandler) {
         self.resultHandler = resultHandler
         super.init()
@@ -50,56 +55,47 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
     }
 
     func start() {
-        output.setSampleBufferDelegate(self, queue: queue)
+        output.setSampleBufferDelegate(self, queue: outputQueue)
     }
 
     func stop() {
         output.setSampleBufferDelegate(nil, queue: nil)
     }
 
-    // MARK: Vision handling
-
-    func performVisionRequest(cgImage: CGImage, orientation: CGImagePropertyOrientation) {
-        let imageRequestHandler = VNImageRequestHandler(cgImage: cgImage,
-                                                        orientation: orientation,
-                                                        options: [:])
-        perform(requestHandler: imageRequestHandler)
-    }
-
-    private func perform(requestHandler: VNImageRequestHandler) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try requestHandler.perform([self.barcodeDetectionRequest])
-            } catch let error as NSError {
-                print("Failed to perform image request \(error)")
-                return self.resultHandler(nil)
-            }
-        }
-    }
-
-    private func handleDetectedBarcodes(request: VNRequest?, error: Error?) {
-        if let nsError = error as NSError? {
-            print("Error performing detection \(nsError)")
-        } else {
-            guard let results = request?.results as? [VNBarcodeObservation],
-                  let barcode = results.max(by: { $0.confidence < $1.confidence }),
-                  let type = flutterVNSymbols[barcode.symbology],
-                  let value = barcode.payloadStringValue
-            else {
-                resultHandler(nil)
-                return
-            }
-
-            onDetection?()
-            resultHandler([type, value])
-        }
-    }
-
     // MARK: AVFoundation capture output
+
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-            perform(requestHandler: handler)
+            do {
+                try visionSequenceHandler.perform(visionBarcodesRequests, on: pixelBuffer)
+            } catch {
+                handleVisionRequestUpdate(request: nil, error: error)
+            }
+        }
+    }
+
+    // MARK: Still image processing
+
+    func process(_ cgImage: CGImage) {
+        do {
+            try visionSequenceHandler.perform(visionBarcodesRequests, on: cgImage)
+        } catch {
+            handleVisionRequestUpdate(request: nil, error: error)
+        }
+    }
+
+    // MARK: Callback
+
+    private func handleVisionRequestUpdate(request: VNRequest?, error: Error?) {
+        if let results = request?.results as? [VNBarcodeObservation],
+              let barcode = results.max(by: { $0.confidence < $1.confidence }),
+              let type = flutterVNSymbols[barcode.symbology],
+              let value = barcode.payloadStringValue {
+            onDetection?()
+            resultHandler([type, value])
+        } else {
+            print("Error scanning image: \(String(describing: error))")
+            resultHandler(error)
         }
     }
 }

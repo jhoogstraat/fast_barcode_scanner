@@ -14,6 +14,8 @@ extension Error {
 
 enum ScannerError: Error {
     case notInitialized
+    case alreadyInitialized
+    case notRunning
     case alreadyRunning
     case noInputDeviceForConfig(ScannerConfiguration)
     case cameraNotSuitable(Resolution, Framerate)
@@ -21,12 +23,22 @@ enum ScannerError: Error {
     case configurationError(String)
     case invalidArguments(Any?)
     case invalidCodeType(String)
+    case loadingFailed
+    case analysisFailed(Error)
 
     var flutterError: FlutterError {
         switch self {
         case .notInitialized:
             return FlutterError(code: "NOT_INITIALIZED",
                                 message: "Camera has not been initialized",
+                                details: nil)
+        case .alreadyInitialized:
+            return FlutterError(code: "ALREADY_INITIALIZED",
+                                message: "Camera is already initialized",
+                                details: nil)
+        case .notRunning:
+            return FlutterError(code: "NOT_RUNNING",
+                                message: "Camera is not running",
                                 details: nil)
         case .alreadyRunning:
             return FlutterError(code: "ALREADY_RUNNING",
@@ -59,6 +71,14 @@ enum ScannerError: Error {
             return FlutterError(code: "INVALID_CODE",
                                 message: "Invalid code type \(type)",
                                 details: nil)
+        case .loadingFailed:
+            return FlutterError(code: "LOADING_FAILED",
+                                message: "Could not load asset",
+                                details: nil)
+        case .analysisFailed(let error):
+            return FlutterError(code: "ANALYSIS_FAILED",
+                                message: "Could not analyse asset",
+                                details: error.localizedDescription)
         }
     }
 }

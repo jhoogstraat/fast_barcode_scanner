@@ -5,7 +5,7 @@ class Camera: NSObject {
     // MARK: Session Management
 
     let session = AVCaptureSession()
-    private let sessionQueue = DispatchQueue(label: "fbs.session.serial")
+    private let sessionQueue = DispatchQueue(label: "fast_barcode_scanner.session.serial")
     private var deviceInput: AVCaptureDeviceInput!
     private var captureDevice: AVCaptureDevice { deviceInput.device }
     private var scanner: BarcodeScanner
@@ -41,6 +41,10 @@ class Camera: NSObject {
                 throw ScannerError.unauthorized
             }
         }
+    }
+
+    deinit {
+        removeObservers()
     }
 
     func configureSession(configuration: ScannerConfiguration) throws {
@@ -88,7 +92,7 @@ class Camera: NSObject {
             case .continuous: break
             }
         }
-        
+
         session.commitConfiguration()
 
         // Find the optimal settings for the requested resolution and frame rate.
@@ -149,6 +153,14 @@ class Camera: NSObject {
         captureDevice.unlockForConfiguration()
 
         return captureDevice.torchMode == .on
+    }
+
+    func startDetector() {
+        scanner.start()
+    }
+
+    func stopDetector() {
+        scanner.stop()
     }
 
     // MARK: KVO and Notifications
