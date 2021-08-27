@@ -97,7 +97,6 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
       encodeBarcodes(barcodes)?.also { channel.invokeMethod("s", it) }
     }
 
-    Log.d("ME", "initialize: $configuration")
     scanner.attachToActivity(binding.activity)
     binding.addRequestPermissionsResultListener(scanner)
     binding.addActivityResultListener(scanner)

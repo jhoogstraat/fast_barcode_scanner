@@ -43,8 +43,6 @@ abstract class CameraController {
 
   /// Informs the platform to initialize the camera.
   ///
-  /// The camera is disposed and reinitialized when calling this
-  /// method repeatedly.
   /// Events and errors are received via the current state's eventNotifier.
   Future<void> initialize(
     List<BarcodeType> types,

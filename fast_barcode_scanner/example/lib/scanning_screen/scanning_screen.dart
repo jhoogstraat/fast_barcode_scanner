@@ -15,6 +15,8 @@ class ScanningScreen extends StatefulWidget {
 
 class _ScanningScreenState extends State<ScanningScreen> {
   final _torchIconState = ValueNotifier(false);
+  final _cameraRunning = ValueNotifier(true);
+  final _scannerRunning = ValueNotifier(true);
 
   final cam = CameraController();
 
@@ -90,20 +92,51 @@ class _ScanningScreenState extends State<ScanningScreen> {
                 children: [
                   Column(
                     children: [
-                      ElevatedButton(
-                        onPressed: () =>
-                            cam.resumeCamera().catchError(presentErrorAlert),
-                        child: const Text('Resume Camera'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () =>
-                            cam.resumeScanner().catchError(presentErrorAlert),
-                        child: const Text('Resume Scanner'),
-                      ),
+                      ValueListenableBuilder<bool>(
+                          valueListenable: _cameraRunning,
+                          builder: (context, isRunning, _) {
+                            return ElevatedButton(
+                              onPressed: () {
+                                final future = isRunning
+                                    ? cam.pauseCamera()
+                                    : cam.resumeCamera();
+
+                                future
+                                    .then((_) =>
+                                        _cameraRunning.value = !isRunning)
+                                    .catchError((error, stackTrace) {
+                                  presentErrorAlert(error, stackTrace);
+                                });
+                              },
+                              child: Text(
+                                  isRunning ? 'Pause Camera' : 'Resume Camera'),
+                            );
+                          }),
+                      ValueListenableBuilder<bool>(
+                          valueListenable: _scannerRunning,
+                          builder: (context, isRunning, _) {
+                            return ElevatedButton(
+                              onPressed: () {
+                                final future = isRunning
+                                    ? cam.pauseScanner()
+                                    : cam.resumeScanner();
+
+                                future
+                                    .then((_) =>
+                                        _scannerRunning.value = !isRunning)
+                                    .catchError((error, stackTrace) {
+                                  presentErrorAlert(error, stackTrace);
+                                });
+                              },
+                              child: Text(isRunning
+                                  ? 'Pause Scanner'
+                                  : 'Resume Scanner'),
+                            );
+                          }),
                       ValueListenableBuilder<bool>(
                         valueListenable: _torchIconState,
                         builder: (context, isTorchActive, _) => ElevatedButton(
-                          onPressed: () async {
+                          onPressed: () {
                             cam
                                 .toggleTorch()
                                 .then((torchState) =>

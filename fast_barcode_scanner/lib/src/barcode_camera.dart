@@ -36,6 +36,7 @@ class BarcodeCamera extends StatefulWidget {
     this.position = CameraPosition.back,
     this.onScan,
     this.children = const [],
+    this.dispose = true,
     ErrorCallback? onError,
   })  : onError = onError ?? _defaultOnError,
         super(key: key);
@@ -48,6 +49,7 @@ class BarcodeCamera extends StatefulWidget {
   final void Function(Barcode)? onScan;
   final List<Widget> children;
   final ErrorCallback onError;
+  final bool dispose;
 
   @override
   BarcodeCameraState createState() => BarcodeCameraState();
@@ -90,7 +92,12 @@ class BarcodeCameraState extends State<BarcodeCamera> {
 
   @override
   void dispose() {
-    cameraController.pauseCamera();
+    if (widget.dispose) {
+      cameraController.dispose();
+    } else {
+      cameraController.pauseCamera();
+    }
+
     cameraController.events.removeListener(onScannerEvent);
     super.dispose();
   }
