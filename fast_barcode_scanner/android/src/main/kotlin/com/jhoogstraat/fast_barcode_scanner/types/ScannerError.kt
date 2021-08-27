@@ -7,6 +7,7 @@ import kotlin.collections.HashMap
 
 sealed class ScannerError : Throwable() {
     class NotInitialized : ScannerError()
+    class AlreadyInitialized : ScannerError()
     class NotRunning : ScannerError()
     class AlreadyRunning : ScannerError()
     class NoInputDeviceForConfig(val configuration: ScannerConfiguration) : ScannerError()
@@ -23,6 +24,7 @@ sealed class ScannerError : Throwable() {
 
     fun throwFlutterError(result: Result) {
         return when(this) {
+            is AlreadyInitialized -> result.error("ALREADY_INITIALIZED", "Camera is already initialized", null)
             is NotInitialized -> result.error("NOT_INITIALIZED", "Camera has not been initialized", null)
             is NotRunning -> result.error("NOT_RUNNING", "Camera is not running", null)
             is AlreadyRunning -> result.error("ALREADY_RUNNING", "Camera is already running", null)
