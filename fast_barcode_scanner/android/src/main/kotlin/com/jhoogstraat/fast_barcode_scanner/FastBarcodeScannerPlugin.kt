@@ -83,6 +83,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
     scanner = BarcodeScanner(flutterPluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
       encodeBarcodes(barcodes)?.also { channel.invokeMethod("s", it) }
     }
+    result.success(null)
   }
 
   private fun dispose(result: Result? = null) {
