@@ -94,6 +94,7 @@ abstract class CameraController {
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
+    void Function(Barcode)? onScan,
   }) {
     throw UnimplementedError();
   }
@@ -126,6 +127,9 @@ class _CameraController implements CameraController {
   /// Used to prevent command-spamming.
   bool _configuring = false;
 
+  /// User-defined handler, called when a barcode is detected
+  void Function(Barcode)? _onScan;
+
   @override
   Future<void> initialize(
     List<BarcodeType> types,
@@ -139,10 +143,7 @@ class _CameraController implements CameraController {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      _platform.setOnDetectHandler((code) {
-        events.value = ScannerEvent.detected;
-        onScan?.call(code);
-      });
+      _platform.setOnDetectHandler(_onDetectHandler);
 
       state._scannerConfig = ScannerConfiguration(
           types, resolution, framerate, position, detectionMode);
@@ -239,13 +240,13 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<void> configure({
-    List<BarcodeType>? types,
-    Resolution? resolution,
-    Framerate? framerate,
-    DetectionMode? detectionMode,
-    CameraPosition? position,
-  }) async {
+  Future<void> configure(
+      {List<BarcodeType>? types,
+      Resolution? resolution,
+      Framerate? framerate,
+      DetectionMode? detectionMode,
+      CameraPosition? position,
+      void Function(Barcode)? onScan}) async {
     if (state.isInitialized && !_configuring) {
       final _scannerConfig = state._scannerConfig!;
       _configuring = true;
@@ -266,6 +267,10 @@ class _CameraController implements CameraController {
           detectionMode: detectionMode,
           position: position,
         );
+
+        if (onScan != null) {
+          _onScan = onScan;
+        }
       } catch (error) {
         state._error = error;
         events.value = ScannerEvent.error;
@@ -285,5 +290,10 @@ class _CameraController implements CameraController {
       events.value = ScannerEvent.error;
       rethrow;
     }
+  }
+
+  void _onDetectHandler(Barcode code) {
+    events.value = ScannerEvent.detected;
+    _onScan?.call(code);
   }
 }

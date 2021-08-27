@@ -63,9 +63,17 @@ class BarcodeCameraState extends State<BarcodeCamera> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    cameraController
-        .initialize(widget.types, widget.resolution, widget.framerate,
-            widget.position, widget.mode, widget.onScan)
+    final configurationFuture = cameraController.state.isInitialized
+        ? cameraController.configure(
+            types: widget.types,
+            resolution: widget.resolution,
+            framerate: widget.framerate,
+            position: widget.position,
+            onScan: widget.onScan)
+        : cameraController.initialize(widget.types, widget.resolution,
+            widget.framerate, widget.position, widget.mode, widget.onScan);
+
+    configurationFuture
         .whenComplete(() => setState(() => _opacity = 1.0))
         .onError((error, stackTrace) => setState(() => showingError = true));
 
