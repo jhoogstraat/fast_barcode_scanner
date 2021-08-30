@@ -1,11 +1,7 @@
-package com.jhoogstraat.fast_barcode_scanner
+package com.jhoogstraat.fast_barcode_scanner.scanner
 
 import android.content.Context
-import android.media.Image
-import android.media.ImageReader
 import android.net.Uri
-import android.os.AsyncTask
-import android.util.Log
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -16,10 +12,8 @@ import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import io.flutter.plugin.common.MethodChannel.Result
-import java.io.IOException
 
-class MLKitBarcodeDetector(
+class MLKitBarcodeScanner(
         options: BarcodeScannerOptions,
         private val successListener: OnSuccessListener<List<Barcode>>,
         private val failureListener: OnFailureListener

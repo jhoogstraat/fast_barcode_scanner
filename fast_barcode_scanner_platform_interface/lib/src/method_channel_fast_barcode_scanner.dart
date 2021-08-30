@@ -50,7 +50,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   Future<void> dispose() {
     _channel.setMethodCallHandler(null);
     _onDetectHandler = null;
-    return _channel.invokeMethod('stop');
+    return _channel.invokeMethod('dispose');
   }
 
   @override

@@ -1,118 +1,173 @@
 package com.jhoogstraat.fast_barcode_scanner
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.annotation.NonNull
+import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.Continuation
+import com.google.android.gms.tasks.Task
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.barcode.Barcode
-import com.jhoogstraat.fast_barcode_scanner.types.ScannerError
+import com.jhoogstraat.fast_barcode_scanner.types.PreviewConfiguration
+import com.jhoogstraat.fast_barcode_scanner.types.ScannerException
 import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
+import java.lang.Exception
+
 /** FastBarcodeScannerPlugin */
 class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
-  private lateinit var channel : MethodChannel
-  private lateinit var pluginBinding: FlutterPlugin.FlutterPluginBinding
-  private var activityBinding: ActivityPluginBinding? = null
+  private var commandChannel : MethodChannel? = null
+  private var detectionChannel: EventChannel? = null
+  private var barcodeStreamHandler: BarcodeStreamHandler? = null
 
-  private var scanner: BarcodeScanner? = null
+  private var pluginBinding: FlutterPlugin.FlutterPluginBinding? = null
+  private var activityBinding: ActivityPluginBinding? = null
+  private var camera: Camera? = null
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
-    this.pluginBinding = flutterPluginBinding
+    commandChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner")
+    detectionChannel = EventChannel(flutterPluginBinding.binaryMessenger, "com.jhoogstraat/fast_barcode_scanner/detections")
+    barcodeStreamHandler = BarcodeStreamHandler()
+    pluginBinding = flutterPluginBinding
+
+    commandChannel!!.setMethodCallHandler(this)
+    detectionChannel!!.setStreamHandler(barcodeStreamHandler)
   }
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    // TODO: Remove plugin binding?
-    dispose()
+    commandChannel?.setMethodCallHandler(null)
+    detectionChannel?.setStreamHandler(null)
+
+    commandChannel = null
+    detectionChannel = null
+    barcodeStreamHandler = null
+    pluginBinding = null
   }
 
-  // https://flutter.dev/docs/development/packages-and-plugins/plugin-api-migration#uiactivity-plugin
-  // https://github.com/flutter/plugins/blob/master/packages/camera/android/src/main/java/io/flutter/plugins/camera/CameraPlugin.java
   override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    channel.setMethodCallHandler(this)
+    commandChannel!!.setMethodCallHandler(this)
+    detectionChannel!!.setStreamHandler(BarcodeStreamHandler())
     activityBinding = binding
   }
 
   override fun onDetachedFromActivity() {
-    channel.setMethodCallHandler(null)
-    scanner?.detachFromActivity()
+    dispose()
     activityBinding = null
-  }
-
-  override fun onDetachedFromActivityForConfigChanges() {
-    onDetachedFromActivity()
   }
 
   override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
     onAttachedToActivity(binding)
   }
 
+  override fun onDetachedFromActivityForConfigChanges() {
+    onDetachedFromActivity()
+  }
+
   @Suppress("UNCHECKED_CAST")
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-    if (call.method == "init") {
-      initialize(call.arguments as HashMap<String, Any>, result)
-    } else {
-      val scanner = this.scanner ?: run {
-        ScannerError.NotInitialized().throwFlutterError(result)
+    try {
+      var response: Any? = null
+
+      if (call.method == "init") {
+        initialize(call.arguments as HashMap<String, Any>)
+          .addOnSuccessListener { result.success(it.toMap()) }
+          .addOnFailureListener { (it as ScannerException).throwFlutterError(result) }
         return
+      } else {
+        val camera = this.camera ?: throw ScannerException.NotInitialized()
+        when (call.method) {
+          "start" -> camera.startCamera()
+          "stop" -> camera.stopCamera()
+          "startDetector" -> camera.startDetector()
+          "stopDetector" -> camera.stopDetector()
+          "config" -> response = camera.changeConfiguration(call.arguments as HashMap<String, Any>).toMap()
+          "torch" -> {
+            camera.toggleTorch()
+              .addListener({ result.success(camera.torchState) }, ContextCompat.getMainExecutor(camera.activity))
+            return
+          }
+          "scan" -> {
+            camera.scanImage(call.arguments)
+              .addOnSuccessListener { barcodes ->
+                result.success(barcodes.map { listOf(barcodeStringMap[it.format], it.rawValue, it.valueType) })
+              }
+              .addOnFailureListener { ScannerException.AnalysisFailed(it).throwFlutterError(result) }
+            return
+          }
+          "dispose" -> dispose(result)
+          else -> result.notImplemented()
+        }
       }
 
-      when (call.method) {
-        "start" -> scanner.startCamera(result)
-        "stop" -> scanner.stopCamera(result)
-        "startDetector" -> scanner.startDetector(result)
-        "stopDetector" -> scanner.stopDetector(result)
-        "torch" -> scanner.toggleTorch(result)
-        "config" -> scanner.changeConfiguration(call.arguments as HashMap<String, Any>, result)
-        "scan" -> scanner.scanImage(call.arguments, result)
-        "dispose" -> dispose(result)
-        else -> result.notImplemented()
-      }
+      Log.d("PLUGIN", "onMethodCall: $response")
+      result.success(response)
+    } catch (e: ScannerException) {
+      Log.d("PLUGIN", "onMethodCall.catch(ScannerException): $e ${e.stackTraceToString()}")
+      e.throwFlutterError(result)
+    } catch(e: Exception) {
+      Log.d("PLUGIN", "onMethodCall.catch(Exception): $e ${e.stackTraceToString()}")
+      result.error("UNKNOWN", "Unknown error occurred", e.localizedMessage)
     }
   }
 
-  private fun encodeBarcodes(barcodes: List<Barcode>) : List<*>? {
-    return barcodes.firstOrNull()?.let { listOf(barcodeStringMap[it.format], it.rawValue, it.valueType) }
-  }
+  @SuppressLint("UnsafeOptInUsageError")
+  private fun initialize(configuration: HashMap<String, Any>): Task<PreviewConfiguration> {
+    if (this.camera != null)
+      throw ScannerException.AlreadyInitialized()
 
-  private fun initialize(configuration: HashMap<String, Any>, result: Result) {
-    if (scanner != null) {
-      ScannerError.AlreadyInitialized().throwFlutterError(result)
-      return
+    val pluginBinding = this.pluginBinding ?: throw ScannerException.ActivityNotConnected()
+    val activityBinding = this.activityBinding ?: throw ScannerException.ActivityNotConnected()
+
+    val camera = Camera(activityBinding.activity, pluginBinding.textureRegistry.createSurfaceTexture(), configuration) { barcodes ->
+      barcodes.firstOrNull()?.also {
+        barcodeStreamHandler?.push(listOf(barcodeStringMap[it.format], it.rawValue, it.valueType) )
+      }
     }
 
-    val binding = activityBinding ?: run {
-      ScannerError.ActivityNotConnected().throwFlutterError(result)
-      return
-    }
+    activityBinding.addActivityResultListener(camera)
+    activityBinding.addRequestPermissionsResultListener(camera)
 
-    val scanner = BarcodeScanner(pluginBinding.textureRegistry.createSurfaceTexture()) { barcodes ->
-      encodeBarcodes(barcodes)?.also { channel.invokeMethod("s", it) }
-    }
+    this.camera = camera
 
-    scanner.attachToActivity(binding.activity)
-    binding.addRequestPermissionsResultListener(scanner)
-    binding.addActivityResultListener(scanner)
-
-    this.scanner = scanner
-
-    scanner.initialize(configuration, result)
+    return camera.requestPermissions()
+      .continueWithTask { camera.loadCamera() }
   }
 
   private fun dispose(result: Result? = null) {
-    scanner?.let {
+    camera?.also {
       it.stopCamera()
-      activityBinding?.removeRequestPermissionsResultListener(it)
       activityBinding?.removeActivityResultListener(it)
     }
-    scanner = null
+
+    camera = null
+
     result?.success(null)
+  }
+
+}
+
+class BarcodeStreamHandler: EventChannel.StreamHandler {
+  private var eventSink: EventChannel.EventSink? = null
+
+  fun push(barcodes: List<*> ) {
+    eventSink?.success(barcodes)
+  }
+
+  override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+    eventSink = events
+  }
+
+  override fun onCancel(arguments: Any?) {
+    eventSink = null
   }
 }
