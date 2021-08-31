@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
+import com.google.mlkit.vision.barcode.Barcode
 import com.jhoogstraat.fast_barcode_scanner.types.PreviewConfiguration
 import com.jhoogstraat.fast_barcode_scanner.types.ScannerException
 import com.jhoogstraat.fast_barcode_scanner.types.barcodeStringMap
@@ -75,13 +76,12 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
 
     @Suppress("UNCHECKED_CAST")
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        Log.d("PLUGIN", "onMethodCall: ${call.method} - Request - ${call.arguments}")
         try {
             var response: Any? = null
 
             if (call.method == "init") {
                 initialize(call.arguments as HashMap<String, Any>)
-                    .addOnSuccessListener { result.success(it.toMap()); Log.d("PLUGIN", "onMethodCall: ${call.method} - Response - ${it.toMap()}") }
+                    .addOnSuccessListener { result.success(it.toMap()) }
                     .addOnFailureListener { throw it }
                 return
             } else {
@@ -96,7 +96,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
                     "torch" -> {
                         camera.toggleTorch()
                             .addListener(
-                                { result.success(camera.torchState); Log.d("PLUGIN", "onMethodCall: ${call.method} - Response - ${camera.torchState}") },
+                                { result.success(camera.torchState) },
                                 ContextCompat.getMainExecutor(camera.activity)
                             )
                         return
@@ -111,13 +111,6 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
                                         it.valueType
                                     )
                                 })
-                                Log.d("PLUGIN", "onMethodCall: ${call.method} - Response - ${barcodes.map {
-                                    listOf(
-                                        barcodeStringMap[it.format],
-                                        it.rawValue,
-                                        it.valueType
-                                    )
-                                }}")
                             }
                             .addOnFailureListener {
                                 throw ScannerException.AnalysisFailed(it)
@@ -128,14 +121,10 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
                     else -> result.notImplemented()
                 }
             }
-
-            Log.d("PLUGIN", "onMethodCall: ${call.method} - Response - $response")
             result.success(response)
         } catch (e: ScannerException) {
-            Log.d("PLUGIN", "onMethodCall: ${call.method} - Catch - ${e.stackTraceToString()}")
             e.throwFlutterError(result)
         } catch (e: Exception) {
-            Log.d("PLUGIN", "onMethodCall: ${call.method} - Catch - ${e.stackTraceToString()}")
             ScannerException.Unknown(e).throwFlutterError(result)
         }
     }
@@ -153,15 +142,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
             pluginBinding.textureRegistry.createSurfaceTexture(),
             configuration
         ) { barcodes ->
-            barcodes.firstOrNull()?.also {
-                barcodeStreamHandler?.push(
-                    listOf(
-                        barcodeStringMap[it.format],
-                        it.rawValue,
-                        it.valueType
-                    )
-                )
-            }
+            barcodeStreamHandler?.push(barcodes.first())
         }
 
         activityBinding.addActivityResultListener(camera)
@@ -187,8 +168,14 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
 class BarcodeStreamHandler : EventChannel.StreamHandler {
     private var eventSink: EventChannel.EventSink? = null
 
-    fun push(barcodes: List<*>) {
-        eventSink?.success(barcodes)
+    fun push(barcode: Barcode) {
+        eventSink?.success(
+            listOf(
+                barcodeStringMap[barcode.format],
+                barcode.rawValue,
+                barcode.valueType
+            )
+        )
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {

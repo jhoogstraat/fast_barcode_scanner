@@ -68,7 +68,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
         ],
         resolution: Resolution.hd720,
         framerate: Framerate.fps30,
-        mode: DetectionMode.pauseDetection,
+        mode: DetectionMode.pauseVideo,
         position: CameraPosition.back,
         onScan: (code) => history.add(code),
         children: const [
