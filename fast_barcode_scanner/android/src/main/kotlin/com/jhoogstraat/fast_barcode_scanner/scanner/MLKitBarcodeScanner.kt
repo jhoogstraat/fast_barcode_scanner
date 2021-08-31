@@ -14,25 +14,30 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 
 class MLKitBarcodeScanner(
-        options: BarcodeScannerOptions,
-        private val successListener: OnSuccessListener<List<Barcode>>,
-        private val failureListener: OnFailureListener
+    options: BarcodeScannerOptions,
+    private val successListener: OnSuccessListener<List<Barcode>>,
+    private val failureListener: OnFailureListener
 ) : ImageAnalysis.Analyzer {
     private val scanner = BarcodeScanning.getClient(options)
 
     @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
-        scanner.process(InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees))
-                .addOnSuccessListener(successListener)
-                .addOnFailureListener(failureListener)
-                .addOnCompleteListener { imageProxy.close() }
+        scanner.process(
+            InputImage.fromMediaImage(
+                imageProxy.image!!,
+                imageProxy.imageInfo.rotationDegrees
+            )
+        )
+            .addOnSuccessListener(successListener)
+            .addOnFailureListener(failureListener)
+            .addOnCompleteListener { imageProxy.close() }
     }
 
-    fun analyze(image: InputImage) : Task<List<Barcode>> {
+    fun analyze(image: InputImage): Task<List<Barcode>> {
         return scanner.process(image)
     }
 
-    fun analyze(context: Context, uri: Uri) : Task<List<Barcode>> {
+    fun analyze(context: Context, uri: Uri): Task<List<Barcode>> {
         return scanner.process(InputImage.fromFilePath(context, uri))
     }
 }

@@ -8,7 +8,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
 import android.view.Surface
-import androidx.camera.camera2.Camera2Config
 import androidx.camera.core.*
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -17,25 +16,26 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
-import com.google.android.gms.tasks.Tasks
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.common.InputImage
 import com.jhoogstraat.fast_barcode_scanner.scanner.MLKitBarcodeScanner
 import com.jhoogstraat.fast_barcode_scanner.types.*
-import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
+import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import io.flutter.view.TextureRegistry
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class Camera(val activity: Activity,
-             private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry,
-             args: HashMap<String, Any>,
-             private val listener: (List<Barcode>) -> Unit) :
+class Camera(
+    val activity: Activity,
+    private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry,
+    args: HashMap<String, Any>,
+    private val listener: (List<Barcode>) -> Unit
+) :
     RequestPermissionsResultListener,
     ActivityResultListener {
 
@@ -75,7 +75,8 @@ class Camera(val activity: Activity,
     init {
         try {
             scannerConfiguration = ScannerConfiguration(
-                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }.toIntArray(),
+                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }
+                    .toIntArray(),
                 DetectionMode.valueOf(args["mode"] as String),
                 Resolution.valueOf(args["res"] as String),
                 Framerate.valueOf(args["fps"] as String),
@@ -110,8 +111,16 @@ class Camera(val activity: Activity,
     fun requestPermissions(): Task<Unit> {
         permissionsCompleter = TaskCompletionSource<Unit>()
 
-        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(activity, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE)
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_DENIED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                REQUIRED_PERMISSIONS,
+                PERMISSIONS_REQUEST_CODE
+            )
         } else {
             permissionsCompleter!!.setResult(null)
         }
@@ -124,13 +133,16 @@ class Camera(val activity: Activity,
      * Separating it into a dedicated method
      * allows to load the camera at any time.
      */
-    @androidx.camera.lifecycle.ExperimentalCameraProviderConfiguration
     fun loadCamera(): Task<PreviewConfiguration> {
-        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) == PackageManager.PERMISSION_DENIED) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_DENIED
+        ) {
             throw ScannerException.Unauthorized()
         }
 
-        ProcessCameraProvider.configureInstance(Camera2Config.defaultConfig())
+        // ProcessCameraProvider.configureInstance(Camera2Config.defaultConfig())
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
 
         val loadingCompleter = TaskCompletionSource<PreviewConfiguration>()
@@ -177,7 +189,12 @@ class Camera(val activity: Activity,
         cameraProvider.unbindAll()
 
         // Bind camera to Lifecycle
-        camera = cameraProvider.bindToLifecycle(activity as LifecycleOwner, cameraSelector, preview, imageAnalysis)
+        camera = cameraProvider.bindToLifecycle(
+            activity as LifecycleOwner,
+            cameraSelector,
+            preview,
+            imageAnalysis
+        )
 
         // Setup Surface
         cameraSurfaceProvider = Preview.SurfaceProvider {
@@ -194,7 +211,7 @@ class Camera(val activity: Activity,
         if (!isInitialized)
             throw ScannerException.NotInitialized()
         else if (isRunning)
-            throw ScannerException.AlreadyRunning()
+            return
 
         bindCameraUseCases()
     }
@@ -203,7 +220,7 @@ class Camera(val activity: Activity,
         if (!isInitialized) {
             throw ScannerException.NotInitialized()
         } else if (!isRunning) {
-            throw ScannerException.NotRunning()
+            return
         }
 
         cameraProvider.unbindAll()
@@ -212,8 +229,10 @@ class Camera(val activity: Activity,
     fun startDetector() {
         if (!isInitialized)
             throw ScannerException.NotInitialized()
-        else if (!isRunning || cameraProvider.isBound(imageAnalysis))
+        else if (!isRunning)
             throw ScannerException.NotRunning()
+        else if (cameraProvider.isBound(imageAnalysis))
+            return
 
         imageAnalysis.setAnalyzer(cameraExecutor, barcodeScanner)
     }
@@ -221,13 +240,15 @@ class Camera(val activity: Activity,
     fun stopDetector() {
         if (!isInitialized)
             throw ScannerException.NotInitialized()
-        else if (!isRunning || !cameraProvider.isBound(imageAnalysis))
+        else if (!isRunning)
             throw ScannerException.NotRunning()
+        else if (!cameraProvider.isBound(imageAnalysis))
+            return
 
         imageAnalysis.clearAnalyzer()
     }
 
-    fun toggleTorch() : ListenableFuture<Void> {
+    fun toggleTorch(): ListenableFuture<Void> {
         if (!isInitialized)
             throw ScannerException.NotInitialized()
         else if (!isRunning)
@@ -241,11 +262,17 @@ class Camera(val activity: Activity,
             throw ScannerException.NotInitialized()
 
         try {
-            val formats = if (args.containsKey("types")) (args["types"] as ArrayList<String>).map { barcodeFormatMap[it] ?: throw ScannerException.InvalidCodeType(it) }.toIntArray() else scannerConfiguration.formats
-            val detectionMode = if (args.containsKey("mode")) DetectionMode.valueOf(args["mode"] as String) else scannerConfiguration.mode
-            val resolution = if (args.containsKey("res")) Resolution.valueOf(args["res"] as String) else scannerConfiguration.resolution
-            val framerate = if (args.containsKey("fps")) Framerate.valueOf(args["fps"] as String) else scannerConfiguration.framerate
-            val position = if (args.containsKey("pos")) CameraPosition.valueOf(args["pos"] as String) else scannerConfiguration.position
+            val formats = if (args.containsKey("types")) (args["types"] as ArrayList<String>).map {
+                barcodeFormatMap[it] ?: throw ScannerException.InvalidCodeType(it)
+            }.toIntArray() else scannerConfiguration.formats
+            val detectionMode =
+                if (args.containsKey("mode")) DetectionMode.valueOf(args["mode"] as String) else scannerConfiguration.mode
+            val resolution =
+                if (args.containsKey("res")) Resolution.valueOf(args["res"] as String) else scannerConfiguration.resolution
+            val framerate =
+                if (args.containsKey("fps")) Framerate.valueOf(args["fps"] as String) else scannerConfiguration.framerate
+            val position =
+                if (args.containsKey("pos")) CameraPosition.valueOf(args["pos"] as String) else scannerConfiguration.position
 
             scannerConfiguration = scannerConfiguration.copy(
                 formats = formats,
@@ -270,13 +297,19 @@ class Camera(val activity: Activity,
 
         when (source) {
             is List<*> -> return barcodeScanner.analyze(
-                InputImage.fromBitmap(BitmapFactory.decodeByteArray(source[0] as ByteArray,
-                    0,
-                    (source[0] as ByteArray).size),
+                InputImage.fromBitmap(
+                    BitmapFactory.decodeByteArray(
+                        source[0] as ByteArray,
+                        0,
+                        (source[0] as ByteArray).size
+                    ),
                     source[1] as Int
                 )
             )
-            is String -> return barcodeScanner.analyze(activity.applicationContext, Uri.parse(source))
+            is String -> return barcodeScanner.analyze(
+                activity.applicationContext,
+                Uri.parse(source)
+            )
             else -> {
                 imageAnalysisCompleter = TaskCompletionSource<List<Barcode>>()
 
@@ -300,25 +333,35 @@ class Camera(val activity: Activity,
 
         val completer = imageAnalysisCompleter ?: return false
 
-        when(resultCode) {
+        when (resultCode) {
             Activity.RESULT_OK -> {
                 try {
                     barcodeScanner.analyze(activity.applicationContext, data?.data!!)
                         .addOnSuccessListener { completer.setResult(it) }
-                        .addOnFailureListener { completer.setException(ScannerException.AnalysisFailed(it)) }
+                        .addOnFailureListener {
+                            completer.setException(
+                                ScannerException.AnalysisFailed(
+                                    it
+                                )
+                            )
+                        }
                 } catch (e: IOException) {
                     completer.setException(ScannerException.LoadingFailed(e))
                 }
             }
             else -> {
-                completer.setResult(null)
+                completer.setResult(emptyList())
             }
         }
 
         return true
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ): Boolean {
         if (requestCode == PERMISSIONS_REQUEST_CODE) {
             permissionsCompleter?.also { completer ->
                 if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
@@ -333,12 +376,20 @@ class Camera(val activity: Activity,
     }
 
     private fun getPreviewConfiguration(): PreviewConfiguration {
-        val previewRes = preview.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
-        val analysisRes = imageAnalysis.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
+        val previewRes =
+            preview.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
+        val analysisRes =
+            imageAnalysis.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
         Log.d(TAG, "Preview resolution: ${previewRes.width}x${previewRes.height}")
         Log.d(TAG, "Analysis resolution: $analysisRes")
 
-        return PreviewConfiguration(flutterTextureEntry.id(), 0, previewRes.height, previewRes.width, analysis = analysisRes.toString())
+        return PreviewConfiguration(
+            flutterTextureEntry.id(),
+            0,
+            previewRes.height,
+            previewRes.width,
+            analysis = analysisRes.toString()
+        )
     }
 
 }
