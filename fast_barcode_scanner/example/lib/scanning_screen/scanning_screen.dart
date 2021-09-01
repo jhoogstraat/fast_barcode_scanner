@@ -1,13 +1,15 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../scan_history.dart';
-import '../settings_screen/settings_screen.dart';
+import '../configure_screen/configure_screen.dart';
+import '../utils.dart';
 import 'scans_counter.dart';
 
 class ScanningScreen extends StatefulWidget {
-  const ScanningScreen({Key? key}) : super(key: key);
+  const ScanningScreen({Key? key, required this.dispose}) : super(key: key);
+
+  final bool dispose;
 
   @override
   _ScanningScreenState createState() => _ScanningScreenState();
@@ -75,6 +77,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
           MaterialPreviewOverlay(showSensing: false),
           // BlurPreviewOverlay()
         ],
+        dispose: widget.dispose,
       ),
       bottomSheet: SafeArea(
         child: Container(
@@ -104,8 +107,8 @@ class _ScanningScreenState extends State<ScanningScreen> {
                                 future
                                     .then((_) =>
                                         _cameraRunning.value = !isRunning)
-                                    .catchError((error, stackTrace) {
-                                  presentErrorAlert(error, stackTrace);
+                                    .catchError((error, stack) {
+                                  presentErrorAlert(context, error, stack);
                                 });
                               },
                               child: Text(
@@ -125,7 +128,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                                     .then((_) =>
                                         _scannerRunning.value = !isRunning)
                                     .catchError((error, stackTrace) {
-                                  presentErrorAlert(error, stackTrace);
+                                  presentErrorAlert(context, error, stackTrace);
                                 });
                               },
                               child: Text(isRunning
@@ -142,7 +145,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                                 .then((torchState) =>
                                     _torchIconState.value = torchState)
                                 .catchError((error, stackTrace) {
-                              presentErrorAlert(error, stackTrace);
+                              presentErrorAlert(context, error, stackTrace);
                             });
                           },
                           child: Text('Torch: ${isTorchActive ? 'on' : 'off'}'),
@@ -154,64 +157,6 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          await cam
-                              .pauseCamera()
-                              .catchError((_, __) {}); // swallow errors
-
-                          final dialog = SimpleDialog(
-                            children: [
-                              SimpleDialogOption(
-                                child: const Text('Choose path'),
-                                onPressed: () => Navigator.pop(context, 1),
-                              ),
-                              SimpleDialogOption(
-                                child: const Text('Choose image'),
-                                onPressed: () => Navigator.pop(context, 2),
-                              ),
-                              SimpleDialogOption(
-                                child: const Text('Open Picker'),
-                                onPressed: () => Navigator.pop(context, 3),
-                              )
-                            ],
-                          );
-
-                          final result = await showDialog<int>(
-                              context: context, builder: (_) => dialog);
-                          final ImageSource source;
-
-                          switch (result) {
-                            case 1:
-                              source = ImageSource.path('path');
-                              break;
-                            case 2:
-                              final bytes = await rootBundle.load(
-                                'assets/barcode.jpg',
-                              );
-                              source = ImageSource.binary(bytes);
-                              break;
-                            case 3:
-                              source = ImageSource.picker();
-                              break;
-                            default:
-                              cam.resumeCamera();
-                              return;
-                          }
-
-                          try {
-                            final barcodes = await cam.scanImage(source);
-                            for (final barcode in barcodes) {
-                              history.add(barcode);
-                            }
-
-                            await cam.resumeCamera();
-                          } catch (error, stack) {
-                            presentErrorAlert(error, stack);
-                          }
-                        },
-                        child: const Text('Pick image'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () async {
                           final config = cam.state.scannerConfig;
                           if (config != null) {
                             // swallow errors
@@ -220,11 +165,12 @@ class _ScanningScreenState extends State<ScanningScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => SettingsScreen(config),
+                                builder: (_) => ConfigureScreen(config),
                               ),
                             );
 
-                            cam.resumeCamera().catchError(presentErrorAlert);
+                            cam.resumeCamera().catchError((error, stack) =>
+                                presentErrorAlert(context, error, stack));
                           }
                         },
                         child: const Text('Update Configuration'),
@@ -236,22 +182,6 @@ class _ScanningScreenState extends State<ScanningScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void presentErrorAlert(Object error, StackTrace stack) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(error.toString()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Ok'),
-          )
-        ],
       ),
     );
   }

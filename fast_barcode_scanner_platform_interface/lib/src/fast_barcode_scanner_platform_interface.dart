@@ -90,7 +90,7 @@ abstract class FastBarcodeScannerPlatform extends PlatformInterface {
     throw UnimplementedError('setOnDetectHandler() has not been implemented');
   }
 
-  Future<List<Barcode>> scanImage(ImageSource source) {
+  Future<List<Barcode>?> scanImage(ImageSource source) {
     throw UnimplementedError('scanImage() has not been implemented');
   }
 }

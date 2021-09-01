@@ -32,12 +32,4 @@ class MLKitBarcodeScanner(
             .addOnFailureListener(failureListener)
             .addOnCompleteListener { imageProxy.close() }
     }
-
-    fun analyze(image: InputImage): Task<List<Barcode>> {
-        return scanner.process(image)
-    }
-
-    fun analyze(context: Context, uri: Uri): Task<List<Barcode>> {
-        return scanner.process(InputImage.fromFilePath(context, uri))
-    }
 }

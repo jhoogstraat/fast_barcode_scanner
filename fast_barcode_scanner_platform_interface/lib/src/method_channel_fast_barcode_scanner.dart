@@ -11,10 +11,11 @@ import 'fast_barcode_scanner_platform_interface.dart';
 class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =
       MethodChannel('com.jhoogstraat/fast_barcode_scanner');
-  static const EventChannel _events =
+  static const EventChannel _detectionEvents =
       EventChannel('com.jhoogstraat/fast_barcode_scanner/detections');
 
-  final Stream<dynamic> _barcodeEventStream = _events.receiveBroadcastStream();
+  final Stream<dynamic> _detectionEventStream =
+      _detectionEvents.receiveBroadcastStream();
   StreamSubscription<dynamic>? _barcodeEventStreamSubscription;
   void Function(Barcode)? _onDetectHandler;
 
@@ -39,7 +40,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   void setOnDetectHandler(void Function(Barcode) handler) async {
     _onDetectHandler = handler;
     _barcodeEventStreamSubscription ??=
-        _barcodeEventStream.listen(_handlePlatformBarcodeEvent);
+        _detectionEventStream.listen(_handlePlatformBarcodeEvent);
   }
 
   @override
@@ -85,14 +86,13 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   }
 
   @override
-  Future<List<Barcode>> scanImage(ImageSource source) async {
+  Future<List<Barcode>?> scanImage(ImageSource source) async {
     final List<Object?>? response = await _channel.invokeMethod(
       'scan',
       source.data,
     );
 
-    return response?.map((e) => Barcode(e as List<dynamic>)).toList() ??
-        const [];
+    return response?.map((e) => Barcode(e as List<dynamic>)).toList();
   }
 
   void _handlePlatformBarcodeEvent(dynamic data) {
@@ -100,6 +100,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
     try {
       final barcode = Barcode(data);
+      print(barcode);
       _onDetectHandler?.call(barcode);
       // ignore: empty_catches
     } catch (e) {}

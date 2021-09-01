@@ -93,14 +93,12 @@ abstract class CameraController {
     DetectionMode? detectionMode,
     CameraPosition? position,
     void Function(Barcode)? onScan,
-  }) {
-    throw UnimplementedError();
-  }
+  });
 
   /// Analyze a still image, which can be chosen from an image picker.
   ///
   /// It is recommended to pause the live scanner before calling this.
-  Future<List<Barcode>> scanImage(ImageSource source);
+  Future<List<Barcode>?> scanImage(ImageSource source);
 }
 
 class _CameraController implements CameraController {
@@ -280,7 +278,7 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<List<Barcode>> scanImage(ImageSource source) async {
+  Future<List<Barcode>?> scanImage(ImageSource source) async {
     try {
       return _platform.scanImage(source);
     } catch (error) {

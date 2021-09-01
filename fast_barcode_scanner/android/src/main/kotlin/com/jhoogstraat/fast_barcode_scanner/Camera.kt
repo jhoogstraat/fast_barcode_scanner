@@ -2,10 +2,7 @@ package com.jhoogstraat.fast_barcode_scanner
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
-import android.net.Uri
 import android.util.Log
 import android.view.Surface
 import androidx.camera.core.*
@@ -19,13 +16,10 @@ import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.common.InputImage
 import com.jhoogstraat.fast_barcode_scanner.scanner.MLKitBarcodeScanner
 import com.jhoogstraat.fast_barcode_scanner.types.*
-import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import io.flutter.view.TextureRegistry
-import java.io.IOException
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -35,9 +29,7 @@ class Camera(
     private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry,
     args: HashMap<String, Any>,
     private val listener: (List<Barcode>) -> Unit
-) :
-    RequestPermissionsResultListener,
-    ActivityResultListener {
+) : RequestPermissionsResultListener {
 
     /* Scanner configuration */
     private var scannerConfiguration: ScannerConfiguration
@@ -61,13 +53,11 @@ class Camera(
     val torchState: Boolean
         get() = camera.cameraInfo.torchState.value == TorchState.ON
 
-    private var imageAnalysisCompleter: TaskCompletionSource<List<Barcode>>? = null
     private var permissionsCompleter: TaskCompletionSource<Unit>? = null
 
     /* Companion */
     companion object {
         private const val TAG = "fast_barcode_scanner"
-        private const val INTENT_REQUEST_CODE = 11
         private const val PERMISSIONS_REQUEST_CODE = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
@@ -289,72 +279,6 @@ class Camera(
 
         bindCameraUseCases()
         return getPreviewConfiguration()
-    }
-
-    fun scanImage(source: Any?): Task<List<Barcode>> {
-        if (imageAnalysisCompleter?.task?.isComplete == false)
-            throw ScannerException.AlreadyPicking()
-
-        when (source) {
-            is List<*> -> return barcodeScanner.analyze(
-                InputImage.fromBitmap(
-                    BitmapFactory.decodeByteArray(
-                        source[0] as ByteArray,
-                        0,
-                        (source[0] as ByteArray).size
-                    ),
-                    source[1] as Int
-                )
-            )
-            is String -> return barcodeScanner.analyze(
-                activity.applicationContext,
-                Uri.parse(source)
-            )
-            else -> {
-                imageAnalysisCompleter = TaskCompletionSource<List<Barcode>>()
-
-                val intent = Intent(
-                    Intent.ACTION_PICK,
-                    android.provider.MediaStore.Images.Media.INTERNAL_CONTENT_URI
-                )
-
-                intent.type = "image/*"
-                activity.startActivityForResult(intent, INTENT_REQUEST_CODE)
-
-                return imageAnalysisCompleter!!.task
-            }
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != INTENT_REQUEST_CODE) {
-            return false
-        }
-
-        val completer = imageAnalysisCompleter ?: return false
-
-        when (resultCode) {
-            Activity.RESULT_OK -> {
-                try {
-                    barcodeScanner.analyze(activity.applicationContext, data?.data!!)
-                        .addOnSuccessListener { completer.setResult(it) }
-                        .addOnFailureListener {
-                            completer.setException(
-                                ScannerException.AnalysisFailed(
-                                    it
-                                )
-                            )
-                        }
-                } catch (e: IOException) {
-                    completer.setException(ScannerException.LoadingFailed(e))
-                }
-            }
-            else -> {
-                completer.setResult(emptyList())
-            }
-        }
-
-        return true
     }
 
     override fun onRequestPermissionsResult(
