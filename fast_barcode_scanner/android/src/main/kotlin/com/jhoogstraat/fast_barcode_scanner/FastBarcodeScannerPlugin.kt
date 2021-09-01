@@ -1,7 +1,6 @@
 package com.jhoogstraat.fast_barcode_scanner
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
@@ -13,16 +12,18 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.EventChannel.EventSink
+import io.flutter.plugin.common.EventChannel.StreamHandler
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 /** FastBarcodeScannerPlugin */
-class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler, ActivityAware {
     private var commandChannel: MethodChannel? = null
     private var detectionChannel: EventChannel? = null
-    private var barcodeStreamHandler: BarcodeStreamHandler? = null
+    private var detectionEventSink: EventSink? = null
 
     private var pluginBinding: FlutterPlugin.FlutterPluginBinding? = null
     private var activityBinding: ActivityPluginBinding? = null
@@ -38,31 +39,28 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
             flutterPluginBinding.binaryMessenger,
             "com.jhoogstraat/fast_barcode_scanner/detections"
         )
-        barcodeStreamHandler = BarcodeStreamHandler()
-        pluginBinding = flutterPluginBinding
 
-        commandChannel!!.setMethodCallHandler(this)
-        detectionChannel!!.setStreamHandler(barcodeStreamHandler)
+        pluginBinding = flutterPluginBinding
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        commandChannel?.setMethodCallHandler(null)
-        detectionChannel?.setStreamHandler(null)
-
-        commandChannel = null
-        detectionChannel = null
-        barcodeStreamHandler = null
         pluginBinding = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         commandChannel!!.setMethodCallHandler(this)
-        detectionChannel!!.setStreamHandler(BarcodeStreamHandler())
+        detectionChannel!!.setStreamHandler(this)
         activityBinding = binding
     }
 
     override fun onDetachedFromActivity() {
         dispose()
+
+        commandChannel?.setMethodCallHandler(null)
+        detectionChannel?.setStreamHandler(null)
+
+        commandChannel = null
+        detectionChannel = null
         activityBinding = null
     }
 
@@ -74,6 +72,16 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
         onDetachedFromActivity()
     }
 
+    /* Detections EventChannel */
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        detectionEventSink = events
+    }
+
+    override fun onCancel(arguments: Any?) {
+        detectionEventSink = null
+    }
+
+    /* Command MethodChannel */
     @Suppress("UNCHECKED_CAST")
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         try {
@@ -104,13 +112,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
                     "scan" -> {
                         camera.scanImage(call.arguments)
                             .addOnSuccessListener { barcodes ->
-                                result.success(barcodes.map {
-                                    listOf(
-                                        barcodeStringMap[it.format],
-                                        it.rawValue,
-                                        it.valueType
-                                    )
-                                })
+                                result.success(barcodes.map { encode(it) })
                             }
                             .addOnFailureListener {
                                 throw ScannerException.AnalysisFailed(it)
@@ -129,6 +131,14 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
         }
     }
 
+    private fun encode(barcode: Barcode): List<*> {
+        return listOf(
+            barcodeStringMap[barcode.format],
+            barcode.rawValue,
+            barcode.valueType
+        )
+    }
+
     @SuppressLint("UnsafeOptInUsageError")
     private fun initialize(configuration: HashMap<String, Any>): Task<PreviewConfiguration> {
         if (this.camera != null)
@@ -142,7 +152,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
             pluginBinding.textureRegistry.createSurfaceTexture(),
             configuration
         ) { barcodes ->
-            barcodeStreamHandler?.push(barcodes.first())
+            detectionEventSink?.success(encode(barcodes.first()))
         }
 
         activityBinding.addActivityResultListener(camera)
@@ -161,28 +171,5 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware
         }
 
         camera = null
-    }
-
-}
-
-class BarcodeStreamHandler : EventChannel.StreamHandler {
-    private var eventSink: EventChannel.EventSink? = null
-
-    fun push(barcode: Barcode) {
-        eventSink?.success(
-            listOf(
-                barcodeStringMap[barcode.format],
-                barcode.rawValue,
-                barcode.valueType
-            )
-        )
-    }
-
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-        eventSink = events
-    }
-
-    override fun onCancel(arguments: Any?) {
-        eventSink = null
     }
 }
