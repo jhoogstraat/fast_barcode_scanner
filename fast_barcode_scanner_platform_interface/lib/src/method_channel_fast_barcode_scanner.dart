@@ -100,7 +100,6 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
     try {
       final barcode = Barcode(data);
-      print(barcode);
       _onDetectHandler?.call(barcode);
       // ignore: empty_catches
     } catch (e) {}

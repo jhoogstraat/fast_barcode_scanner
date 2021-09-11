@@ -139,6 +139,8 @@ class _CameraController implements CameraController {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
+      _onScan = onScan;
+
       _platform.setOnDetectHandler(_onDetectHandler);
 
       state._scannerConfig = ScannerConfiguration(
@@ -236,13 +238,14 @@ class _CameraController implements CameraController {
   }
 
   @override
-  Future<void> configure(
-      {List<BarcodeType>? types,
-      Resolution? resolution,
-      Framerate? framerate,
-      DetectionMode? detectionMode,
-      CameraPosition? position,
-      void Function(Barcode)? onScan}) async {
+  Future<void> configure({
+    List<BarcodeType>? types,
+    Resolution? resolution,
+    Framerate? framerate,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+    void Function(Barcode)? onScan,
+  }) async {
     if (state.isInitialized && !_configuring) {
       final _scannerConfig = state._scannerConfig!;
       _configuring = true;

@@ -1,27 +1,38 @@
 import Flutter
 import AVFoundation
 
-public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
-    let channel: FlutterMethodChannel
+public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+    let commandChannel: FlutterMethodChannel
+    let barcodeEventChannel: FlutterEventChannel
     let factory: PreviewViewFactory
 
     var camera: Camera?
     var picker: ImagePicker?
+    var detectionsSink: FlutterEventSink?
 
-    init(channel: FlutterMethodChannel, factory: PreviewViewFactory) {
-		self.channel = channel
+    init(commands: FlutterMethodChannel,
+         events: FlutterEventChannel,
+         factory: PreviewViewFactory
+    ) {
+		self.commandChannel = commands
+        self.barcodeEventChannel = events
         self.factory = factory
 	}
 
 	public static func register(with registrar: FlutterPluginRegistrar) {
-		let channel = FlutterMethodChannel(name: "com.jhoogstraat/fast_barcode_scanner",
-                                           binaryMessenger: registrar.messenger())
+		let commandChannel = FlutterMethodChannel(name: "com.jhoogstraat/fast_barcode_scanner",
+                                                  binaryMessenger: registrar.messenger())
 
-        let instance = FastBarcodeScannerPlugin(channel: channel,
+        let barcodeEventChannel = FlutterEventChannel(name: "com.jhoogstraat/fast_barcode_scanner/detections",
+                                                      binaryMessenger: registrar.messenger())
+
+        let instance = FastBarcodeScannerPlugin(commands: commandChannel,
+                                                events: barcodeEventChannel,
                                                 factory: PreviewViewFactory())
 
         registrar.register(instance.factory, withId: "fast_barcode_scanner.preview")
-		registrar.addMethodCallDelegate(instance, channel: channel)
+		registrar.addMethodCallDelegate(instance, channel: commandChannel)
+        barcodeEventChannel.setStreamHandler(instance)
 	}
 
 	public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -58,7 +69,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         }
 
         let scanner = AVFoundationBarcodeScanner { [unowned self] barcode in
-            self.channel.invokeMethod("s", arguments: barcode)
+            self.detectionsSink?(barcode)
         }
 
         let camera = try Camera(configuration: configuration, scanner: scanner)
@@ -144,5 +155,15 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
         }
 
         picker!.show(over: root)
+    }
+
+    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+        detectionsSink = events
+        return nil
+    }
+
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        detectionsSink = nil
+        return nil
     }
 }
