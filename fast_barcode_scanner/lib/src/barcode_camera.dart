@@ -15,7 +15,7 @@ Widget _defaultOnError(BuildContext context, Object? error) {
     padding: const EdgeInsets.all(8.0),
     child: Center(
       child: Text(
-        "Error:\n${(error is PlatformException ? error.message : error)}",
+        "Error:\n$error",
         style: const TextStyle(color: Colors.white),
       ),
     ),

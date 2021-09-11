@@ -38,4 +38,15 @@ class Barcode {
   @override
   int get hashCode =>
       super.hashCode ^ type.hashCode ^ value.hashCode ^ valueType.hashCode;
+
+  @override
+  String toString() {
+    return '''
+    Barcode {
+      type: $type,
+      value: $value,
+      valueType: $valueType
+    }
+    ''';
+  }
 }

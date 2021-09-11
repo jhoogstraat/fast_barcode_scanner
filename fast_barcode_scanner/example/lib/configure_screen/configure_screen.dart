@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 
 import 'type_selector.dart';
 
-class SettingsScreen extends StatefulWidget {
-  const SettingsScreen(this._currentConfiguration, {Key? key})
+class ConfigureScreen extends StatefulWidget {
+  const ConfigureScreen(this._currentConfiguration, {Key? key})
       : super(key: key);
 
   final ScannerConfiguration _currentConfiguration;
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<ConfigureScreen> createState() => _ConfigureScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _ConfigureScreenState extends State<ConfigureScreen> {
   late ScannerConfiguration _config;
 
   @override

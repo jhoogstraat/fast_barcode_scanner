@@ -11,7 +11,12 @@ import 'fast_barcode_scanner_platform_interface.dart';
 class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =
       MethodChannel('com.jhoogstraat/fast_barcode_scanner');
+  static const EventChannel _detectionEvents =
+      EventChannel('com.jhoogstraat/fast_barcode_scanner/detections');
 
+  final Stream<dynamic> _detectionEventStream =
+      _detectionEvents.receiveBroadcastStream();
+  StreamSubscription<dynamic>? _barcodeEventStreamSubscription;
   void Function(Barcode)? _onDetectHandler;
 
   @override
@@ -28,10 +33,14 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       'fps': framerate.name,
       'pos': position.name
     });
-
-    _channel.setMethodCallHandler(handlePlatformMethodCall);
-
     return PreviewConfiguration(response);
+  }
+
+  @override
+  void setOnDetectHandler(void Function(Barcode) handler) async {
+    _onDetectHandler = handler;
+    _barcodeEventStreamSubscription ??=
+        _detectionEventStream.listen(_handlePlatformBarcodeEvent);
   }
 
   @override
@@ -47,10 +56,11 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   Future<void> stopDetector() => _channel.invokeMethod('stopDetector');
 
   @override
-  Future<void> dispose() {
-    _channel.setMethodCallHandler(null);
+  Future<void> dispose() async {
+    await _barcodeEventStreamSubscription?.cancel();
+    _barcodeEventStreamSubscription = null;
     _onDetectHandler = null;
-    return _channel.invokeMethod('stop');
+    return _channel.invokeMethod('dispose');
   }
 
   @override
@@ -76,35 +86,22 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   }
 
   @override
-  void setOnDetectHandler(void Function(Barcode) handler) =>
-      _onDetectHandler = handler;
-
-  @override
-  Future<List<Barcode>> scanImage(ImageSource source) async {
+  Future<List<Barcode>?> scanImage(ImageSource source) async {
     final List<Object?>? response = await _channel.invokeMethod(
       'scan',
       source.data,
     );
 
-    return response?.map((e) => Barcode(e as List<dynamic>)).toList() ??
-        const [];
+    return response?.map((e) => Barcode(e as List<dynamic>)).toList();
   }
 
-  Future<void> handlePlatformMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 's':
-        // This might fail if the code type is not present in the list of available code types.
-        // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
-        try {
-          final barcode = Barcode(call.arguments);
-          _onDetectHandler?.call(barcode);
-          // ignore: empty_catches
-        } catch (e) {}
-
-        break;
-      default:
-        assert(true,
-            "FastBarcodeScanner: Unknown method call received: ${call.method}");
-    }
+  void _handlePlatformBarcodeEvent(dynamic data) {
+    // This might fail if the code type is not present in the list of available code types.
+    // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
+    try {
+      final barcode = Barcode(data);
+      _onDetectHandler?.call(barcode);
+      // ignore: empty_catches
+    } catch (e) {}
   }
 }

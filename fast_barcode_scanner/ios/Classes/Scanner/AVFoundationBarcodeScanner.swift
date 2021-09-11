@@ -7,7 +7,11 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
         self.resultHandler = resultHandler
     }
 
+    // Detections are handled by this function.
     var resultHandler: ResultHandler
+
+    // Acts as an "on detection notifier"
+    // for the Camera.
     var onDetection: (() -> Void)?
 
     private let output = AVCaptureMetadataOutput()
@@ -59,8 +63,6 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
             var value = readableCode.stringValue
         else { return }
 
-        onDetection?()
-
         // Fix UPC-A, see https://developer.apple.com/library/archive/technotes/tn2325/_index.html#//apple_ref/doc/uid/DTS40013824-CH1-IS_UPC_A_SUPPORTED_
         if readableCode.type == .ean13 {
             if value.hasPrefix("0") {
@@ -73,6 +75,8 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
                 guard symbologies.contains(type) else { return }
             }
         }
+
+        onDetection?()
 
         resultHandler([type, value])
 	}

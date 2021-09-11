@@ -12,7 +12,7 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
                                                      attributes: [], autoreleaseFrequency: .workItem)
     private lazy var visionBarcodesRequests: [VNDetectBarcodesRequest]! = {
         let request = VNDetectBarcodesRequest(completionHandler: handleVisionRequestUpdate)
-        if #available(iOS 15.0, *) {
+        if #available(iOS 15, *) {
             request.revision = VNDetectBarcodesRequestRevision2
         }
         return [request]
