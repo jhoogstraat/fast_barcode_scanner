@@ -1,3 +1,8 @@
+## 1.0.4
+
+* Smaller code cleanups
+* Updated CameraX and ML Kit to latest versions.
+
 ## 1.0.3
 
 * Camera position now taken into account on Android.

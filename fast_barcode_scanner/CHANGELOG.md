@@ -1,3 +1,9 @@
+## 1.1.2
+
+* Fixed a bug where the app would crash when denying permissions on iOS.
+* Smaller code cleanups
+* Updated CameraX and ML Kit to latest versions.
+
 ## 1.1.1
 
 * Camera position now taken into account on Android.
