@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Log
 import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
@@ -185,6 +186,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
     private fun dispose() {
         camera?.also {
             it.stopCamera()
+            it.flutterTextureEntry.release()
             activityBinding?.removeRequestPermissionsResultListener(it)
         }
 

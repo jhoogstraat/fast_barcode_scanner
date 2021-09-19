@@ -26,7 +26,7 @@ import java.util.concurrent.Executors
 
 class Camera(
     val activity: Activity,
-    private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry,
+    val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry,
     args: HashMap<String, Any>,
     private val listener: (List<Barcode>) -> Unit
 ) : RequestPermissionsResultListener {
