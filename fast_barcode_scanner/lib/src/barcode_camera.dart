@@ -1,16 +1,25 @@
 import 'dart:ui';
 
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner/src/camera_controller.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
-  debugPrint("Error reading from camera: $error");
-  return const Center(child: Text("Error reading from camera..."));
+  return Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Center(
+      child: Text(
+        "Error:\n$error",
+        style: const TextStyle(color: Colors.white),
+      ),
+    ),
+  );
 }
 
 /// The main class connecting the platform code to the UI.
@@ -27,6 +36,7 @@ class BarcodeCamera extends StatefulWidget {
     this.position = CameraPosition.back,
     this.onScan,
     this.children = const [],
+    this.dispose = true,
     ErrorCallback? onError,
   })  : onError = onError ?? _defaultOnError,
         super(key: key);
@@ -39,6 +49,7 @@ class BarcodeCamera extends StatefulWidget {
   final void Function(Barcode)? onScan;
   final List<Widget> children;
   final ErrorCallback onError;
+  final bool dispose;
 
   @override
   BarcodeCameraState createState() => BarcodeCameraState();
@@ -46,27 +57,64 @@ class BarcodeCamera extends StatefulWidget {
 
 class BarcodeCameraState extends State<BarcodeCamera> {
   var _opacity = 0.0;
+  var showingError = false;
+
+  final cameraController = CameraController();
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    CameraController.instance
-        .initialize(widget.types, widget.resolution, widget.framerate,
-            widget.mode, widget.position, widget.onScan)
-        .whenComplete(() => setState(() => _opacity = 1.0));
+    final configurationFuture = cameraController.state.isInitialized
+        ? cameraController.configure(
+            types: widget.types,
+            resolution: widget.resolution,
+            framerate: widget.framerate,
+            position: widget.position,
+            onScan: widget.onScan)
+        : cameraController.initialize(widget.types, widget.resolution,
+            widget.framerate, widget.position, widget.mode, widget.onScan);
+
+    configurationFuture
+        .whenComplete(() => setState(() => _opacity = 1.0))
+        .onError((error, stackTrace) => setState(() => showingError = true));
+
+    cameraController.events.addListener(onScannerEvent);
+  }
+
+  void onScannerEvent() {
+    if (cameraController.events.value != ScannerEvent.error && showingError) {
+      setState(() => showingError = false);
+    } else if (cameraController.events.value == ScannerEvent.error) {
+      setState(() => showingError = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.dispose) {
+      cameraController.dispose();
+    } else {
+      cameraController.pauseCamera();
+    }
+
+    cameraController.events.removeListener(onScannerEvent);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cameraState = CameraController.instance.state;
+    final cameraState = cameraController.state;
     return ColoredBox(
       color: Colors.black,
       child: AnimatedOpacity(
         opacity: _opacity,
         duration: const Duration(milliseconds: 260),
-        child: cameraState.hasError
-            ? widget.onError(context, cameraState.error!)
+        child: cameraController.events.value == ScannerEvent.error
+            ? widget.onError(
+                context,
+                cameraState.error ?? "Unknown error occured",
+              )
             : Stack(
                 fit: StackFit.expand,
                 children: [
@@ -85,9 +133,23 @@ class BarcodeCameraState extends State<BarcodeCamera> {
       child: SizedBox(
         width: config.width.toDouble(),
         height: config.height.toDouble(),
-        child: Texture(
-          textureId: config.textureId,
-          filterQuality: FilterQuality.none,
+        child: Builder(
+          builder: (_) {
+            switch (defaultTargetPlatform) {
+              case TargetPlatform.android:
+                return Texture(
+                  textureId: config.textureId,
+                  filterQuality: FilterQuality.none,
+                );
+              case TargetPlatform.iOS:
+                return const UiKitView(
+                  viewType: "fast_barcode_scanner.preview",
+                  creationParamsCodec: StandardMessageCodec(),
+                );
+              default:
+                throw UnsupportedError("Unsupported platform");
+            }
+          },
         ),
       ),
     );
