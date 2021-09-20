@@ -47,48 +47,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 final dialog = SimpleDialog(
                   children: [
                     SimpleDialogOption(
-                      child: const Text('Choose path'),
+                      child: const Text('Choose image'),
                       onPressed: () => Navigator.pop(context, 1),
                     ),
                     SimpleDialogOption(
-                      child: const Text('Choose image'),
-                      onPressed: () => Navigator.pop(context, 2),
-                    ),
-                    SimpleDialogOption(
                       child: const Text('Open Picker'),
-                      onPressed: () => Navigator.pop(context, 3),
+                      onPressed: () => Navigator.pop(context, 2),
                     )
                   ],
                 );
 
                 final result = await showDialog<int>(
                     context: context, builder: (_) => dialog);
-                final ImageSource source;
 
-                switch (result) {
-                  case 1:
-                    source = ImageSource.path('fake/path/img.jpg');
-                    break;
-                  case 2:
-                    final bytes = await rootBundle.load('assets/barcode.jpg');
-                    source = ImageSource.binary(bytes);
-                    break;
-                  case 3:
-                    source = ImageSource.picker();
-                    break;
-                  default:
-                    return;
+                final ImageSource source;
+                if (result == 1) {
+                  final bytes = await rootBundle.load('assets/barcodes.png');
+                  source = ImageSource.binary(bytes);
+                } else if (result == 2) {
+                  source = ImageSource.picker();
+                } else {
+                  return;
                 }
 
                 try {
                   final barcodes = await cam.scanImage(source);
+
                   showDialog(
                     context: context,
-                    builder: (_) => SimpleDialog(
-                        title: const Text('Results'),
-                        children:
-                            barcodes?.map((e) => Text(e.toString())).toList() ??
-                                const [Center(child: Text('Aborted'))]),
+                    builder: (_) {
+                      final List<Widget> children;
+
+                      if (barcodes == null) {
+                        children = const [Center(child: Text('User aborted'))];
+                      } else if (barcodes.isEmpty) {
+                        children = const [
+                          Center(child: Text('No barcodes detected'))
+                        ];
+                      } else {
+                        children =
+                            barcodes.map((e) => Text(e.toString())).toList();
+                      }
+
+                      return SimpleDialog(
+                        title: const Text('Result'),
+                        children: children,
+                      );
+                    },
                   );
                 } catch (error, stack) {
                   presentErrorAlert(context, error, stack);

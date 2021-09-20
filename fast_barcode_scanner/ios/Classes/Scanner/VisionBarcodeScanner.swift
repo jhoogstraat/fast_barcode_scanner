@@ -1,6 +1,7 @@
 import AVFoundation
 import Vision
 
+@available(iOS 11.0, *)
 class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSampleBufferDelegate {
     typealias Barcode = VNBarcodeObservation
 
@@ -17,6 +18,7 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
         }
         return [request]
     }()
+
     private let visionSequenceHandler = VNSequenceRequestHandler()
 
     private var _session: AVCaptureSession?
@@ -86,16 +88,19 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
 
     // MARK: Callback
 
+    // Currently returns all detections with a confidence > 0.8
     private func handleVisionRequestUpdate(request: VNRequest?, error: Error?) {
-        if let results = request?.results as? [VNBarcodeObservation],
-              let barcode = results.max(by: { $0.confidence < $1.confidence }),
-              let type = flutterVNSymbols[barcode.symbology],
-              let value = barcode.payloadStringValue {
-            onDetection?()
-            resultHandler([type, value])
-        } else {
+        guard let results = request?.results as? [VNBarcodeObservation] else {
             print("Error scanning image: \(String(describing: error))")
             resultHandler(error)
+            return
         }
+
+        let barcodes: [Any] = results.filter { $0.confidence > 0.8 }.map {
+            return [flutterVNSymbols[$0.symbology]!, $0.payloadStringValue ?? ""]
+        }
+
+        onDetection?()
+        resultHandler(barcodes)
     }
 }

@@ -17,12 +17,6 @@ void main() {
     expect(source.data, [binaryData.buffer.asUint8List(), 10]);
   });
 
-  test('Initializes data = "path/to/test" for path', () {
-    const path = "path/to/test";
-    final source = ImageSource.path(path);
-    expect(source.data, path);
-  });
-
   test('Initializes data with jpg image', () async {
     final image = await loadBarcodeImage();
     final bytes = await image.toByteData();
