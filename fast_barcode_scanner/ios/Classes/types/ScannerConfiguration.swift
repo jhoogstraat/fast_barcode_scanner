@@ -73,25 +73,28 @@ let avMetadataObjectTypes: [String: AVMetadataObject.ObjectType] =
 ]
 
 // Flutter -> Vision
+@available(iOS 11, *)
 let vnBarcodeSymbols: [String: VNBarcodeSymbology] =
 [
-    "aztec": .Aztec,
-    "code128": .Code128,
-    "code39": .Code39, // Which one?
-    "code93": .Code93, // Which one?
-    "dataMatrix": .DataMatrix,
-    "ean13": .EAN13,
-    "ean8": .EAN8,
-    "itf": .ITF14,
-    "pdf417": .PDF417,
-    "qr": .QR,
-    "upcE": .UPCE,
-    "interleaved": .I2of5 // Which one?
+    "aztec": .aztec,
+    "code128": .code128,
+    "code39": .code39, // Which one?
+    "code93": .code93, // Which one?
+    "dataMatrix": .dataMatrix,
+    "ean13": .ean13,
+    "ean8": .ean8,
+    "itf": .itf14,
+    "pdf417": .pdf417,
+    "qr": .qr,
+    "upcE": .upce,
+    "interleaved": .i2of5 // Which one?
 ]
 
 // AVFoundation -> Flutter
 let flutterMetadataObjectTypes = Dictionary(uniqueKeysWithValues: avMetadataObjectTypes.map { ($1, $0) })
+
 // Vision -> Flutter
+@available(iOS 11, *)
 let flutterVNSymbols = Dictionary(uniqueKeysWithValues: vnBarcodeSymbols.map { ($1, $0) })
 
 let cameraPositions: [String: AVCaptureDevice.Position] =

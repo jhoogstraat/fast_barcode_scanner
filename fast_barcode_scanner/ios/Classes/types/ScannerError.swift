@@ -25,6 +25,9 @@ enum ScannerError: Error {
     case invalidCodeType(String)
     case loadingFailed
     case analysisFailed(Error)
+    case minimumTarget
+    case loadingURLFailed(String)
+    case loadingDataFailed
 
     var flutterError: FlutterError {
         switch self {
@@ -79,6 +82,18 @@ enum ScannerError: Error {
             return FlutterError(code: "ANALYSIS_FAILED",
                                 message: "Could not analyse asset",
                                 details: error.localizedDescription)
+        case .minimumTarget:
+            return FlutterError(code: "MINIMUM_TARGET",
+                                message: "iOS 11 or higher required",
+                                details: nil)
+        case .loadingURLFailed(let url):
+            return FlutterError(code: "LOADING_URL_FAILED",
+                                message: "Loading image from url failed",
+                                details: url)
+        case .loadingDataFailed:
+            return FlutterError(code: "LOADING_DATA_FAILED",
+                                message: "Loading image from data failed",
+                                details: nil)
         }
     }
 }
