@@ -7,11 +7,10 @@ Fast barcode scanning library using the latest technologies on Android and iOS.
 
 It provides a live preview widget you can put anywhere in your widget tree with rich configurability.
 
-**This plugin required iOS 11.0 and Android API level 21 or higher.**
-
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jhoogstraat)
 
 ## Installation
+**This plugin required iOS 11.0 and Android API level 21 or higher.**
 
 Add the following line to your **pubspec.yaml**:
 
