@@ -210,12 +210,6 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
                     source[1] as Int
                 )
             )
-            // Path
-            is String -> {
-                val activity =
-                    activityBinding?.activity ?: throw ScannerException.ActivityNotConnected()
-                return scanner.process(InputImage.fromFilePath(activity, Uri.parse(source)))
-            }
             // Picker
             else -> {
                 if (pickImageCompleter?.task?.isComplete == false)
