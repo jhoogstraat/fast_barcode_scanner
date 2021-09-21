@@ -221,8 +221,8 @@ class Camera(
             throw ScannerException.NotInitialized()
         else if (!isRunning)
             throw ScannerException.NotRunning()
-        else if (cameraProvider.isBound(imageAnalysis))
-            return
+        else if (!cameraProvider.isBound(imageAnalysis))
+            throw ScannerException.NotInitialized()
 
         imageAnalysis.setAnalyzer(cameraExecutor, barcodeScanner)
     }
@@ -233,7 +233,7 @@ class Camera(
         else if (!isRunning)
             throw ScannerException.NotRunning()
         else if (!cameraProvider.isBound(imageAnalysis))
-            return
+            throw ScannerException.NotInitialized()
 
         imageAnalysis.clearAnalyzer()
     }
