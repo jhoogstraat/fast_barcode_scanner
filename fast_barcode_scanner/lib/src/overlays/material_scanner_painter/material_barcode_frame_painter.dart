@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 
 class MaterialBarcodeFramePainter extends CustomPainter {
   const MaterialBarcodeFramePainter(
-      this.scanViewAspectRatio, this.backgroundColor, this.scanViewBorderColor);
+      this.backgroundColor, this.scanViewShape, this.scanViewBorderColor);
 
-  final double scanViewAspectRatio;
   final Color backgroundColor;
+  final ScanViewShape scanViewShape;
   final Color scanViewBorderColor;
 
   @override
@@ -21,9 +22,11 @@ class MaterialBarcodeFramePainter extends CustomPainter {
 
     final cutOutWidth = screenRect.width - 45;
 
-    double cutOutHeight = cutOutWidth;
-    if (scanViewAspectRatio != 1) {
-      cutOutHeight = 1 / scanViewAspectRatio * cutOutWidth;
+    double cutOutHeight;
+    if (scanViewShape == ScanViewShape.square) {
+      cutOutHeight = cutOutWidth;
+    } else {
+      cutOutHeight = 1 / (16 / 9) * cutOutWidth;
     }
 
     final cutOut = RRect.fromRectXY(

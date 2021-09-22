@@ -3,18 +3,20 @@ import 'package:flutter/material.dart';
 import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
+enum ScanViewShape { square, wide }
+
 class MaterialPreviewOverlay extends StatefulWidget {
   const MaterialPreviewOverlay({
     Key? key,
     this.animateDetection = true,
     this.backgroundColor = Colors.black38,
-    this.scanViewAspectRatio = 16 / 9,
+    this.scanViewShape = ScanViewShape.wide,
     this.scanViewBorderColor = Colors.black87,
   }) : super(key: key);
 
   final bool animateDetection;
   final Color backgroundColor;
-  final double scanViewAspectRatio;
+  final ScanViewShape scanViewShape;
   final Color scanViewBorderColor;
 
   @override
@@ -67,10 +69,8 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
           child: widget.animateDetection
               ? _buildAnimation(context)
               : CustomPaint(
-                  painter: MaterialBarcodeFramePainter(
-                      widget.scanViewAspectRatio,
-                      widget.backgroundColor,
-                      widget.scanViewBorderColor))),
+                  painter: MaterialBarcodeFramePainter(widget.backgroundColor,
+                      widget.scanViewShape, widget.scanViewBorderColor))),
     );
   }
 
@@ -78,8 +78,8 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => CustomPaint(
-        painter: MaterialBarcodeFramePainter(widget.scanViewAspectRatio,
-            widget.backgroundColor, widget.scanViewBorderColor),
+        painter: MaterialBarcodeFramePainter(widget.backgroundColor,
+            widget.scanViewShape, widget.scanViewBorderColor),
         foregroundPainter: MaterialBarcodeSensingPainter(
             inflate: _inflateSequence.value, opacity: _opacitySequence.value),
       ),
