@@ -5,11 +5,19 @@ import 'material_scanner_painter/material_sensing_painter.dart';
 
 class MaterialPreviewOverlay extends StatefulWidget {
   const MaterialPreviewOverlay(
-      {Key? key, this.animateDetection = true, this.aspectRatio = 16 / 9})
+      {Key? key,
+      this.animateDetection = true,
+      this.aspectRatio = 16 / 9,
+      this.backgroundColor = Colors.black38,
+      this.scanViewBorderColor = Colors.black87,
+      this.squareScanView = false})
       : super(key: key);
 
   final bool animateDetection;
   final double aspectRatio;
+  final Color backgroundColor;
+  final Color scanViewBorderColor;
+  final bool squareScanView;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -61,7 +69,11 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
           child: widget.animateDetection
               ? _buildAnimation(context)
               : CustomPaint(
-                  painter: MaterialBarcodeFramePainter(widget.aspectRatio))),
+                  painter: MaterialBarcodeFramePainter(
+                      widget.aspectRatio,
+                      widget.backgroundColor,
+                      widget.scanViewBorderColor,
+                      widget.squareScanView))),
     );
   }
 
@@ -69,7 +81,11 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => CustomPaint(
-        painter: MaterialBarcodeFramePainter(widget.aspectRatio),
+        painter: MaterialBarcodeFramePainter(
+            widget.aspectRatio,
+            widget.backgroundColor,
+            widget.scanViewBorderColor,
+            widget.squareScanView),
         foregroundPainter: MaterialBarcodeSensingPainter(
             inflate: _inflateSequence.value, opacity: _opacitySequence.value),
       ),

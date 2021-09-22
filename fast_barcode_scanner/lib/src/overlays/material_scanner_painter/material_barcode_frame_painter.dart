@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
 
 class MaterialBarcodeFramePainter extends CustomPainter {
-  const MaterialBarcodeFramePainter(this.aspectRatio);
+  const MaterialBarcodeFramePainter(this.aspectRatio, this.backgroundColor,
+      this.scanViewBorderColor, this.squareScanView);
 
   final double aspectRatio;
-
-  static final borderPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
-    ..color = Colors.black.withAlpha(160);
-
-  static final backgroundPaint = Paint()..color = Colors.black38;
+  final Color backgroundColor;
+  final Color scanViewBorderColor;
+  final bool squareScanView;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
+      ..color = scanViewBorderColor;
+
+    final backgroundPaint = Paint()..color = backgroundColor;
+
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
     final cutOutWidth = screenRect.width - 45;
-    final cutOutHeight = 1 / aspectRatio * cutOutWidth;
+
+    double cutOutHeight = 1 / aspectRatio * cutOutWidth;
+    if (squareScanView == true) {
+      cutOutHeight = cutOutWidth;
+    }
+
     final cutOut = RRect.fromRectXY(
         Rect.fromCenter(
             center: screenRect.center,
