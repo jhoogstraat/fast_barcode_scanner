@@ -4,20 +4,18 @@ import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
 class MaterialPreviewOverlay extends StatefulWidget {
-  const MaterialPreviewOverlay(
-      {Key? key,
-      this.animateDetection = true,
-      this.aspectRatio = 16 / 9,
-      this.backgroundColor = Colors.black38,
-      this.scanViewBorderColor = Colors.black87,
-      this.squareScanView = false})
-      : super(key: key);
+  const MaterialPreviewOverlay({
+    Key? key,
+    this.animateDetection = true,
+    this.backgroundColor = Colors.black38,
+    this.scanViewAspectRatio = 16 / 9,
+    this.scanViewBorderColor = Colors.black87,
+  }) : super(key: key);
 
   final bool animateDetection;
-  final double aspectRatio;
   final Color backgroundColor;
+  final double scanViewAspectRatio;
   final Color scanViewBorderColor;
-  final bool squareScanView;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -70,10 +68,9 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
               ? _buildAnimation(context)
               : CustomPaint(
                   painter: MaterialBarcodeFramePainter(
-                      widget.aspectRatio,
+                      widget.scanViewAspectRatio,
                       widget.backgroundColor,
-                      widget.scanViewBorderColor,
-                      widget.squareScanView))),
+                      widget.scanViewBorderColor))),
     );
   }
 
@@ -81,11 +78,8 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) => CustomPaint(
-        painter: MaterialBarcodeFramePainter(
-            widget.aspectRatio,
-            widget.backgroundColor,
-            widget.scanViewBorderColor,
-            widget.squareScanView),
+        painter: MaterialBarcodeFramePainter(widget.scanViewAspectRatio,
+            widget.backgroundColor, widget.scanViewBorderColor),
         foregroundPainter: MaterialBarcodeSensingPainter(
             inflate: _inflateSequence.value, opacity: _opacitySequence.value),
       ),
