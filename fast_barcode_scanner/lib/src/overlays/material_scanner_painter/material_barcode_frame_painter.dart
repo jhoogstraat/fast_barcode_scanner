@@ -22,9 +22,9 @@ class MaterialBarcodeFramePainter extends CustomPainter {
 
     final cutOutWidth = screenRect.width - 45;
 
-    double cutOutHeight = 1 / aspectRatio * cutOutWidth;
-    if (squareScanView == true) {
-      cutOutHeight = cutOutWidth;
+    double cutOutHeight = cutOutWidth;
+    if (squareScanView == false) {
+      cutOutHeight = 1 / aspectRatio * cutOutWidth;
     }
 
     final cutOut = RRect.fromRectXY(
