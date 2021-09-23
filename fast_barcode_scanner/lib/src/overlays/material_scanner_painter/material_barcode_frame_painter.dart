@@ -3,18 +3,18 @@ import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 
 class MaterialBarcodeFramePainter extends CustomPainter {
   const MaterialBarcodeFramePainter(
-      this.backgroundColor, this.scanViewShape, this.scanViewBorderColor);
+      this.backgroundColor, this.cutOutShape, this.cutOutShapeBorderColor);
 
   final Color backgroundColor;
-  final ScanViewShape scanViewShape;
-  final Color scanViewBorderColor;
+  final CutOutShape cutOutShape;
+  final Color cutOutShapeBorderColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
-      ..color = scanViewBorderColor;
+      ..color = cutOutShapeBorderColor;
 
     final backgroundPaint = Paint()..color = backgroundColor;
 
@@ -23,7 +23,7 @@ class MaterialBarcodeFramePainter extends CustomPainter {
     final cutOutWidth = screenRect.width - 45;
 
     double cutOutHeight;
-    if (scanViewShape == ScanViewShape.square) {
+    if (cutOutShape == CutOutShape.square) {
       cutOutHeight = cutOutWidth;
     } else {
       cutOutHeight = 1 / (16 / 9) * cutOutWidth;

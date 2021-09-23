@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 import 'material_scanner_painter/material_barcode_frame_painter.dart';
 import 'material_scanner_painter/material_sensing_painter.dart';
 
-enum ScanViewShape { square, wide }
+enum CutOutShape { square, wide }
 
 class MaterialPreviewOverlay extends StatefulWidget {
   const MaterialPreviewOverlay({
     Key? key,
     this.animateDetection = true,
     this.backgroundColor = Colors.black38,
-    this.scanViewShape = ScanViewShape.wide,
-    this.scanViewBorderColor = Colors.black87,
+    this.cutOutShape = CutOutShape.wide,
+    this.cutOutShapeBorderColor = Colors.black87,
   }) : super(key: key);
 
   final bool animateDetection;
   final Color backgroundColor;
-  final ScanViewShape scanViewShape;
-  final Color scanViewBorderColor;
+  final CutOutShape cutOutShape;
+  final Color cutOutShapeBorderColor;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -70,7 +70,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
               ? _buildAnimation(context)
               : CustomPaint(
                   painter: MaterialBarcodeFramePainter(widget.backgroundColor,
-                      widget.scanViewShape, widget.scanViewBorderColor))),
+                      widget.cutOutShape, widget.cutOutShapeBorderColor))),
     );
   }
 
@@ -79,7 +79,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       animation: _controller,
       builder: (context, child) => CustomPaint(
         painter: MaterialBarcodeFramePainter(widget.backgroundColor,
-            widget.scanViewShape, widget.scanViewBorderColor),
+            widget.cutOutShape, widget.cutOutShapeBorderColor),
         foregroundPainter: MaterialBarcodeSensingPainter(
             inflate: _inflateSequence.value, opacity: _opacitySequence.value),
       ),
