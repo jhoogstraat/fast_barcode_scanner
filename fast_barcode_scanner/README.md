@@ -1,6 +1,6 @@
 # fast_barcode_scanner
 
-Fast barcode scanning library using the latest technologies on Android and iOS.
+Fast barcode & QR code scanning library using the latest technologies on Android and iOS.
 
 - [**ML Kit**](https://developers.google.com/ml-kit) and [**CameraX**](https://developer.android.com/training/camerax) on Android
 - [**AVFoundation**](https://developer.apple.com/av-foundation/) and [**Vision**](https://developer.apple.com/documentation/vision) on iOS.
@@ -24,7 +24,7 @@ Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist`, like so:
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>This app requires access to your phone’s camera solely for scanning barcodes</string>
+<string>This app requires access to your phone’s camera solely for scanning barcodes or QR codes</string>
 ```
 
 ### Android
@@ -46,12 +46,13 @@ class MyScannerScreen extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
         return Scaffold(
-            appBar: AppBar(title: Text('Barcode Scanner')),
+            appBar: AppBar(title: Text('Barcode and QR code Scanner')),
             body: BarcodeCamera(
                 types: const [
                     BarcodeType.ean8,
                     BarcodeType.ean13,
-                    BarcodeType.code128
+                    BarcodeType.code128,
+                    BarcodeType.qr
                 ],
                 resolution: Resolution.hd720,
                 framerate: Framerate.fps30,
