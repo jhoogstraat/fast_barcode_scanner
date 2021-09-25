@@ -78,8 +78,8 @@ class MyScannerScreen extends StatelessWidget {
 
 Two overlays are included:
 
-- `MaterialPreviewOverlay` mimics the official material barcode scanning [example](https://material.io/design/machine-learning/barcode-scanning.html#usage)
-- `BlurPreviewOverlay` blurs the screen when a barcode is detected
+- `MaterialPreviewOverlay` mimics the official material barcode scanning [example](https://material.io/design/machine-learning/barcode-scanning.html#usage).
+- `BlurPreviewOverlay` blurs the screen when a barcode or QR code is detected.
 
 ## Controlling the camera
 
