@@ -76,6 +76,7 @@ class MaterialFinderPainter extends CustomPainter {
   bool shouldRepaint(MaterialFinderPainter oldDelegate) {
     return oldDelegate.opacity != opacity ||
         oldDelegate.inflate != inflate ||
+        oldDelegate.sensingColor != sensingColor ||
         oldDelegate.borderPaint != borderPaint ||
         oldDelegate.backgroundColor != backgroundColor ||
         oldDelegate.cutOutShape != cutOutShape;
