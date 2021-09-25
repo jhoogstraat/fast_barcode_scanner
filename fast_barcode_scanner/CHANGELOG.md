@@ -1,3 +1,9 @@
+# 2.0.1
+
+- Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
+- Qr Code to readme for more findability
+
+
 # 2.0.0
 
 - Added ability to change the scanner configuration while running

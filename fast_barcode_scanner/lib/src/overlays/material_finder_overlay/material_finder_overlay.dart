@@ -23,14 +23,14 @@ class MaterialPreviewOverlay extends StatefulWidget {
     this.sensingColor = Colors.white,
     this.backgroundColor = Colors.black38,
     this.cutOutShape = CutOutShape.wide,
-    this.cutOutShapeBorderColor = Colors.black87,
+    this.cutOutBorderColor = Colors.black87,
   }) : super(key: key);
 
   final bool showSensing;
   final Color backgroundColor;
   final Color sensingColor;
   final CutOutShape cutOutShape;
-  final Color cutOutShapeBorderColor;
+  final Color cutOutBorderColor;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -98,7 +98,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     final defaultBorderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
-      ..color = widget.cutOutShapeBorderColor;
+      ..color = widget.cutOutBorderColor;
 
     final sensingBorderPaint = Paint()
       ..style = PaintingStyle.stroke
