@@ -74,7 +74,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
         position: CameraPosition.back,
         onScan: (code) => history.add(code),
         children: const [
-          MaterialPreviewOverlay(showSensing: false),
+          MaterialPreviewOverlay(),
           // BlurPreviewOverlay()
         ],
         dispose: widget.dispose,

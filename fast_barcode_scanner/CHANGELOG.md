@@ -7,6 +7,8 @@
 - Massively improved sample app with controls over all features.
 - Updated CameraX and ML Kit to the newest versions
 - Analyze single images from native image pickers on iOS and Android
+- Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
+- Qr Code to readme for more findability
 
 ## 1.1.4
 

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'material_finder_painter.dart';
 
+enum CutOutShape { square, wide }
+
 /// Mimics the official Material Design Barcode Scanner
 /// (https://material.io/design/machine-learning/barcode-scanning.html)
 ///
@@ -18,11 +20,17 @@ class MaterialPreviewOverlay extends StatefulWidget {
   const MaterialPreviewOverlay({
     Key? key,
     this.showSensing = false,
-    this.aspectRatio = 16 / 9,
+    this.sensingColor = Colors.white,
+    this.backgroundColor = Colors.black38,
+    this.cutOutShape = CutOutShape.wide,
+    this.cutOutBorderColor = Colors.black87,
   }) : super(key: key);
 
   final bool showSensing;
-  final double aspectRatio;
+  final Color backgroundColor;
+  final Color sensingColor;
+  final CutOutShape cutOutShape;
+  final Color cutOutBorderColor;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -37,7 +45,6 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
   @override
   void initState() {
     super.initState();
-
     if (widget.showSensing) {
       _controller = AnimationController(
           duration: const Duration(milliseconds: 1100), vsync: this);
@@ -88,6 +95,15 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final defaultBorderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
+      ..color = widget.cutOutBorderColor;
+
+    final sensingBorderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5; // strokeWidth is painted 50/50 outwards and inwards.
+
     return RepaintBoundary(
       child: SizedBox.expand(
         child: Stack(
@@ -95,8 +111,9 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
           children: [
             CustomPaint(
               painter: MaterialFinderPainter(
-                aspectRatio: widget.aspectRatio,
-                borderPaint: MaterialFinderPainter.defaultBorderPaint,
+                borderPaint: defaultBorderPaint,
+                backgroundColor: widget.backgroundColor,
+                cutOutShape: widget.cutOutShape,
               ),
             ),
             if (widget.showSensing)
@@ -104,11 +121,13 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                 animation: _controller,
                 builder: (context, child) => CustomPaint(
                   foregroundPainter: MaterialFinderPainter(
-                    aspectRatio: widget.aspectRatio,
                     inflate: _inflateSequence.value,
                     opacity: _opacitySequence.value,
+                    sensingColor: widget.sensingColor,
                     drawBackground: false,
-                    borderPaint: MaterialFinderPainter.sensingBorderPaint,
+                    borderPaint: sensingBorderPaint,
+                    backgroundColor: widget.backgroundColor,
+                    cutOutShape: widget.cutOutShape,
                   ),
                 ),
               )

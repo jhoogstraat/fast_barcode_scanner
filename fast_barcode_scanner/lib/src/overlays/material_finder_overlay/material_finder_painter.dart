@@ -1,37 +1,40 @@
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 
 class MaterialFinderPainter extends CustomPainter {
   MaterialFinderPainter({
-    required this.aspectRatio,
     this.inflate = 0.0,
     this.opacity = 1.0,
+    this.sensingColor = Colors.white,
     this.drawBackground = true,
     required this.borderPaint,
+    required this.backgroundColor,
+    required this.cutOutShape,
   });
 
-  final double aspectRatio;
   final double inflate;
   final double opacity;
+  final Color sensingColor;
   final bool drawBackground;
   final Paint borderPaint;
-
-  static final defaultBorderPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
-    ..color = Colors.black.withAlpha(160);
-
-  static final sensingBorderPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 5; // strokeWidth is painted 50/50 outwards and inwards.
-
-  static final backgroundPaint = Paint()..color = Colors.black45;
+  final Color backgroundColor;
+  final CutOutShape cutOutShape;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final backgroundPaint = Paint()..color = backgroundColor;
+
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
     final cutOutWidth = screenRect.width - 45;
-    final cutOutHeight = 1 / aspectRatio * cutOutWidth;
+
+    double cutOutHeight;
+    if (cutOutShape == CutOutShape.square) {
+      cutOutHeight = cutOutWidth;
+    } else {
+      cutOutHeight = 1 / (16 / 9) * cutOutWidth;
+    }
+
     final cutOut = RRect.fromRectXY(
       Rect.fromCenter(
         center: screenRect.center,
@@ -43,7 +46,7 @@ class MaterialFinderPainter extends CustomPainter {
     );
 
     if (opacity != 1 || inflate != 0) {
-      borderPaint.color = Colors.white.withAlpha((255 * opacity).toInt());
+      borderPaint.color = sensingColor.withAlpha((255 * opacity).toInt());
       borderPaint.strokeWidth = 5 - 4 * inflate;
     }
 
@@ -73,7 +76,9 @@ class MaterialFinderPainter extends CustomPainter {
   bool shouldRepaint(MaterialFinderPainter oldDelegate) {
     return oldDelegate.opacity != opacity ||
         oldDelegate.inflate != inflate ||
-        oldDelegate.aspectRatio != aspectRatio ||
-        oldDelegate.borderPaint != borderPaint;
+        oldDelegate.sensingColor != sensingColor ||
+        oldDelegate.borderPaint != borderPaint ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.cutOutShape != cutOutShape;
   }
 }
