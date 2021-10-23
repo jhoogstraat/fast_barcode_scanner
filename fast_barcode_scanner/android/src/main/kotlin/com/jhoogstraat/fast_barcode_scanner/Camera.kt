@@ -63,15 +63,24 @@ class Camera(
     }
 
     init {
+        val types = (args["types"] as ArrayList<String>)
+        
         try {
             scannerConfiguration = ScannerConfiguration(
-                (args["types"] as ArrayList<String>).mapNotNull { barcodeFormatMap[it] }
+                types.mapNotNull { barcodeFormatMap[it] }
                     .toIntArray(),
                 DetectionMode.valueOf(args["mode"] as String),
                 Resolution.valueOf(args["res"] as String),
                 Framerate.valueOf(args["fps"] as String),
                 CameraPosition.valueOf(args["pos"] as String)
             )
+
+            // Report to the user if any types are not supported
+            if (types.count() != scannerConfiguration.formats.count()) {
+                val unsupportedTypes = types.filter { !barcodeFormatMap.containsKey(it) }
+                Log.d(TAG, "WARNING: Unsupported barcode types selected: $unsupportedTypes")
+            }
+            
         } catch (e: Exception) {
             throw ScannerException.InvalidArguments(args)
         }
