@@ -39,7 +39,7 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
 
             // Report to the user if any types are not supported
             if visionBarcodesRequests.first!.symbologies.count != newValue.count {
-                let unsupportedTypes = newValue.filter { !vnBarcodeSymbols.keys.contains($0) }
+                let unsupportedTypes = newValue.filter { vnBarcodeSymbols[$0] == nil }
                 print("WARNING: Unsupported barcode types selected: \(unsupportedTypes)")
             }
         }

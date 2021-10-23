@@ -35,7 +35,7 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
 
             // Report to the user if any types are not supported
             if output.metadataObjectTypes.count != newValue.count {
-                let unsupportedTypes = newValue.filter { !avMetadataObjectTypes.keys.contains($0) }
+                let unsupportedTypes = newValue.filter { avMetadataObjectTypes[$0] == nil }
                 print("WARNING: Unsupported barcode types selected: \(unsupportedTypes)")
             }
         }
