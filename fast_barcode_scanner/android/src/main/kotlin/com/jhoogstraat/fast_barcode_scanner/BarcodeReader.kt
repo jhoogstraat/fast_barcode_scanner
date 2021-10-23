@@ -43,6 +43,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     /* State */
     private var isInitialized = false
     private var pauseDetection = false
+    private var pendingResult: Result? = null
 
     fun attachToActivity(activity: Activity) {
         this.activity = activity
@@ -75,15 +76,15 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
 
         if (allPermissionsGranted()) {
             initCamera()
+            result.success(hashMapOf("textureId" to flutterTextureEntry.id(), "surfaceOrientation" to 0, "surfaceHeight" to 1280, "surfaceWidth" to 720))
         } else {
+            pendingResult = result
             ActivityCompat.requestPermissions(
                 activity!!,
                 REQUIRED_PERMISSIONS,
                 REQUEST_CODE_PERMISSIONS
             )
         }
-
-        result.success(hashMapOf("textureId" to flutterTextureEntry.id(), "surfaceOrientation" to 0, "surfaceHeight" to 1280, "surfaceWidth" to 720))
     }
 
     fun stop(result: Result? = null) {
@@ -113,6 +114,11 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 initCamera()
+            } else {
+                pendingResult?.let {
+                    it.error("UNAUTHORIZED", "The application is not authorized to use the camera device", null)
+                    pendingResult = null
+                }
             }
         }
 

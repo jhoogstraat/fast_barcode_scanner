@@ -1,6 +1,7 @@
 ## 1.1.4
 
 - Fixes `pauseDetector` on iOS
+- Fixes no error reported when permissions are denied on Android
 - Updates CameraX (compileSdk is now 31)
 
 ## 1.1.3

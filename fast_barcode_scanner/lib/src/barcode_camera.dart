@@ -9,8 +9,11 @@ import 'package:flutter/rendering.dart';
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
-  debugPrint("Error reading from camera: $error");
-  return const Center(child: Text("Error reading from camera..."));
+  return const Center(
+      child: Text(
+    "Error reading from camera...",
+    style: TextStyle(color: Colors.white),
+  ));
 }
 
 /// The main class connecting the platform code to the UI.
