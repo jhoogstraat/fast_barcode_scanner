@@ -25,12 +25,18 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
         set {
             _symbologies = newValue
 
-            // This will just ignore all incomptaible types
+            // This will just ignore all unsupported types
             output.metadataObjectTypes = newValue.compactMap { avMetadataObjectTypes[$0] }
 
             // UPC-A is reported as EAN-13
             if newValue.contains("upcA") && !output.metadataObjectTypes.contains(.ean13) {
                 output.metadataObjectTypes.append(.ean13)
+            }
+
+            // Report to the user if any types are not supported
+            if output.metadataObjectTypes.count != newValue.count {
+                let unsupportedTypes = newValue.filter { !avMetadataObjectTypes.keys.contains($0) }
+                print("WARNING: Unsupported barcode types selected: \(unsupportedTypes)")
             }
         }
     }
