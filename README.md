@@ -4,7 +4,7 @@
 
 ### fast_barcode_scanner:
 
-[![Pub Version (including pre-releases)](https://img.shields.io/pub/v/fast_barcode_scanner?include_prereleases&style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner/versions/2.0.0-dev.1)
+[![Pub Version (including pre-releases)](https://img.shields.io/pub/v/fast_barcode_scanner?include_prereleases&style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner/versions/2.0.0-dev.2)
 
 Code for the cross-platform facing plugin, used to display a camera view within Flutter applications.
 
@@ -12,7 +12,7 @@ Code for the cross-platform facing plugin, used to display a camera view within 
 
 ### fast_barcode_scanner_platform_interface:
 
-[![Pub Version (including pre-releases)](https://img.shields.io/pub/v/fast_barcode_scanner?include_prereleases&style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner_platform_interface/versions/2.0.0-dev.1)
+[![Pub Version (including pre-releases)](https://img.shields.io/pub/v/fast_barcode_scanner?include_prereleases&style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner_platform_interface/versions/2.0.0-dev.2)
 
 Code for the common platform interface. Most developers are likely here as they are looking to use the fast_barcode_scanner plugin. There is a readme file within each directory with more information.
 

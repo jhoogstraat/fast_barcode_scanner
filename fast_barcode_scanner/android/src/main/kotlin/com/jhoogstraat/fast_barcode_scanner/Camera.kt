@@ -64,7 +64,7 @@ class Camera(
 
     init {
         val types = (args["types"] as ArrayList<String>)
-        
+
         try {
             scannerConfiguration = ScannerConfiguration(
                 types.mapNotNull { barcodeFormatMap[it] }

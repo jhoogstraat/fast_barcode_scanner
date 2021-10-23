@@ -1,4 +1,12 @@
-# 2.0.0
+# 2.0.0-dev.2
+
+- Analyze still images from binary or native image pickers on iOS and Android
+- Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
+- Added first tests
+- Even more refactoring
+- Simplified Readme
+
+# 2.0.0-dev.1
 
 - Added ability to change the scanner configuration while running
 - Restructured and simplified native code on iOS and Android
@@ -6,9 +14,6 @@
 - UPC-A is now correctly reported on iOS (EAN-13 with a leading 0 is regarded as UPC-A).
 - Massively improved sample app with controls over all features.
 - Updated CameraX and ML Kit to the newest versions
-- Analyze single images from native image pickers on iOS and Android
-- Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
-- Qr Code to readme for more findability
 
 ## 1.1.4
 
