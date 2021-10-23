@@ -118,7 +118,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 	}
 
 	func pause(result: @escaping FlutterResult) {
-		reader?.pauseIfRequired()
+		reader?.pauseIfRequired(force: true)
 		result(nil)
 	}
 

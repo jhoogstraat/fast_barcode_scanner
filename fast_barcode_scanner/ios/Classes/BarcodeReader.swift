@@ -208,13 +208,17 @@ class BarcodeReader: NSObject {
 		return captureDevice.isTorchActive
 	}
 
-	func pauseIfRequired() {
-		switch detectionMode {
-		case .continuous: return
-		case .pauseDetection:
-			captureSession.removeOutput(metadataOutput)
-		case .pauseVideo:
+	func pauseIfRequired(force: Bool = false) {
+		if force {
 			stop(pause: true)
+		} else {
+			switch detectionMode {
+			case .continuous: return
+			case .pauseDetection:
+				captureSession.removeOutput(metadataOutput)
+			case .pauseVideo:
+				stop(pause: true)
+			}
 		}
 	}
 

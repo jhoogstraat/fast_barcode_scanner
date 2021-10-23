@@ -1,3 +1,8 @@
+## 1.1.4
+
+- Fixes `pauseDetector` on iOS
+- Updates CameraX (compileSdk is now 31)
+
 ## 1.1.3
 
 - Remove references to FlutterActivity (required by local_auth package)
