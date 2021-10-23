@@ -1,4 +1,4 @@
-# 2.0.0-dev.2
+## 2.0.0-dev.2
 
 - Analyze still images from binary or native image pickers on iOS and Android
 - Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
@@ -6,7 +6,7 @@
 - Even more refactoring
 - Simplified Readme
 
-# 2.0.0-dev.1
+## 2.0.0-dev.1
 
 - Added ability to change the scanner configuration while running
 - Restructured and simplified native code on iOS and Android
