@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 class CameraConfiguration {
-  const CameraConfiguration(this.types, this.resolution, this.framerate,
-      this.detectionMode, this.position);
+  const CameraConfiguration(
+    this.types,
+    this.resolution,
+    this.framerate,
+    this.detectionMode,
+    this.position,
+  );
 
   /// The types the scanner should look out for.
   ///
@@ -38,6 +43,7 @@ class CameraState {
   PreviewConfiguration? _previewConfig;
   bool _torchState = false;
   bool _togglingTorch = false;
+  CameraPosition? position;
   Object? _error;
 
   Object? get error => _error;
@@ -62,8 +68,7 @@ class CameraController {
   /// errors and events.
   final CameraState state;
 
-  FastBarcodeScannerPlatform get _platform =>
-      FastBarcodeScannerPlatform.instance;
+  FastBarcodeScannerPlatform get _platform => FastBarcodeScannerPlatform.instance;
 
   // Intents
 
@@ -73,18 +78,19 @@ class CameraController {
   /// method repeatedly.
   /// Events and errors are received via the current state's eventNotifier.
   Future<void> initialize(
-      List<BarcodeType> types,
-      Resolution resolution,
-      Framerate framerate,
-      DetectionMode detectionMode,
-      CameraPosition position,
-      void Function(Barcode)? onScan) async {
+    List<BarcodeType> types,
+    Resolution resolution,
+    Framerate framerate,
+    DetectionMode detectionMode,
+    CameraPosition position,
+    void Function(Barcode)? onScan,
+  ) async {
     state.eventNotifier.value = CameraEvent.init;
+    state.position = position;
 
     try {
       if (state.isInitialized) await _platform.dispose();
-      state._previewConfig = await _platform.init(
-          types, resolution, framerate, detectionMode, position);
+      state._previewConfig = await _platform.init(types, resolution, framerate, detectionMode, position);
 
       /// Notify the overlays when a barcode is detected and then call [onDetect].
       _platform.setOnDetectHandler((code) {
@@ -166,6 +172,14 @@ class CameraController {
 
       state._togglingTorch = false;
     }
+  }
+
+  /// Toggles the camera, if available.
+  ///
+  ///
+  Future<void> toggleCamera() async {
+    state.position = state.position == CameraPosition.back ? CameraPosition.front : CameraPosition.back;
+    return changeCamera(state.position!);
   }
 
   Future<void> changeCamera(CameraPosition position) async {

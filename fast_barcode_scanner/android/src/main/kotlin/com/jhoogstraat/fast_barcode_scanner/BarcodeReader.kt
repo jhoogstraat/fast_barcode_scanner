@@ -23,7 +23,7 @@ import java.util.ArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, val position: CameraPosition)
+data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, var position: CameraPosition)
 
 class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
@@ -106,6 +106,14 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         }, ContextCompat.getMainExecutor(activity))
     }
 
+    fun changeCamera(position: String, result: Result) {
+        cameraConfig.position = when (position) {
+            "front" -> CameraPosition.front
+            else -> CameraPosition.back
+        }
+        initCamera()
+    }
+
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(activity!!.applicationContext, it) == PackageManager.PERMISSION_GRANTED
     }
@@ -148,12 +156,8 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         // Select camera
         val selectorBuilder = CameraSelector.Builder()
         when (cameraConfig.position) {
-            CameraPosition.front -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-            }
-            CameraPosition.back -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
-            }
+            CameraPosition.front -> selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+            CameraPosition.back -> selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
         }
         cameraSelector = selectorBuilder.build()
 

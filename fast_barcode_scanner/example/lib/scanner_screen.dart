@@ -32,25 +32,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
           ValueListenableBuilder<bool>(
             valueListenable: _torchIconState,
             builder: (context, state, _) => IconButton(
-              icon: state
-                  ? const Icon(Icons.flash_on)
-                  : const Icon(Icons.flash_off),
+              icon: state ? const Icon(Icons.flash_on) : const Icon(Icons.flash_off),
               onPressed: () async {
                 await CameraController.instance.toggleTorch();
-                _torchIconState.value =
-                    CameraController.instance.state.torchState;
+                _torchIconState.value = CameraController.instance.state.torchState;
               },
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.cameraswitch),
+            onPressed: () async {
+              await CameraController.instance.toggleCamera();
+            },
           ),
         ],
       ),
       body: BarcodeCamera(
-        types: const [
-          BarcodeType.ean8,
-          BarcodeType.ean13,
-          BarcodeType.code128,
-          BarcodeType.qr
-        ],
+        types: const [BarcodeType.ean8, BarcodeType.ean13, BarcodeType.code128, BarcodeType.qr],
         resolution: Resolution.hd720,
         framerate: Framerate.fps30,
         mode: DetectionMode.pauseVideo,
