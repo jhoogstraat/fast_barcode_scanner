@@ -55,6 +55,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "pause": pause(result: result)
             case "resume": try resume(result: result)
             case "toggleTorch": toggleTorch(result: result)
+            case "canChangeCamera": canChangeCamera(result: result)
             case "heartBeat": result(nil)
             default: result(FlutterMethodNotImplemented)
             }
@@ -129,6 +130,10 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 
 	func toggleTorch(result: @escaping FlutterResult) {
 		result(reader?.toggleTorch())
+	}
+
+	func canChangeCamera(result: @escaping FlutterResult) {
+		result(true)
 	}
 
 	func stop(result: @escaping FlutterResult) {

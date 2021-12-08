@@ -68,7 +68,8 @@ class CameraController {
   /// errors and events.
   final CameraState state;
 
-  FastBarcodeScannerPlatform get _platform => FastBarcodeScannerPlatform.instance;
+  FastBarcodeScannerPlatform get _platform =>
+      FastBarcodeScannerPlatform.instance;
 
   // Intents
 
@@ -90,7 +91,8 @@ class CameraController {
 
     try {
       if (state.isInitialized) await _platform.dispose();
-      state._previewConfig = await _platform.init(types, resolution, framerate, detectionMode, position);
+      state._previewConfig = await _platform.init(
+          types, resolution, framerate, detectionMode, position);
 
       /// Notify the overlays when a barcode is detected and then call [onDetect].
       _platform.setOnDetectHandler((code) {
@@ -178,9 +180,13 @@ class CameraController {
   ///
   ///
   Future<void> toggleCamera() async {
-    state.position = state.position == CameraPosition.back ? CameraPosition.front : CameraPosition.back;
+    state.position = state.position == CameraPosition.back
+        ? CameraPosition.front
+        : CameraPosition.back;
     return changeCamera(state.position!);
   }
+
+  Future<bool> canChangeCamera() => _platform.canChangeCamera();
 
   Future<void> changeCamera(CameraPosition position) async {
     try {

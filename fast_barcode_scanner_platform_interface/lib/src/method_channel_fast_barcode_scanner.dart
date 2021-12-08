@@ -69,6 +69,10 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       .then<bool>((success) => success);
 
   @override
+  Future<bool> canChangeCamera() =>
+      _channel.invokeMethod('canChangeCamera').then<bool>((success) => success);
+
+  @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
       _onDetectHandler = handler;
 }

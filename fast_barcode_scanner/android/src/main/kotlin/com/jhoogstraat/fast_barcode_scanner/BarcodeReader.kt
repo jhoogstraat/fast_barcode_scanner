@@ -106,6 +106,20 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         }, ContextCompat.getMainExecutor(activity))
     }
 
+    fun canChangeCamera(result: Result) {
+        try {
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
+            cameraProviderFuture.addListener(Runnable {
+                val cameraProviderForChangeCamera = cameraProviderFuture.get()    
+                val hasFrontCamera = cameraProviderForChangeCamera.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+                val hasBackCamera = cameraProviderForChangeCamera.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)
+                result.success(hasFrontCamera && hasBackCamera)
+            }, ContextCompat.getMainExecutor(activity!!))
+        } catch (exc: Exception) {
+            result.success(false)
+        }
+    }
+
     fun changeCamera(position: String, result: Result) {
         cameraConfig.position = when (position) {
             "front" -> CameraPosition.front

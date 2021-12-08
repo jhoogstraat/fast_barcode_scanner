@@ -15,5 +15,9 @@ dependencies:
 dev_dependencies:
   flutter_lints: ^1.0.4
 
+dependency_overrides: 
+  fast_barcode_scanner_platform_interface:
+    path: ../../fast_barcode_scanner_platform_interface/
+
 flutter:
   uses-material-design: true
