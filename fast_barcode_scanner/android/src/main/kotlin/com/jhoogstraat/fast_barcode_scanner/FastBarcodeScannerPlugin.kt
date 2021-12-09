@@ -58,6 +58,7 @@ class FastBarcodeScannerPlugin: FlutterPlugin, MethodCallHandler, ActivityAware 
       "pause" -> reader.stop(result)
       "resume" -> reader.resume(result)
       "toggleTorch" -> reader.toggleTorch(result)
+      "canChangeCamera" -> reader.canChangeCamera(result)
       "changeCamera" -> reader.changeCamera(call.arguments as String, result)
       else -> result.notImplemented()
     }

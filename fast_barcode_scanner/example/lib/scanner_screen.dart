@@ -15,6 +15,20 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen> {
   final _torchIconState = ValueNotifier(false);
+  var _canChangeCamera = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkCamera();
+  }
+
+  Future<void> _checkCamera() async {
+    final canChangeCamera = await CameraController.instance.canChangeCamera();
+    setState(() {
+      _canChangeCamera = canChangeCamera;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +53,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
               },
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.cameraswitch),
-            onPressed: () async {
-              await CameraController.instance.toggleCamera();
-            },
-          ),
+          if (_canChangeCamera)
+            IconButton(
+              icon: const Icon(Icons.cameraswitch),
+              onPressed: CameraController.instance.toggleCamera,
+            ),
         ],
       ),
       body: BarcodeCamera(

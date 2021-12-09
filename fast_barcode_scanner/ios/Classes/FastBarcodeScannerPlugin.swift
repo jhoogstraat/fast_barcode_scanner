@@ -20,6 +20,14 @@ struct StartArgs {
 		self.detectionMode = detectionMode
 		self.codes = codes
 	}
+    
+    init(position: AVCaptureDevice.Position, detectionMode: DetectionMode, framerate: Framerate, resolution: Resolution, codes: [String]) {
+        self.position = position
+        self.detectionMode = detectionMode
+        self.framerate = framerate
+        self.resolution = resolution
+        self.codes = codes
+    }
 
     let position: AVCaptureDevice.Position
 	let framerate: Framerate
@@ -55,7 +63,10 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "pause": pause(result: result)
             case "resume": try resume(result: result)
             case "toggleTorch": toggleTorch(result: result)
+            case "canChangeCamera": canChangeCamera(result: result)
             case "heartBeat": result(nil)
+            case "changeCamera": changeCamera(call: call, result: result)
+            case "toggleCamera": toggleCamera(result: result)
             default: result(FlutterMethodNotImplemented)
             }
         } catch {
@@ -131,9 +142,27 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
 		result(reader?.toggleTorch())
 	}
 
+	func canChangeCamera(result: @escaping FlutterResult) {
+		result(true)
+	}
+
 	func stop(result: @escaping FlutterResult) {
 		reader?.stop(pause: false)
 		reader = nil
 		result(nil)
 	}
+    
+    func changeCamera(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let type = call.arguments as? String else {
+            result(false)
+            return
+        }
+        reader?.changeCamera(type: type)
+        result(true)
+    }
+    
+    func toggleCamera(result: @escaping FlutterResult) {
+        reader?.toggleCamera()
+        result(true)
+    }
 }
