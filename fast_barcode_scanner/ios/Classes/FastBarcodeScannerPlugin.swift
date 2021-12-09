@@ -66,7 +66,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin {
             case "canChangeCamera": canChangeCamera(result: result)
             case "heartBeat": result(nil)
             case "changeCamera": changeCamera(call: call, result: result)
-            case "toggleCamera": toggleCamera(result)
+            case "toggleCamera": toggleCamera(result: result)
             default: result(FlutterMethodNotImplemented)
             }
         } catch {
