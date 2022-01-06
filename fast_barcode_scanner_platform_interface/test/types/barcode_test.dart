@@ -1,5 +1,6 @@
+import 'dart:math';
+
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
-import 'package:fast_barcode_scanner_platform_interface/src/types/barcode.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -12,6 +13,27 @@ void main() {
 
     expect(barcodeQR.type, BarcodeType.qr);
     expect(barcodeQR.value, "This is a QR Code");
+  });
+
+  test('Should initialize cornerPoints with list if provided', () {
+    final barcodeQR = Barcode([
+      "qr",
+      "This is a QR Code",
+      null,
+      [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+        [7, 8]
+      ]
+    ]);
+
+    expect(barcodeQR.cornerPoints, [
+      const Point(1, 2),
+      const Point(3, 4),
+      const Point(5, 6),
+      const Point(7, 8),
+    ]);
   });
 
   test("Should throw A StateError if invalid type is provided", () {

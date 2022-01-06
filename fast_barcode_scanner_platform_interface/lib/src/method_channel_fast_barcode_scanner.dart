@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import 'types/barcode.dart';
@@ -102,6 +103,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       final barcode = Barcode(data);
       _onDetectHandler?.call(barcode);
       // ignore: empty_catches
-    } catch (e) {}
+    } catch (e) {
+      debugPrint("error with platform message: $e");
+    }
   }
 }

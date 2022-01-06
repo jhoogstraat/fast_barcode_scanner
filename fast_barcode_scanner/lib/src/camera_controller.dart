@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../fast_barcode_scanner.dart';
 import 'types/scanner_configuration.dart';
@@ -14,10 +15,15 @@ class ScannerState {
   Object? _error;
 
   PreviewConfiguration? get previewConfig => _previewConfig;
+
   ScannerConfiguration? get scannerConfig => _scannerConfig;
+
   bool get torchState => _torch;
+
   bool get isInitialized => _previewConfig != null;
+
   bool get hasError => _error != null;
+
   Object? get error => _error;
 }
 
@@ -32,8 +38,15 @@ abstract class CameraController {
   /// The cumulated state of the barcode scanner.
   ///
   /// Contains information about the configuration, torch,
-  /// errors and events.
+  /// and errors
   final state = ScannerState();
+
+  /// reports most recently scanned code
+  Stream<List<Barcode>> get scannedCodes;
+
+  Size? get cameraPreviewSize;
+
+  Size? get analysisSize;
 
   /// A [ValueNotifier] for camera state events.
   ///
@@ -113,6 +126,40 @@ class _CameraController implements CameraController {
   @override
   final events = ValueNotifier(ScannerEvent.uninitialized);
 
+  final _scannedCodeSubject = PublishSubject<ScannedBarcodes>();
+  @override
+  Stream<List<Barcode>> get scannedCodes {
+    const timeout = Duration(milliseconds: 100);
+    final silencer = Stream.periodic(timeout);
+    return Rx.combineLatest2<ScannedBarcodes, void, List<Barcode>>(_scannedCodeSubject, silencer, (codes, _) {
+      if (DateTime.now().difference(codes.scannedAt) > timeout) {
+        return [];
+      } else {
+        return codes.barcodes;
+      }
+    });
+  }
+
+  @override
+  Size? get cameraPreviewSize {
+    final previewConfig = state.previewConfig;
+    if (previewConfig != null) {
+      return Size(
+          previewConfig.width.toDouble(), previewConfig.height.toDouble());
+    }
+    return null;
+  }
+
+  @override
+  Size? get analysisSize {
+    final previewConfig = state.previewConfig;
+    if (previewConfig != null) {
+      return Size(previewConfig.analysisWidth.toDouble(),
+          previewConfig.analysisHeight.toDouble());
+    }
+    return null;
+  }
+
   /// Indicates if the torch is currently switching.
   ///
   /// Used to prevent command-spamming.
@@ -139,7 +186,10 @@ class _CameraController implements CameraController {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      _onScan = onScan;
+      _onScan = (barcode) {
+        _scannedCodeSubject.add(ScannedBarcodes([barcode]));
+        onScan?.call(barcode);
+      };
 
       _platform.setOnDetectHandler(_onDetectHandler);
 
@@ -165,6 +215,7 @@ class _CameraController implements CameraController {
       state._torch = false;
       state._error = null;
       events.value = ScannerEvent.uninitialized;
+      _scannedCodeSubject.add(ScannedBarcodes.none());
     } catch (error) {
       state._error = error;
       events.value = ScannerEvent.error;
@@ -295,4 +346,24 @@ class _CameraController implements CameraController {
     events.value = ScannerEvent.detected;
     _onScan?.call(code);
   }
+}
+
+class ScannedBarcodes {
+  final List<Barcode> barcodes;
+  final DateTime scannedAt;
+
+  ScannedBarcodes(this.barcodes): scannedAt = DateTime.now();
+
+  ScannedBarcodes.none() : this([]);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScannedBarcodes &&
+          runtimeType == other.runtimeType &&
+          barcodes == other.barcodes &&
+          scannedAt == other.scannedAt;
+
+  @override
+  int get hashCode => barcodes.hashCode ^ scannedAt.hashCode;
 }

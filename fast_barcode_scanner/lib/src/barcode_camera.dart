@@ -119,7 +119,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
                 fit: StackFit.expand,
                 children: [
                   if (cameraState.isInitialized)
-                    _buildPreview(cameraState.previewConfig!),
+                    Container(child: _buildPreview(cameraState.previewConfig!)),
                   ...widget.children
                 ],
               ),
