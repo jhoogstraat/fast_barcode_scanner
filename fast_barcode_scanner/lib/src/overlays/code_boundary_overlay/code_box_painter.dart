@@ -49,10 +49,7 @@ class BarcodePainter extends CustomPainter {
             .toList();
         path.moveTo(offsets[0].dx, offsets[0].dy);
         double minX = -1, maxX = -1, minY = -1, maxY = -1;
-        double x = 0, y = 0;
         for (var offset in offsets) {
-          x += offset.dx;
-          y += offset.dy;
           if (minX == -1 || offset.dx < minX) {
             minX = offset.dx;
           }

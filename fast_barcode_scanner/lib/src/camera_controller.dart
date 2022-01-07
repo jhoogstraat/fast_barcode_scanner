@@ -6,7 +6,6 @@ import 'package:flutter/widgets.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../fast_barcode_scanner.dart';
-import 'types/scanner_configuration.dart';
 
 class ScannerState {
   PreviewConfiguration? _previewConfig;
@@ -127,6 +126,7 @@ class _CameraController implements CameraController {
   final events = ValueNotifier(ScannerEvent.uninitialized);
 
   final _scannedCodeSubject = PublishSubject<ScannedBarcodes>();
+
   @override
   Stream<List<Barcode>> get scannedCodes {
     // The general strategy here is to provide a real-time stream of codes that are currently visible by the camera
@@ -136,7 +136,8 @@ class _CameraController implements CameraController {
     // this silencer stream allows us to clear the stream when codes are no longer visible
     // if we don't clear the stream we cannot be certain that the camera is still seeing the code
     final silencer = Stream.periodic(timeout);
-    return Rx.combineLatest2<ScannedBarcodes, void, List<Barcode>>(_scannedCodeSubject, silencer, (codes, _) {
+    return Rx.combineLatest2<ScannedBarcodes, void, List<Barcode>>(
+        _scannedCodeSubject, silencer, (codes, _) {
       if (DateTime.now().difference(codes.scannedAt) > timeout) {
         // it's been too long since we last saw any codes, return an empty array
         return [];
@@ -348,7 +349,7 @@ class ScannedBarcodes {
   final List<Barcode> barcodes;
   final DateTime scannedAt;
 
-  ScannedBarcodes(this.barcodes): scannedAt = DateTime.now();
+  ScannedBarcodes(this.barcodes) : scannedAt = DateTime.now();
 
   ScannedBarcodes.none() : this([]);
 

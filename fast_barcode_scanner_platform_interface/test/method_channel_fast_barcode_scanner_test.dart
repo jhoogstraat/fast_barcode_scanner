@@ -1,6 +1,5 @@
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:fast_barcode_scanner_platform_interface/src/method_channel_fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
