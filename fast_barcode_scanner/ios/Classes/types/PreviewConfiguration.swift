@@ -9,6 +9,8 @@ struct PreviewConfiguration {
          "height": width,
          "analysis": "\(width)x\(height)",
          "targetRotation": targetRotation,
-         "textureId": textureId]
+         "textureId": textureId,
+         "analysisWidth": width,
+         "analysisHeight": height]
     }
 }

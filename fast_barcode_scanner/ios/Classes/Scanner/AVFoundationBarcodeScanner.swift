@@ -62,12 +62,15 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
     func metadataOutput(_ output: AVCaptureMetadataOutput,
                         didOutput metadataObjects: [AVMetadataObject],
                         from connection: AVCaptureConnection) {
+
+    // TODO: return all scanned codes
 		guard
 			let metadata = metadataObjects.first,
 			let readableCode = metadata as? AVMetadataMachineReadableCodeObject,
             var type = flutterMetadataObjectTypes[readableCode.type],
             var value = readableCode.stringValue
         else { return }
+        let transformedCode = PreviewViewFactory.preview?.videoPreviewLayer.transformedMetadataObject(for: readableCode) as? AVMetadataMachineReadableCodeObject
 
         // Fix UPC-A, see https://developer.apple.com/library/archive/technotes/tn2325/_index.html#//apple_ref/doc/uid/DTS40013824-CH1-IS_UPC_A_SUPPORTED_
         if readableCode.type == .ean13 {
@@ -84,6 +87,20 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
 
         onDetection?()
 
-        resultHandler([type, value])
+        resultHandler([type, value, nil, transformedCode?.corners.pointList])
 	}
+}
+
+extension Array where Element == CGPoint {
+    // convert bounding Rect to point list
+    var pointList: [[Int]] {
+        get {
+            [
+                [Int(self[0].x), Int(self[0].y)],
+                [Int(self[1].x), Int(self[1].y)],
+                [Int(self[2].x), Int(self[2].y)],
+                [Int(self[3].x), Int(self[3].y)]
+            ]
+        }
+    }
 }

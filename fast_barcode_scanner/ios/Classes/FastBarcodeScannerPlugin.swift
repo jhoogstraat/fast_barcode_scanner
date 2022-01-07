@@ -14,8 +14,8 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
          events: FlutterEventChannel,
          factory: PreviewViewFactory
     ) {
-		self.commandChannel = commands
-        self.barcodeEventChannel = events
+		commandChannel = commands
+        barcodeEventChannel = events
         self.factory = factory
 	}
 
@@ -97,6 +97,8 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
     func dispose() {
         camera?.stop()
         camera = nil
+        // TODO: find a standard way to access the FlutterPlatformView so we don't have to manage this static reference
+        PreviewViewFactory.preview = nil
     }
 
     func startDetector() throws {
