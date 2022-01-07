@@ -23,7 +23,9 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0"
+              'analysis': "0x0",
+              'analysisWidth': 0,
+              'analysisHeight': 0,
             }
           });
 

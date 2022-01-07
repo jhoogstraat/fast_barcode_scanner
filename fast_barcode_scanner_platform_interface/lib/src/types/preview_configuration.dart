@@ -59,8 +59,10 @@ class PreviewConfiguration {
   /// The resolution which is used when scanning for barcodes.
   final String analysisResolution;
 
+  /// The width of the image used for analysis. This may be different than the preview width
   final int analysisWidth;
 
+  /// The height of the image used for analysis. This may be different than the preview height
   final int analysisHeight;
 
   PreviewConfiguration(Map<dynamic, dynamic> response)

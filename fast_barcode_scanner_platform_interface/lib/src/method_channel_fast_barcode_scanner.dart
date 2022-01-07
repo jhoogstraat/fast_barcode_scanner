@@ -103,8 +103,6 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       final barcode = Barcode(data);
       _onDetectHandler?.call(barcode);
       // ignore: empty_catches
-    } catch (e) {
-      debugPrint("error with platform message: $e");
-    }
+    } catch (e) {}
   }
 }

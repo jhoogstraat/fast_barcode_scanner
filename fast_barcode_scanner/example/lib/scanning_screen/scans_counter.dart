@@ -40,7 +40,7 @@ class _ScansCounterState extends State<ScansCounter> {
           Expanded(
             child: barcode != null
                 ? Text(
-                    "${history.count(barcode)}x\n${describeEnum(barcode.type)} - ${(barcode.valueType != null ? describeEnum(barcode.valueType!) : "")}: ${barcode.value}\n${barcode.cornerPoints}")
+                    "${history.count(barcode)}x\n${describeEnum(barcode.type)} - ${(barcode.valueType != null ? describeEnum(barcode.valueType!) : "")}: ${barcode.value}")
                 : const SizedBox.shrink(),
           ),
           TextButton(

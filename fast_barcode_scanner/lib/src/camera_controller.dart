@@ -41,11 +41,11 @@ abstract class CameraController {
   /// and errors
   final state = ScannerState();
 
-  /// reports most recently scanned code
+  /// reports most recently scanned codes
   Stream<List<Barcode>> get scannedCodes;
 
-  Size? get cameraPreviewSize;
-
+  /// the size of the image used by the native analysis system to scan the code
+  /// scanned codes have coordinate information that is based on this image size
   Size? get analysisSize;
 
   /// A [ValueNotifier] for camera state events.
@@ -129,25 +129,21 @@ class _CameraController implements CameraController {
   final _scannedCodeSubject = PublishSubject<ScannedBarcodes>();
   @override
   Stream<List<Barcode>> get scannedCodes {
-    const timeout = Duration(milliseconds: 100);
+    // The general strategy here is to provide a real-time stream of codes that are currently visible by the camera
+    // 100ms seems to be enough time. The key is to set a timeout that is longer than the rate at which the codes are scanned
+    const timeout = Duration(milliseconds: 250);
+
+    // this silencer stream allows us to clear the stream when codes are no longer visible
+    // if we don't clear the stream we cannot be certain that the camera is still seeing the code
     final silencer = Stream.periodic(timeout);
     return Rx.combineLatest2<ScannedBarcodes, void, List<Barcode>>(_scannedCodeSubject, silencer, (codes, _) {
       if (DateTime.now().difference(codes.scannedAt) > timeout) {
+        // it's been too long since we last saw any codes, return an empty array
         return [];
       } else {
         return codes.barcodes;
       }
     });
-  }
-
-  @override
-  Size? get cameraPreviewSize {
-    final previewConfig = state.previewConfig;
-    if (previewConfig != null) {
-      return Size(
-          previewConfig.width.toDouble(), previewConfig.height.toDouble());
-    }
-    return null;
   }
 
   @override

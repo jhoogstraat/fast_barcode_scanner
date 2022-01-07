@@ -34,6 +34,7 @@ class Barcode {
   /// Returns [null] on iOS.
   final BarcodeValueType? valueType;
 
+  /// The corners of the visible barcode. This can be used for custom drawing.
   final List<Point>? cornerPoints;
 
   static List<Point<int>>? parsePointList(List<dynamic>? pointList) {
@@ -53,7 +54,8 @@ class Barcode {
       super.hashCode ^
       type.hashCode ^
       value.hashCode ^
-      valueType.hashCode & cornerPoints.hashCode;
+      valueType.hashCode ^
+      cornerPoints.hashCode;
 
   @override
   String toString() {
