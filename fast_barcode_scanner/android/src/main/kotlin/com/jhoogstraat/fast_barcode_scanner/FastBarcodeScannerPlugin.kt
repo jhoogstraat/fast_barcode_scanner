@@ -113,7 +113,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
                 "scan" -> {
                     scanImage(call.arguments)
                         .addOnSuccessListener { barcodes ->
-                            result.success(barcodes?.map { encode(it) })
+                            result.success(barcodes?.map { encode(listOf(it)) })
                         }
                         .addOnFailureListener {
                             throw ScannerException.AnalysisFailed(it)
@@ -160,13 +160,13 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         return points?.map { point: Point -> listOf(point.x, point.y) }
     }
 
-    private fun encode(barcode: Barcode): List<*> {
-        return listOf(
-            barcodeStringMap[barcode.format],
-            barcode.rawValue,
-            barcode.valueType,
-            buildPointList(barcode.cornerPoints)
-        )
+    private fun encode(barcodes: List<Barcode>): List<List<*>> {
+        return barcodes.map { listOf(
+                barcodeStringMap[it.format],
+                it.rawValue,
+                it.valueType,
+                buildPointList(it.cornerPoints)
+        ) }
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -183,7 +183,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
             configuration
         ) { barcodes ->
             // *** Question: should we return all the codes? *****
-            detectionEventSink?.success(encode(barcodes.first()))
+            detectionEventSink?.success(encode(barcodes))
         }
 
         this.camera = camera

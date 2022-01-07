@@ -78,13 +78,13 @@ class _ScanningScreenState extends State<ScanningScreen> {
           BarcodeType.ean8,
           BarcodeType.ean13,
           BarcodeType.code128,
-          BarcodeType.qr
+          BarcodeType.qr,
         ],
         resolution: Resolution.hd720,
         framerate: Framerate.fps30,
         mode: DetectionMode.continuous,
         position: CameraPosition.back,
-        onScan: (code) => history.add(code),
+        onScan: (code) => history.addAll(code),
         children: [
           // MaterialPreviewOverlay(),
           CodeBoundaryOverlay(

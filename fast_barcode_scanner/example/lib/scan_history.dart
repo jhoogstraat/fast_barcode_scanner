@@ -10,9 +10,11 @@ class ScanHistory extends ChangeNotifier {
   Barcode? get recent => scans.isNotEmpty ? scans.last : null;
   int count(Barcode of) => counter[of.value] ?? 0;
 
-  void add(Barcode barcode) {
-    scans.add(barcode);
-    counter.update(barcode.value, (value) => value + 1, ifAbsent: () => 1);
+  void addAll(List<Barcode> barcodes) {
+    scans.addAll(barcodes);
+    for (final barcode in barcodes) {
+      counter.update(barcode.value, (value) => value + 1, ifAbsent: () => 1);
+    }
     notifyListeners();
   }
 
