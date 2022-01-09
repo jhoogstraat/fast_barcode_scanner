@@ -10,6 +10,9 @@ class MaterialFinderPainter extends CustomPainter {
     required this.borderPaint,
     required this.backgroundColor,
     required this.cutOutShape,
+    this.cutOutWidth,
+    this.cutOutHeight,
+    this.cutOutCenter,
   });
 
   final double inflate;
@@ -19,6 +22,9 @@ class MaterialFinderPainter extends CustomPainter {
   final Paint borderPaint;
   final Color backgroundColor;
   final CutOutShape cutOutShape;
+  final double? cutOutWidth;
+  final double? cutOutHeight;
+  final Offset? cutOutCenter;
 
   @override
   void paint(Canvas canvas, Size size) {
