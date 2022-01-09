@@ -34,23 +34,23 @@ class MaterialPreviewOverlay extends StatefulWidget {
   final Color sensingColor;
   final CutOutShape cutOutShape;
   final Color cutOutBorderColor;
-  
+
   /// Width of the cutOut
-  /// 
-  /// 
+  ///
+  ///
   final double? cutOutWidth;
 
   /// Height of the cutOut
-  /// 
+  ///
   /// If [cutOutShape] is [CutOutShape.square] then [cutOutHeight]
   /// won't be applied, instead [cutOutWidth] will be used as [cutOutHeight]
   final double? cutOutHeight;
 
   /// Offset for the center of the cutOut
-  /// 
+  ///
   /// Cannot be at the origin and end of the screen
-  /// 
-  /// 
+  ///
+  ///
   final Offset? cutOutCenter;
 
   @override
@@ -152,6 +152,9 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                     borderPaint: sensingBorderPaint,
                     backgroundColor: widget.backgroundColor,
                     cutOutShape: widget.cutOutShape,
+                    cutOutWidth: widget.cutOutWidth,
+                    cutOutHeight: widget.cutOutHeight,
+                    cutOutCenter: widget.cutOutCenter,
                   ),
                 ),
               )
