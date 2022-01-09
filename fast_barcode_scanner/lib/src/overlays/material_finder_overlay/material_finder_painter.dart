@@ -32,20 +32,22 @@ class MaterialFinderPainter extends CustomPainter {
 
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    final cutOutWidth = screenRect.width - 45;
+    final width = cutOutWidth ?? screenRect.width * 0.5;
 
-    double cutOutHeight;
+    final center = cutOutCenter ?? screenRect.center;
+
+    double height;
     if (cutOutShape == CutOutShape.square) {
-      cutOutHeight = cutOutWidth;
+      height = width;
     } else {
-      cutOutHeight = 1 / (16 / 9) * cutOutWidth;
+      height = cutOutHeight ?? 1 / (16 / 9) * width;
     }
 
     final cutOut = RRect.fromRectXY(
       Rect.fromCenter(
-        center: screenRect.center,
-        width: cutOutWidth,
-        height: cutOutHeight,
+        center: center,
+        width: width,
+        height: height,
       ),
       12,
       12,
