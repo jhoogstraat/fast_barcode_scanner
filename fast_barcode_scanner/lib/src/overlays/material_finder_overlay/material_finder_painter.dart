@@ -63,7 +63,7 @@ class MaterialFinderPainter extends CustomPainter {
 
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    final width = cutOutWidth ?? screenRect.width * 0.5;
+    final width = cutOutWidth ?? screenRect.width * 0.8;
 
     final center = cutOutCenter ?? screenRect.center;
 
