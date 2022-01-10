@@ -313,15 +313,12 @@ class Camera(
             preview.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
         val analysisRes =
             imageAnalysis.resolutionInfo?.resolution ?: throw ScannerException.NotInitialized()
-        Log.d(TAG, "Preview resolution: ${previewRes.width}x${previewRes.height}")
-        Log.d(TAG, "Analysis resolution: $analysisRes")
 
         return PreviewConfiguration(
             flutterTextureEntry.id(),
             0,
             previewRes.height,
             previewRes.width,
-            analysis = analysisRes.toString(),
             analysisWidth = analysisRes.width,
             analysisHeight = analysisRes.height
         )

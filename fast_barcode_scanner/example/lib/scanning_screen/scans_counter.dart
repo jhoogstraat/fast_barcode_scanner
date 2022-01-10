@@ -37,12 +37,6 @@ class _ScansCounterState extends State<ScansCounter> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       child: Row(
         children: [
-          Expanded(
-            child: barcode != null
-                ? Text(
-                    "${history.count(barcode)}x\n${describeEnum(barcode.type)} - ${(barcode.valueType != null ? describeEnum(barcode.valueType!) : "")}: ${barcode.value}")
-                : const SizedBox.shrink(),
-          ),
           TextButton(
               onPressed: () async {
                 final cam = CameraController();
@@ -51,7 +45,21 @@ class _ScansCounterState extends State<ScansCounter> {
                     MaterialPageRoute(builder: (_) => const HistoryScreen()));
                 cam.resumeCamera();
               },
-              child: const Text('History'))
+              child: const Text('History')),
+          const SizedBox(
+              height: 30,
+              width: 10,
+              child: VerticalDivider(
+                color: Colors.black26,
+                thickness: 1,
+                width: 1,
+              )),
+          Expanded(
+            child: barcode != null
+                ? Text(
+                    "${history.count(barcode)}x\n${describeEnum(barcode.type)} - ${(barcode.valueType != null ? describeEnum(barcode.valueType!) : "")}: ${barcode.value}")
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );

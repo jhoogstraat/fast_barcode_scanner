@@ -157,7 +157,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
      * [[x,y], [x,y], [x,y], [x,y]]
      */
     private fun buildPointList(points: Array<Point>?): List<List<Int>>? {
-        return points?.map { point: Point -> listOf(point.x, point.y) }
+        return points?.map { listOf(it.x, it.y) }
     }
 
     private fun encode(barcode: Barcode): List<*> {

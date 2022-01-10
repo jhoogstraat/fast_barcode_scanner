@@ -57,7 +57,7 @@ class PreviewConfiguration {
   final int textureId;
 
   /// The resolution which is used when scanning for barcodes.
-  final String analysisResolution;
+  late final String analysisResolution;
 
   /// The width of the image used for analysis. This may be different than the preview width
   final int analysisWidth;
@@ -70,9 +70,10 @@ class PreviewConfiguration {
         targetRotation = response["targetRotation"],
         height = response["height"],
         width = response["width"],
-        analysisResolution = response["analysis"],
         analysisWidth = response["analysisWidth"],
-        analysisHeight = response["analysisHeight"];
+        analysisHeight = response["analysisHeight"] {
+    analysisResolution = "${analysisWidth}x$analysisHeight";
+  }
 
   @override
   bool operator ==(Object other) =>
