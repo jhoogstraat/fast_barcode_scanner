@@ -24,19 +24,15 @@ class _CodeBoundaryOverlayState extends State<CodeBoundaryOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Barcode>>(
-        stream: _cameraController.scannedCodes,
-        initialData: const [],
-        builder: (context, scannedCodesSnapshot) {
+    return ValueListenableBuilder<List<Barcode>>(
+        valueListenable: _cameraController.scannedBarcodes,
+        builder: (context, barcodes, child) {
           final analysisSize = _cameraController.analysisSize;
-          var scannedCodes = scannedCodesSnapshot.data;
-          if (analysisSize != null &&
-              scannedCodes != null &&
-              scannedCodes.isNotEmpty) {
+          if (analysisSize != null && barcodes.isNotEmpty) {
             return CustomPaint(
               painter: CodeBoarderPainter(
                 imageSize: analysisSize,
-                barcodes: scannedCodes,
+                barcodes: barcodes,
                 barcodePaintSelector: widget.codeBorderPaintBuilder,
                 textDecorator: widget.codeValueDisplayBuilder,
               ),
@@ -56,9 +52,10 @@ abstract class CodeValueDisplay {
 
   TextSpan get textSpan;
 
-  CodeValueDisplay(
-      {required this.color,
-        this.location = CodeValueDisplayLocation.centerBottom});
+  CodeValueDisplay({
+    required this.color,
+    this.location = CodeValueDisplayLocation.centerBottom,
+  });
 }
 
 class BasicBarcodeValueDisplay extends CodeValueDisplay {
@@ -81,12 +78,12 @@ class BasicBarcodeValueDisplay extends CodeValueDisplay {
 
   @override
   TextSpan get textSpan => TextSpan(
-    style: TextStyle(
-        color: color,
-        fontSize: fontSize,
-        backgroundColor: backgroundColor,
-        fontWeight: fontWeight,
-        fontFamily: fontFamily),
-    text: text,
-  );
+        style: TextStyle(
+            color: color,
+            fontSize: fontSize,
+            backgroundColor: backgroundColor,
+            fontWeight: fontWeight,
+            fontFamily: fontFamily),
+        text: text,
+      );
 }

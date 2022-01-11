@@ -69,7 +69,7 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
         }
 
         let scanner = AVFoundationBarcodeScanner(barcodeObjectLayerConverter: { barcode in
-            factory.preview?.videoPreviewLayer.transformedMetadataObject(for: barcode) as? AVMetadataMachineReadableCodeObject
+            self.factory.preview?.videoPreviewLayer.transformedMetadataObject(for: barcode) as? AVMetadataMachineReadableCodeObject
         }) { [unowned self] barcode in
             detectionsSink?(barcode)
         }
