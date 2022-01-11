@@ -1,4 +1,5 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_example/scanning_screen/scanning_overlay_config.dart';
 import 'package:flutter/material.dart';
 import '../scan_history.dart';
 import '../configure_screen/configure_screen.dart';
@@ -31,6 +32,9 @@ class _ScanningScreenState extends State<ScanningScreen> {
     ..strokeCap = StrokeCap.round
     ..strokeJoin = StrokeJoin.bevel
     ..color = Colors.orange;
+
+  ScanningOverlayConfig _scanningOverlayConfig = ScanningOverlayConfig(
+      ScanningOverlayType.values, ScanningOverlayType.codeBoundaryOverlay);
 
   final cam = CameraController();
 
@@ -86,21 +90,28 @@ class _ScanningScreenState extends State<ScanningScreen> {
         position: CameraPosition.back,
         onScan: (code) => history.addAll(code),
         children: [
-          // MaterialPreviewOverlay(),
-          CodeBoundaryOverlay(
-            customBarcodePaint: (code) {
-              return code.value.hashCode % 2 == 0 ? orangePaint : greenPaint;
-            },
-            barcodeTextDecorator: (code) {
-              return SimpleTextDecoration(
-                text: code.value,
-                color:
-                    code.value.hashCode % 2 == 0 ? Colors.orange : Colors.green,
-                location: TextDecorationLocation.centerTop,
-              );
-            },
-          ),
-          // BlurPreviewOverlay()
+          if (_scanningOverlayConfig.enabledOverlay ==
+              ScanningOverlayType.materialOverlay)
+            const MaterialPreviewOverlay(),
+          if (_scanningOverlayConfig.enabledOverlay ==
+              ScanningOverlayType.codeBoundaryOverlay)
+            CodeBoundaryOverlay(
+              codeBorderPaintBuilder: (code) {
+                return code.value.hashCode % 2 == 0 ? orangePaint : greenPaint;
+              },
+              codeValueDisplayBuilder: (code) {
+                return BasicBarcodeValueDisplay(
+                  text: code.value,
+                  color: code.value.hashCode % 2 == 0
+                      ? Colors.orange
+                      : Colors.green,
+                  location: CodeValueDisplayLocation.centerTop,
+                );
+              },
+            ),
+          if (_scanningOverlayConfig.enabledOverlay ==
+              ScanningOverlayType.blurPreview)
+            const BlurPreviewOverlay()
         ],
         dispose: widget.dispose,
       ),
@@ -205,7 +216,17 @@ class _ScanningScreenState extends State<ScanningScreen> {
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => ConfigureScreen(config),
+                                      builder: (_) => ConfigureScreen(
+                                        config,
+                                        _scanningOverlayConfig,
+                                        onOverlayConfigurationChanged:
+                                            (overlayConfig) {
+                                          setState(() {
+                                            _scanningOverlayConfig =
+                                                overlayConfig;
+                                          });
+                                        },
+                                      ),
                                     ),
                                   );
 

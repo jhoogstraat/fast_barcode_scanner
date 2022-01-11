@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:rxdart/rxdart.dart';
 
 import '../fast_barcode_scanner.dart';
 
@@ -41,7 +40,7 @@ abstract class CameraController {
   final state = ScannerState();
 
   /// reports most recently scanned codes
-  Stream<List<Barcode>> get scannedCodes;
+  ValueNotifier<List<Barcode>> get scannedBarcodes;
 
   /// the size of the image used by the native analysis system to scan the code
   /// scanned codes have coordinate information that is based on this image size
@@ -116,6 +115,8 @@ abstract class CameraController {
 class _CameraController implements CameraController {
   _CameraController._internal() : super();
 
+  StreamSubscription? _scanSilencerSubscription;
+
   final FastBarcodeScannerPlatform _platform =
       FastBarcodeScannerPlatform.instance;
 
@@ -125,27 +126,10 @@ class _CameraController implements CameraController {
   @override
   final events = ValueNotifier(ScannerEvent.uninitialized);
 
-  final _scannedCodeSubject = PublishSubject<ScannedBarcodes>();
-
+  static const scannedCodeTimeout = Duration(milliseconds: 250);
+  DateTime? _lastScanTime;
   @override
-  Stream<List<Barcode>> get scannedCodes {
-    // The general strategy here is to provide a real-time stream of codes that are currently visible by the camera
-    // 100ms seems to be enough time. The key is to set a timeout that is longer than the rate at which the codes are scanned
-    const timeout = Duration(milliseconds: 250);
-
-    // this silencer stream allows us to clear the stream when codes are no longer visible
-    // if we don't clear the stream we cannot be certain that the camera is still seeing the code
-    final silencer = Stream.periodic(timeout);
-    return Rx.combineLatest2<ScannedBarcodes, void, List<Barcode>>(
-        _scannedCodeSubject, silencer, (codes, _) {
-      if (DateTime.now().difference(codes.scannedAt) > timeout) {
-        // it's been too long since we last saw any codes, return an empty array
-        return [];
-      } else {
-        return codes.barcodes;
-      }
-    });
-  }
+  ValueNotifier<List<Barcode>> scannedBarcodes = ValueNotifier([]);
 
   @override
   Size? get analysisSize {
@@ -184,9 +168,17 @@ class _CameraController implements CameraController {
           types, resolution, framerate, detectionMode, position);
 
       _onScan = (barcodes) {
-        _scannedCodeSubject.add(ScannedBarcodes(barcodes));
+        _lastScanTime = DateTime.now();
+        scannedBarcodes.value = barcodes;
         onScan?.call(barcodes);
       };
+      _scanSilencerSubscription = Stream.periodic(scannedCodeTimeout).listen((event) {
+        final scanTime = _lastScanTime;
+        if (scanTime != null && DateTime.now().difference(scanTime) > scannedCodeTimeout) {
+          // it's been too long since we've seen a scanned code, clear the list
+          scannedBarcodes.value = const <Barcode>[];
+        }
+      });
 
       _platform.setOnDetectHandler(_onDetectHandler);
 
@@ -212,7 +204,7 @@ class _CameraController implements CameraController {
       state._torch = false;
       state._error = null;
       events.value = ScannerEvent.uninitialized;
-      _scannedCodeSubject.add(ScannedBarcodes.none());
+      _scanSilencerSubscription?.cancel();
     } catch (error) {
       state._error = error;
       events.value = ScannerEvent.error;

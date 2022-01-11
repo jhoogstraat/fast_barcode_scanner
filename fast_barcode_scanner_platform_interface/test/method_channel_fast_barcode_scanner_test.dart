@@ -22,7 +22,6 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0",
               'analysisWidth': 0,
               'analysisHeight': 0,
             }
@@ -60,7 +59,6 @@ void main() {
           'targetRotation': 0,
           'height': 1080,
           'width': 1920,
-          'analysis': "0x0",
           'analysisWidth': 0,
           'analysisHeight': 0,
         }),
@@ -102,7 +100,6 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0",
               'analysisWidth': 0,
               'analysisHeight': 0,
             }
@@ -164,7 +161,6 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0",
               'analysisWidth': 0,
               'analysisHeight': 0,
             },
@@ -206,7 +202,6 @@ void main() {
             'targetRotation': 0,
             'height': 720,
             'width': 1280,
-            'analysis': "0x0",
             'analysisWidth': 0,
             'analysisHeight': 0,
           }
@@ -236,7 +231,6 @@ void main() {
           'targetRotation': 0,
           'height': 720,
           'width': 1280,
-          'analysis': "0x0",
           'analysisWidth': 0,
           'analysisHeight': 0,
         }),

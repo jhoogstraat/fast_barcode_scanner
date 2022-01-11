@@ -68,8 +68,10 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
             throw ScannerError.invalidArguments(args)
         }
 
-        let scanner = AVFoundationBarcodeScanner { [unowned self] barcode in
-            self.detectionsSink?(barcode)
+        let scanner = AVFoundationBarcodeScanner(barcodeObjectLayerConverter: { barcode in
+            self.factory.preview?.videoPreviewLayer.transformedMetadataObject(for: barcode) as? AVMetadataMachineReadableCodeObject
+        }) { [unowned self] barcode in
+            detectionsSink?(barcode)
         }
 
         let camera = try Camera(configuration: configuration, scanner: scanner)
@@ -97,8 +99,6 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
     func dispose() {
         camera?.stop()
         camera = nil
-        // TODO: find a standard way to access the FlutterPlatformView so we don't have to manage this static reference
-        PreviewViewFactory.preview = nil
     }
 
     func startDetector() throws {

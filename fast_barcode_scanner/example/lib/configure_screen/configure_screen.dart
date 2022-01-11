@@ -1,14 +1,21 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_example/scanning_screen/scanning_overlay_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'type_selector.dart';
 
+typedef OnOverlayConfigurationChanged = void Function(
+    ScanningOverlayConfig overlayConfig);
+
 class ConfigureScreen extends StatefulWidget {
-  const ConfigureScreen(this._currentConfiguration, {Key? key})
+  const ConfigureScreen(this._currentConfiguration, this._overlayConfig,
+      {Key? key, this.onOverlayConfigurationChanged})
       : super(key: key);
 
   final ScannerConfiguration _currentConfiguration;
+  final ScanningOverlayConfig _overlayConfig;
+  final OnOverlayConfigurationChanged? onOverlayConfigurationChanged;
 
   @override
   State<ConfigureScreen> createState() => _ConfigureScreenState();
@@ -16,10 +23,12 @@ class ConfigureScreen extends StatefulWidget {
 
 class _ConfigureScreenState extends State<ConfigureScreen> {
   late ScannerConfiguration _config;
+  late ScanningOverlayConfig _overlayConfig;
 
   @override
   void initState() {
     _config = widget._currentConfiguration;
+    _overlayConfig = widget._overlayConfig;
     super.initState();
   }
 
@@ -60,70 +69,84 @@ class _ConfigureScreenState extends State<ConfigureScreen> {
         ],
       ),
       body: ListView(
-        children: [
-          ListTile(
-            title: const Text('Active code types'),
-            subtitle:
-                Text(_config.types.map((e) => describeEnum(e)).join(', ')),
-            onTap: () async {
-              final types = await Navigator.push<List<BarcodeType>>(context,
-                  MaterialPageRoute(builder: (_) {
-                return BarcodeTypeSelector(_config);
-              }));
-              setState(() {
-                _config = _config.copyWith(types: types);
-              });
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('Resolution'),
-            trailing: DropdownButton<Resolution>(
-                value: _config.resolution,
-                onChanged: (value) {
-                  setState(() {
-                    _config = _config.copyWith(resolution: value);
-                  });
-                },
-                items: buildDropdownItems(Resolution.values)),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('Framerate'),
-            trailing: DropdownButton<Framerate>(
-                value: _config.framerate,
-                onChanged: (value) {
-                  setState(() {
-                    _config = _config.copyWith(framerate: value);
-                  });
-                },
-                items: buildDropdownItems(Framerate.values)),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('Position'),
-            trailing: DropdownButton<CameraPosition>(
-                value: _config.position,
-                onChanged: (value) {
-                  setState(() {
-                    _config = _config.copyWith(position: value);
-                  });
-                },
-                items: buildDropdownItems(CameraPosition.values)),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: const Text('Detection Mode'),
-            trailing: DropdownButton<DetectionMode>(
-                value: _config.detectionMode,
-                onChanged: (value) {
-                  setState(() {
-                    _config = _config.copyWith(detectionMode: value);
-                  });
-                },
-                items: buildDropdownItems(DetectionMode.values)),
-          ),
-        ],
+        children: ListTile.divideTiles(
+          context: context,
+          tiles: [
+            ListTile(
+              title: const Text('Active code types'),
+              subtitle:
+                  Text(_config.types.map((e) => describeEnum(e)).join(', ')),
+              onTap: () async {
+                final types = await Navigator.push<List<BarcodeType>>(context,
+                    MaterialPageRoute(builder: (_) {
+                  return BarcodeTypeSelector(_config);
+                }));
+                setState(() {
+                  _config = _config.copyWith(types: types);
+                });
+              },
+            ),
+            ListTile(
+              title: const Text('Resolution'),
+              trailing: DropdownButton<Resolution>(
+                  value: _config.resolution,
+                  onChanged: (value) {
+                    setState(() {
+                      _config = _config.copyWith(resolution: value);
+                    });
+                  },
+                  items: buildDropdownItems(Resolution.values)),
+            ),
+            ListTile(
+              title: const Text('Framerate'),
+              trailing: DropdownButton<Framerate>(
+                  value: _config.framerate,
+                  onChanged: (value) {
+                    setState(() {
+                      _config = _config.copyWith(framerate: value);
+                    });
+                  },
+                  items: buildDropdownItems(Framerate.values)),
+            ),
+            ListTile(
+              title: const Text('Position'),
+              trailing: DropdownButton<CameraPosition>(
+                  value: _config.position,
+                  onChanged: (value) {
+                    setState(() {
+                      _config = _config.copyWith(position: value);
+                    });
+                  },
+                  items: buildDropdownItems(CameraPosition.values)),
+            ),
+            ListTile(
+              title: const Text('Detection Mode'),
+              trailing: DropdownButton<DetectionMode>(
+                  value: _config.detectionMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _config = _config.copyWith(detectionMode: value);
+                    });
+                  },
+                  items: buildDropdownItems(DetectionMode.values)),
+            ),
+            ListTile(
+              title: const Text('Overlay'),
+              trailing: DropdownButton<ScanningOverlayType?>(
+                  value: _overlayConfig.enabledOverlay,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == ScanningOverlayType.none) {
+                        value = null;
+                      }
+                      _overlayConfig = _overlayConfig.copyWith(enabledOverlay: value);
+                    });
+                    widget.onOverlayConfigurationChanged?.call(_overlayConfig);
+                  },
+                  items: buildDropdownItems(ScanningOverlayType.values)),
+            ),
+          ],
+        ).toList(),
       ),
     );
   }
