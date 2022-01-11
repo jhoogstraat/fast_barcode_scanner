@@ -1,5 +1,5 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner/src/overlays/code_boundary_overlay/code_box_painter.dart';
+import 'package:fast_barcode_scanner/src/overlays/code_boundary_overlay/code_border_painter.dart';
 import 'package:flutter/material.dart';
 
 typedef CodeBorderPaintBuilder = Paint Function(Barcode code);
@@ -34,7 +34,7 @@ class _CodeBoundaryOverlayState extends State<CodeBoundaryOverlay> {
               scannedCodes != null &&
               scannedCodes.isNotEmpty) {
             return CustomPaint(
-              painter: BarcodePainter(
+              painter: CodeBoarderPainter(
                 imageSize: analysisSize,
                 barcodes: scannedCodes,
                 barcodePaintSelector: widget.codeBorderPaintBuilder,
