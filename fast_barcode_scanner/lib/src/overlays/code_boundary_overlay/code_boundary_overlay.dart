@@ -2,17 +2,17 @@ import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner/src/overlays/code_boundary_overlay/code_box_painter.dart';
 import 'package:flutter/material.dart';
 
-typedef CustomBarcodePaintSelector = Paint Function(Barcode code);
-typedef BarcodeTextDecorator = TextDecoration? Function(Barcode code);
+typedef CodeBorderPaintBuilder = Paint Function(Barcode code);
+typedef CodeValueDisplayBuilder = CodeValueDisplay? Function(Barcode code);
 
 class CodeBoundaryOverlay extends StatefulWidget {
-  final CustomBarcodePaintSelector? customBarcodePaint;
-  final BarcodeTextDecorator? barcodeTextDecorator;
+  final CodeBorderPaintBuilder? codeBorderPaintBuilder;
+  final CodeValueDisplayBuilder? codeValueDisplayBuilder;
 
   const CodeBoundaryOverlay({
     Key? key,
-    this.customBarcodePaint,
-    this.barcodeTextDecorator,
+    this.codeBorderPaintBuilder,
+    this.codeValueDisplayBuilder,
   }) : super(key: key);
 
   @override
@@ -37,8 +37,8 @@ class _CodeBoundaryOverlayState extends State<CodeBoundaryOverlay> {
               painter: BarcodePainter(
                 imageSize: analysisSize,
                 barcodes: scannedCodes,
-                barcodePaintSelector: widget.customBarcodePaint,
-                textDecorator: widget.barcodeTextDecorator,
+                barcodePaintSelector: widget.codeBorderPaintBuilder,
+                textDecorator: widget.codeValueDisplayBuilder,
               ),
             );
           } else {
@@ -48,31 +48,31 @@ class _CodeBoundaryOverlayState extends State<CodeBoundaryOverlay> {
   }
 }
 
-enum TextDecorationLocation { centerTop, centerBottom }
+enum CodeValueDisplayLocation { centerTop, centerBottom }
 
-abstract class TextDecoration {
-  final TextDecorationLocation location;
+abstract class CodeValueDisplay {
+  final CodeValueDisplayLocation location;
   final Color color;
 
   TextSpan get textSpan;
 
-  TextDecoration(
+  CodeValueDisplay(
       {required this.color,
-        this.location = TextDecorationLocation.centerBottom});
+        this.location = CodeValueDisplayLocation.centerBottom});
 }
 
-class SimpleTextDecoration extends TextDecoration {
+class BasicBarcodeValueDisplay extends CodeValueDisplay {
   final String text;
   final double fontSize;
   final Color backgroundColor;
   final FontWeight fontWeight;
   final String fontFamily;
 
-  SimpleTextDecoration({
+  BasicBarcodeValueDisplay({
     required this.text,
     required Color color,
-    TextDecorationLocation location = TextDecorationLocation.centerBottom,
-    CustomBarcodePaintSelector? customBarcodePaintSelector,
+    CodeValueDisplayLocation location = CodeValueDisplayLocation.centerBottom,
+    CodeBorderPaintBuilder? customBarcodePaintSelector,
     this.fontSize = 16.0,
     this.backgroundColor = Colors.white,
     this.fontWeight = FontWeight.w600,

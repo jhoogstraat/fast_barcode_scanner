@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../fast_barcode_scanner.dart';
 
 class BarcodePainter extends CustomPainter {
-  final CustomBarcodePaintSelector? barcodePaintSelector;
-  final BarcodeTextDecorator? textDecorator;
+  final CodeBorderPaintBuilder? barcodePaintSelector;
+  final CodeValueDisplayBuilder? textDecorator;
 
   BarcodePainter({
     required this.imageSize,
@@ -28,7 +28,7 @@ class BarcodePainter extends CustomPainter {
     return _standardPaint;
   }
 
-  TextDecoration? _getTextDecoration(Barcode barcode) {
+  CodeValueDisplay? _getTextDecoration(Barcode barcode) {
     if (textDecorator != null) {
       return textDecorator!(barcode);
     }
@@ -87,7 +87,7 @@ class BarcodePainter extends CustomPainter {
 
           const textPadding = 5;
           double textPositionY;
-          if (textDecoration.location == TextDecorationLocation.centerTop) {
+          if (textDecoration.location == CodeValueDisplayLocation.centerTop) {
             textPositionY = minY - (tp.height + textPadding);
           } else {
             textPositionY = maxY + textPadding;

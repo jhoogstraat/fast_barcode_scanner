@@ -96,16 +96,16 @@ class _ScanningScreenState extends State<ScanningScreen> {
           if (_scanningOverlayConfig.enabledOverlay ==
               ScanningOverlayType.codeBoundaryOverlay)
             CodeBoundaryOverlay(
-              customBarcodePaint: (code) {
+              codeBorderPaintBuilder: (code) {
                 return code.value.hashCode % 2 == 0 ? orangePaint : greenPaint;
               },
-              barcodeTextDecorator: (code) {
-                return SimpleTextDecoration(
+              codeValueDisplayBuilder: (code) {
+                return BasicBarcodeValueDisplay(
                   text: code.value,
                   color: code.value.hashCode % 2 == 0
                       ? Colors.orange
                       : Colors.green,
-                  location: TextDecorationLocation.centerTop,
+                  location: CodeValueDisplayLocation.centerTop,
                 );
               },
             ),
