@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {
@@ -67,9 +68,16 @@ class BarcodeCameraState extends State<BarcodeCamera> {
             resolution: widget.resolution,
             framerate: widget.framerate,
             position: widget.position,
-            onScan: widget.onScan)
-        : cameraController.initialize(widget.types, widget.resolution,
-            widget.framerate, widget.position, widget.mode, widget.onScan);
+            onScan: onScan,
+          )
+        : cameraController.initialize(
+            types: widget.types,
+            resolution: widget.resolution,
+            framerate: widget.framerate,
+            position: widget.position,
+            detectionMode: widget.mode,
+            onScan: onScan,
+          );
 
     configurationFuture
         .whenComplete(() => setState(() => _opacity = 1.0))
@@ -78,7 +86,14 @@ class BarcodeCameraState extends State<BarcodeCamera> {
     cameraController.events.addListener(onScannerEvent);
   }
 
+  void onScan(List<Barcode> barcodes) {
+    widget.onScan?.call(barcodes);
+  }
+
   void onScannerEvent() {
+    if (!mounted) {
+      return;
+    }
     if (cameraController.events.value != ScannerEvent.error && showingError) {
       setState(() => showingError = false);
     } else if (cameraController.events.value == ScannerEvent.error) {
@@ -109,7 +124,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
         child: cameraController.events.value == ScannerEvent.error
             ? widget.onError(
                 context,
-                cameraState.error ?? "Unknown error occured",
+                cameraState.error ?? "Unknown error occurred",
               )
             : Stack(
                 fit: StackFit.expand,

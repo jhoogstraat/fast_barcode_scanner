@@ -1,10 +1,12 @@
-import '../../camera_controller.dart';
-import '../../types/scanner_event.dart';
+import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
 
 import 'material_finder_painter.dart';
 
-enum CutOutShape { square, wide }
+/// returns a color for the finder boundary when codes are found inside
+typedef OnScannedBoundaryColorSelector = Color? Function(
+    List<Barcode> scannedCodes);
 
 /// Mimics the official Material Design Barcode Scanner
 /// (https://material.io/design/machine-learning/barcode-scanning.html)
@@ -19,18 +21,26 @@ class MaterialPreviewOverlay extends StatefulWidget {
   ///
   const MaterialPreviewOverlay({
     Key? key,
+    required this.rectOfInterest,
     this.showSensing = false,
+    this.showScanLine = false,
     this.sensingColor = Colors.white,
     this.backgroundColor = Colors.black38,
-    this.cutOutShape = CutOutShape.wide,
     this.cutOutBorderColor = Colors.black87,
+    this.onScan,
+    this.onScannedBoundaryColorSelector,
   }) : super(key: key);
 
   final bool showSensing;
-  final Color backgroundColor;
+  final bool showScanLine;
+  final Color? backgroundColor;
   final Color sensingColor;
-  final CutOutShape cutOutShape;
   final Color cutOutBorderColor;
+  final OnScannedBoundaryColorSelector? onScannedBoundaryColorSelector;
+  final RectOfInterest rectOfInterest;
+
+  /// This callback returns only the codes that are scanned within the boundary of the cutout
+  final OnDetectionHandler? onScan;
 
   @override
   MaterialPreviewOverlayState createState() => MaterialPreviewOverlayState();
@@ -38,13 +48,15 @@ class MaterialPreviewOverlay extends StatefulWidget {
 
 class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacitySequence;
-  late Animation<double> _inflateSequence;
+  AnimationController? _controller;
+  Animation<double>? _opacitySequence;
+  Animation<double>? _inflateSequence;
 
   @override
   void initState() {
     super.initState();
+    final cameraController = CameraController();
+
     if (widget.showSensing) {
       _controller = AnimationController(
           duration: const Duration(milliseconds: 1100), vsync: this);
@@ -52,8 +64,6 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       const fadeIn = 20.0;
       const wait = 2.0;
       const expand = 25.0;
-
-      final cameraController = CameraController();
 
       _opacitySequence = TweenSequence([
         TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: fadeIn),
@@ -63,7 +73,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                 .chain(CurveTween(curve: Curves.easeOutCubic)),
             weight: expand),
         // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
-      ]).animate(_controller);
+      ]).animate(_controller!);
 
       _inflateSequence = TweenSequence([
         TweenSequenceItem(tween: ConstantTween(0.0), weight: fadeIn + wait),
@@ -72,33 +82,72 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                 .chain(CurveTween(curve: Curves.easeOutCubic)),
             weight: expand),
         // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
-      ]).animate(_controller);
+      ]).animate(_controller!);
 
-      _controller.addStatusListener((status) {
-        if (status == AnimationStatus.completed &&
-            cameraController.events.value == ScannerEvent.resumed) {
-          Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
-            _controller.forward(from: _controller.lowerBound);
+      _controller!.addStatusListener((status) {
+        if (status == AnimationStatus.completed && _filteredCodes.isEmpty) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _controller!
+                  .forward(from: _controller!.lowerBound);
+            }
           });
         }
       });
 
-      cameraController.events.addListener(() {
-        if (cameraController.events.value == ScannerEvent.resumed) {
-          _controller.forward();
-        } else {
-          _controller.reset();
-        }
-      });
+      _controller!.forward();
+    }
+    cameraController.scannedBarcodes.addListener(_onCodesScanned);
+  }
+
+  @override
+  void dispose() {
+    var cameraController = CameraController();
+    cameraController.scannedBarcodes.removeListener(_onCodesScanned);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  List<Barcode> _filteredCodes = [];
+
+  /// Note: Not safe to call from build()
+  void _filterCodes() {
+    setState(() {
+      final cameraController = CameraController();
+      final analysisSize = cameraController.analysisSize;
+      final previewSize = context.size;
+      if (analysisSize != null && previewSize != null) {
+        _filteredCodes = cameraController.scannedBarcodes.value
+            .where(widget.rectOfInterest.codeFilter(
+              analysisSize: analysisSize,
+              previewSize: previewSize,
+            ))
+            .toList();
+      } else {
+        _filteredCodes = [];
+      }
+    });
+  }
+
+  void _onCodesScanned() {
+    _filterCodes();
+    if (_filteredCodes.isEmpty) {
+      _controller?.forward();
+    } else {
+      widget.onScan?.call(_filteredCodes);
+      _controller?.reset();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final borderColor =
+        widget.onScannedBoundaryColorSelector?.call(_filteredCodes) ??
+            widget.cutOutBorderColor;
     final defaultBorderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5 // strokeWidth is painted 50/50 outwards and inwards.
-      ..color = widget.cutOutBorderColor;
+      ..color = borderColor;
 
     final sensingBorderPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -113,21 +162,22 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
               painter: MaterialFinderPainter(
                 borderPaint: defaultBorderPaint,
                 backgroundColor: widget.backgroundColor,
-                cutOutShape: widget.cutOutShape,
+                rectOfInterest: widget.rectOfInterest,
+                showScanLine: widget.showScanLine,
               ),
             ),
             if (widget.showSensing)
               AnimatedBuilder(
-                animation: _controller,
+                animation: _controller!,
                 builder: (context, child) => CustomPaint(
                   foregroundPainter: MaterialFinderPainter(
-                    inflate: _inflateSequence.value,
-                    opacity: _opacitySequence.value,
+                    inflate: _inflateSequence!.value,
+                    opacity: _opacitySequence!.value,
                     sensingColor: widget.sensingColor,
-                    drawBackground: false,
                     borderPaint: sensingBorderPaint,
                     backgroundColor: widget.backgroundColor,
-                    cutOutShape: widget.cutOutShape,
+                    rectOfInterest: widget.rectOfInterest,
+                    showScanLine: widget.showScanLine,
                   ),
                 ),
               )

@@ -1,46 +1,41 @@
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
 
+import '../../../fast_barcode_scanner.dart';
+
+/// The MaterialFinderPainter draws a box around the [rectOfInterest] as well as
+/// an optional "scan line" as a guide for the user to locate the desired code
+/// to scan.
+///
+/// When including linear codes such as Code128, it is recommended to show the
+/// scan line, especially on iOS where in certain cases these codes can only
+/// be recognized when they are exactly in the middle of the screen. Without the
+/// line to guide the user, they may find it difficult to get the scanner to
+/// recognize these codes.
 class MaterialFinderPainter extends CustomPainter {
   MaterialFinderPainter({
-    this.inflate = 0.0,
-    this.opacity = 1.0,
-    this.sensingColor = Colors.white,
-    this.drawBackground = true,
     required this.borderPaint,
     required this.backgroundColor,
-    required this.cutOutShape,
+    required this.rectOfInterest,
+    this.inflate = 0.0,
+    this.opacity = 1.0,
+    this.showScanLine = false,
+    this.sensingColor = Colors.white,
   });
 
   final double inflate;
   final double opacity;
+  final bool showScanLine;
   final Color sensingColor;
-  final bool drawBackground;
   final Paint borderPaint;
-  final Color backgroundColor;
-  final CutOutShape cutOutShape;
+  final Color? backgroundColor;
+  final RectOfInterest rectOfInterest;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final backgroundPaint = Paint()..color = backgroundColor;
-
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    final cutOutWidth = screenRect.width - 45;
-
-    double cutOutHeight;
-    if (cutOutShape == CutOutShape.square) {
-      cutOutHeight = cutOutWidth;
-    } else {
-      cutOutHeight = 1 / (16 / 9) * cutOutWidth;
-    }
-
     final cutOut = RRect.fromRectXY(
-      Rect.fromCenter(
-        center: screenRect.center,
-        width: cutOutWidth,
-        height: cutOutHeight,
-      ),
+      rectOfInterest.rect(screenRect),
       12,
       12,
     );
@@ -50,7 +45,8 @@ class MaterialFinderPainter extends CustomPainter {
       borderPaint.strokeWidth = 5 - 4 * inflate;
     }
 
-    if (drawBackground) {
+    if (backgroundColor != null) {
+      final backgroundPaint = Paint()..color = backgroundColor!;
       final cutOutPath = Path.combine(
         PathOperation.difference,
         Path()..addRect(screenRect),
@@ -58,6 +54,22 @@ class MaterialFinderPainter extends CustomPainter {
       );
 
       canvas.drawPath(cutOutPath, backgroundPaint);
+    }
+
+    if (showScanLine) {
+      // draw scan line
+      final scanLinePaint = Paint()
+        ..color = Colors.red
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.square;
+      final wideMiddle = cutOut.safeInnerRect;
+      final centerLeft = wideMiddle.centerLeft;
+      final centerRight = wideMiddle.centerRight;
+      const borderAdjustment = 2.5;
+      canvas.drawLine(
+          Offset(centerLeft.dx + borderAdjustment, centerLeft.dy),
+          Offset(centerRight.dx - borderAdjustment, centerRight.dy),
+          scanLinePaint);
     }
 
     canvas.drawRRect(
@@ -79,6 +91,6 @@ class MaterialFinderPainter extends CustomPainter {
         oldDelegate.sensingColor != sensingColor ||
         oldDelegate.borderPaint != borderPaint ||
         oldDelegate.backgroundColor != backgroundColor ||
-        oldDelegate.cutOutShape != cutOutShape;
+        oldDelegate.showScanLine != showScanLine;
   }
 }

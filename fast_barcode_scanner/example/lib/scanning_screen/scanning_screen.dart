@@ -34,7 +34,9 @@ class _ScanningScreenState extends State<ScanningScreen> {
     ..color = Colors.orange;
 
   ScanningOverlayConfig _scanningOverlayConfig = ScanningOverlayConfig(
-      ScanningOverlayType.values, ScanningOverlayType.codeBoundaryOverlay);
+    availableOverlays: ScanningOverlayType.values,
+    enabledOverlay: ScanningOverlayType.materialOverlay,
+  );
 
   final cam = CameraController();
 
@@ -92,7 +94,22 @@ class _ScanningScreenState extends State<ScanningScreen> {
         children: [
           if (_scanningOverlayConfig.enabledOverlay ==
               ScanningOverlayType.materialOverlay)
-            const MaterialPreviewOverlay(),
+            MaterialPreviewOverlay(
+              rectOfInterest: const WideRectOfInterest(),
+              onScan: (codes) {
+                // these are codes that only appear within the finder rectangle
+              },
+              showSensing: true,
+              onScannedBoundaryColorSelector: (codes) {
+                if (codes.isNotEmpty) {
+                  return codes.first.value.hashCode % 2 == 0
+                      ? Colors.orange
+                      : Colors.green;
+                }
+                return null;
+              },
+              showScanLine: true,
+            ),
           if (_scanningOverlayConfig.enabledOverlay ==
               ScanningOverlayType.codeBoundaryOverlay)
             CodeBoundaryOverlay(
