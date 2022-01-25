@@ -173,6 +173,7 @@ class Camera(
 
         imageAnalysis = ImageAnalysis.Builder()
             .setTargetRotation(Surface.ROTATION_0)
+            .setTargetResolution(scannerConfiguration.resolution.portrait())
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also { it.setAnalyzer(cameraExecutor, barcodeScanner) }
