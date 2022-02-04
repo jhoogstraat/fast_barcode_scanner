@@ -1,4 +1,5 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:fast_barcode_scanner_example/configure_screen/overlay_selector.dart';
 import 'package:fast_barcode_scanner_example/scanning_screen/scanning_overlay_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -132,18 +133,21 @@ class _ConfigureScreenState extends State<ConfigureScreen> {
             ),
             ListTile(
               title: const Text('Overlay'),
-              trailing: DropdownButton<ScanningOverlayType?>(
-                  value: _overlayConfig.enabledOverlay,
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == ScanningOverlayType.none) {
-                        value = null;
-                      }
-                      _overlayConfig = _overlayConfig.copyWith(enabledOverlay: value);
-                    });
-                    widget.onOverlayConfigurationChanged?.call(_overlayConfig);
-                  },
-                  items: buildDropdownItems(ScanningOverlayType.values)),
+              subtitle: Text(_overlayConfig.enabledOverlays
+                  .map((e) => describeEnum(e))
+                  .join(', ')),
+              onTap: () async {
+                final overlays =
+                    await Navigator.push<List<ScanningOverlayType>>(context,
+                        MaterialPageRoute(builder: (_) {
+                  return OverlaySelector(_overlayConfig);
+                }));
+                setState(() {
+                  _overlayConfig = _overlayConfig.copyWith(
+                    enabledOverlays: overlays,
+                  );
+                });
+              },
             ),
           ],
         ).toList(),
