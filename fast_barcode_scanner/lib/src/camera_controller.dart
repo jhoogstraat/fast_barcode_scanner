@@ -336,23 +336,3 @@ class _CameraController implements CameraController {
     _onScan?.call(code);
   }
 }
-
-class ScannedBarcodes {
-  final List<Barcode> barcodes;
-  final DateTime scannedAt;
-
-  ScannedBarcodes(this.barcodes) : scannedAt = DateTime.now();
-
-  ScannedBarcodes.none() : this([]);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ScannedBarcodes &&
-          runtimeType == other.runtimeType &&
-          barcodes == other.barcodes &&
-          scannedAt == other.scannedAt;
-
-  @override
-  int get hashCode => barcodes.hashCode ^ scannedAt.hashCode;
-}
