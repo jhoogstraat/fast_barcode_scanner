@@ -16,7 +16,7 @@ class PreviewView: UIView, FlutterPlatformView {
     // MARK: AVFoundation session
     var session: AVCaptureSession? {
         get {
-            return videoPreviewLayer.session
+            videoPreviewLayer.session
         }
 
         set {

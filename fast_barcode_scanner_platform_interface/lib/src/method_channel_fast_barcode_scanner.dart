@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:flutter/services.dart';
 
+import 'fast_barcode_scanner_platform_interface.dart';
 import 'types/barcode.dart';
 import 'types/barcode_type.dart';
 import 'types/preview_configuration.dart';
-import 'fast_barcode_scanner_platform_interface.dart';
 
 class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =

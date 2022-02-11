@@ -1,6 +1,5 @@
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:fast_barcode_scanner_platform_interface/src/method_channel_fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_platform_interface/src/types/image_source.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -23,7 +22,8 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0"
+              'analysisWidth': 0,
+              'analysisHeight': 0,
             }
           });
 
@@ -59,7 +59,8 @@ void main() {
           'targetRotation': 0,
           'height': 1080,
           'width': 1920,
-          'analysis': "0x0"
+          'analysisWidth': 0,
+          'analysisHeight': 0,
         }),
       );
     });
@@ -99,7 +100,8 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0"
+              'analysisWidth': 0,
+              'analysisHeight': 0,
             }
           });
 
@@ -159,7 +161,8 @@ void main() {
               'targetRotation': 0,
               'height': 1080,
               'width': 1920,
-              'analysis': "0x0"
+              'analysisWidth': 0,
+              'analysisHeight': 0,
             },
           });
 
@@ -199,7 +202,8 @@ void main() {
             'targetRotation': 0,
             'height': 720,
             'width': 1280,
-            'analysis': "0x0"
+            'analysisWidth': 0,
+            'analysisHeight': 0,
           }
         },
       );
@@ -227,7 +231,8 @@ void main() {
           'targetRotation': 0,
           'height': 720,
           'width': 1280,
-          'analysis': "0x0"
+          'analysisWidth': 0,
+          'analysisHeight': 0,
         }),
         response,
       );

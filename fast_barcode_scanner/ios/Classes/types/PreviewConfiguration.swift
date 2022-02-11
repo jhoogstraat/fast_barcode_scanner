@@ -7,8 +7,9 @@ struct PreviewConfiguration {
     var asDict: [String: Any] {
         ["width": height,
          "height": width,
-         "analysis": "\(width)x\(height)",
          "targetRotation": targetRotation,
-         "textureId": textureId]
+         "textureId": textureId,
+         "analysisWidth": width,
+         "analysisHeight": height]
     }
 }

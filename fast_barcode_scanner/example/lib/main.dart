@@ -1,6 +1,5 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner_example/utils.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 

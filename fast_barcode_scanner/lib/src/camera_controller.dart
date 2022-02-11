@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 import '../fast_barcode_scanner.dart';
-import 'types/scanner_configuration.dart';
 
 class ScannerState {
   PreviewConfiguration? _previewConfig;
@@ -14,10 +13,15 @@ class ScannerState {
   Object? _error;
 
   PreviewConfiguration? get previewConfig => _previewConfig;
+
   ScannerConfiguration? get scannerConfig => _scannerConfig;
+
   bool get torchState => _torch;
+
   bool get isInitialized => _previewConfig != null;
+
   bool get hasError => _error != null;
+
   Object? get error => _error;
 }
 
@@ -32,8 +36,15 @@ abstract class CameraController {
   /// The cumulated state of the barcode scanner.
   ///
   /// Contains information about the configuration, torch,
-  /// errors and events.
+  /// and errors
   final state = ScannerState();
+
+  /// reports most recently scanned codes
+  ValueNotifier<List<Barcode>> get scannedBarcodes;
+
+  /// the size of the image used by the native analysis system to scan the code
+  /// scanned codes have coordinate information that is based on this image size
+  Size? get analysisSize;
 
   /// A [ValueNotifier] for camera state events.
   ///
@@ -103,6 +114,8 @@ abstract class CameraController {
 
 class _CameraController implements CameraController {
   _CameraController._internal() : super();
+  
+  StreamSubscription? _scanSilencerSubscription;
 
   final FastBarcodeScannerPlatform _platform =
       FastBarcodeScannerPlatform.instance;
@@ -112,6 +125,21 @@ class _CameraController implements CameraController {
 
   @override
   final events = ValueNotifier(ScannerEvent.uninitialized);
+
+  static const scannedCodeTimeout = Duration(milliseconds: 250);
+  DateTime? _lastScanTime;
+  @override
+  ValueNotifier<List<Barcode>> scannedBarcodes = ValueNotifier([]);
+
+  @override
+  Size? get analysisSize {
+    final previewConfig = state.previewConfig;
+    if (previewConfig != null) {
+      return Size(previewConfig.analysisWidth.toDouble(),
+          previewConfig.analysisHeight.toDouble());
+    }
+    return null;
+  }
 
   /// Indicates if the torch is currently switching.
   ///
@@ -139,7 +167,18 @@ class _CameraController implements CameraController {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      _onScan = onScan;
+      _onScan = (barcode) {
+        _lastScanTime = DateTime.now();
+        scannedBarcodes.value = [barcode];
+        onScan?.call(barcode);
+      };
+      _scanSilencerSubscription = Stream.periodic(scannedCodeTimeout).listen((event) {
+        final scanTime = _lastScanTime;
+        if (scanTime != null && DateTime.now().difference(scanTime) > scannedCodeTimeout) {
+          // it's been too long since we've seen a scanned code, clear the list
+          scannedBarcodes.value = const <Barcode>[];
+        }
+      });
 
       _platform.setOnDetectHandler(_onDetectHandler);
 
@@ -165,6 +204,7 @@ class _CameraController implements CameraController {
       state._torch = false;
       state._error = null;
       events.value = ScannerEvent.uninitialized;
+      _scanSilencerSubscription?.cancel();
     } catch (error) {
       state._error = error;
       events.value = ScannerEvent.error;

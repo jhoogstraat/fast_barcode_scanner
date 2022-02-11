@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.graphics.Point
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.annotation.NonNull
@@ -150,11 +151,21 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         }
     }
 
+    /**
+     * each barcode comes with an optional set of 4 points for each of the corners of the scanned code.
+     * In order to send this over the event channel we will serialize this point list as a list of arrays
+     * [[x,y], [x,y], [x,y], [x,y]]
+     */
+    private fun buildPointList(points: Array<Point>?): List<List<Int>>? {
+        return points?.map { listOf(it.x, it.y) }
+    }
+
     private fun encode(barcode: Barcode): List<*> {
         return listOf(
             barcodeStringMap[barcode.format],
             barcode.rawValue,
-            barcode.valueType
+            barcode.valueType,
+            buildPointList(barcode.cornerPoints)
         )
     }
 
@@ -171,6 +182,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
             pluginBinding.textureRegistry.createSurfaceTexture(),
             configuration
         ) { barcodes ->
+            // *** Question: should we return all the codes? *****
             detectionEventSink?.success(encode(barcodes.first()))
         }
 
