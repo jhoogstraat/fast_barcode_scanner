@@ -182,7 +182,6 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
             pluginBinding.textureRegistry.createSurfaceTexture(),
             configuration
         ) { barcodes ->
-            // *** Question: should we return all the codes? *****
             detectionEventSink?.success(encode(barcodes))
         }
 
