@@ -70,8 +70,8 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
 
         let scanner = AVFoundationBarcodeScanner(barcodeObjectLayerConverter: { barcodes in
             self.factory.preview?.videoPreviewLayer.transformedMetadataObject(for: barcodes) as? AVMetadataMachineReadableCodeObject
-        }) { [unowned self] barcode in
-            detectionsSink?(barcode)
+        }) { [unowned self] barcodes in
+            detectionsSink?(barcodes)
         }
 
         let camera = try Camera(configuration: configuration, scanner: scanner)
@@ -152,7 +152,6 @@ public class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHan
             scanner.process(cgImage)
         } else {
             guard
-//                picker == nil,
                 let root = UIApplication.shared.delegate?.window??.rootViewController
             else {
                 return resultHandler(nil)

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../fast_barcode_scanner.dart';
 import '../../corner_point_utils.dart';
 
-class CodeBoarderPainter extends CustomPainter {
+class CodeBorderPainter extends CustomPainter {
   final CodeBorderPaintBuilder? barcodePaintSelector;
   final CodeValueDisplayBuilder? textDecorator;
 
-  CodeBoarderPainter({
+  CodeBorderPainter({
     required this.imageSize,
     required this.barcodes,
     this.barcodePaintSelector,
@@ -100,7 +100,7 @@ class CodeBoarderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CodeBoarderPainter oldDelegate) {
+  bool shouldRepaint(CodeBorderPainter oldDelegate) {
     return oldDelegate.imageSize != imageSize ||
         oldDelegate.barcodes != barcodes;
   }
