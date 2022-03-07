@@ -10,6 +10,9 @@ class MaterialFinderPainter extends CustomPainter {
     required this.borderPaint,
     required this.backgroundColor,
     required this.cutOutShape,
+    this.cutOutWidth,
+    this.cutOutHeight,
+    this.cutOutCenter,
   });
 
   final double inflate;
@@ -19,27 +22,63 @@ class MaterialFinderPainter extends CustomPainter {
   final Paint borderPaint;
   final Color backgroundColor;
   final CutOutShape cutOutShape;
+  final double? cutOutWidth;
+  final double? cutOutHeight;
+  final Offset? cutOutCenter;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (cutOutCenter != null) {
+      assert(cutOutCenter != const Offset(0.0, 0.0),
+          "CutOutCenter can't be at the origin");
+          assert(cutOutCenter != Offset(size.width, 0.0),
+          "CutOutCenter can't be at TopRight");
+          assert(cutOutCenter != Offset(size.width, size.height),
+          "CutOutCenter can't be at BottomRight");
+          assert(cutOutCenter != Offset(0.0, size.height),
+          "CutOutCenter can't be at the BottomLeft");
+    }
+    if (cutOutWidth != null) {
+      assert(cutOutWidth! <= size.width,
+          "CutOutWidth $cutOutWidth can't be greater than Screen Width ${size.width}");
+      if (cutOutCenter != null) {
+        assert(cutOutCenter!.dx - (cutOutWidth! / 2) >= 0.0,
+            "CutOut is overflowing towards left by ${(cutOutCenter!.dx - (cutOutWidth! / 2)).abs()} by pixels, adjust CutOutWidth");
+        assert(cutOutCenter!.dx + (cutOutWidth! / 2) <= size.width,
+            "CutOut is overflowing towards right by ${(cutOutCenter!.dx - (cutOutWidth! / 2)).abs()} pixels, adjust it's CutOutWidth");
+      }
+    }
+    if (cutOutHeight != null && cutOutShape == CutOutShape.wide) {
+      assert(cutOutHeight! <= size.height,
+          "CutOutHeigth $cutOutHeight can't be greater than Screen Height ${size.height}");
+      if (cutOutCenter != null) {
+        assert(cutOutCenter!.dy - (cutOutHeight! / 2) >= 0.0,
+            "CutOut is overflowing towards top by ${(cutOutCenter!.dy - (cutOutHeight! / 2)).abs()} pixels, adjust it's CutOutHeight");
+        assert(cutOutCenter!.dy + (cutOutHeight! / 2) <= size.height,
+            "CutOut is overflowing towards bottom by ${(cutOutCenter!.dy - (cutOutHeight! / 2)).abs()} pixels, adjust it's CutOutHeight");
+      }
+    }
+
     final backgroundPaint = Paint()..color = backgroundColor;
 
     final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    final cutOutWidth = screenRect.width - 45;
+    final width = cutOutWidth ?? screenRect.width * 0.8;
 
-    double cutOutHeight;
+    final center = cutOutCenter ?? screenRect.center;
+
+    double height;
     if (cutOutShape == CutOutShape.square) {
-      cutOutHeight = cutOutWidth;
+      height = width;
     } else {
-      cutOutHeight = 1 / (16 / 9) * cutOutWidth;
+      height = cutOutHeight ?? 1 / (16 / 9) * width;
     }
 
     final cutOut = RRect.fromRectXY(
       Rect.fromCenter(
-        center: screenRect.center,
-        width: cutOutWidth,
-        height: cutOutHeight,
+        center: center,
+        width: width,
+        height: height,
       ),
       12,
       12,
