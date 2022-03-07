@@ -72,31 +72,33 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
                         didOutput metadataObjects: [AVMetadataObject],
                         from connection: AVCaptureConnection) {
 
-    // TODO: return all scanned codes
-		guard
-			let metadata = metadataObjects.first,
-			let readableCode = metadata as? AVMetadataMachineReadableCodeObject,
-            var type = flutterMetadataObjectTypes[readableCode.type],
-            var value = readableCode.stringValue
-        else { return }
-        let transformedCode = barcodeMetadataConverter(readableCode)
+        var scannedCodes: [[Any?]] = []
+        for metadata in metadataObjects {
+            guard
+                let readableCode = metadata as? AVMetadataMachineReadableCodeObject,
+                var type = flutterMetadataObjectTypes[readableCode.type],
+                var value = readableCode.stringValue
+            else { continue }
+            let transformedCode = barcodeMetadataConverter(readableCode)
 
-        // Fix UPC-A, see https://developer.apple.com/library/archive/technotes/tn2325/_index.html#//apple_ref/doc/uid/DTS40013824-CH1-IS_UPC_A_SUPPORTED_
-        if readableCode.type == .ean13 {
-            if value.hasPrefix("0") {
-                // UPC-A
-                guard symbologies.contains("upcA") else { return }
-                type = "upcA"
-                value.removeFirst()
-            } else {
-                // EAN-13
-                guard symbologies.contains(type) else { return }
+            // Fix UPC-A, see https://developer.apple.com/library/archive/technotes/tn2325/_index.html#//apple_ref/doc/uid/DTS40013824-CH1-IS_UPC_A_SUPPORTED_
+            if readableCode.type == .ean13 {
+                if value.hasPrefix("0") {
+                    // UPC-A
+                    guard symbologies.contains("upcA") else { continue }
+                    type = "upcA"
+                    value.removeFirst()
+                } else {
+                    // EAN-13
+                    guard symbologies.contains(type) else { continue }
+                }
             }
+            scannedCodes.append([type, value, nil, transformedCode?.corners.pointList])
         }
 
         onDetection?()
 
-        resultHandler([type, value, nil, transformedCode?.corners.pointList])
+        resultHandler(scannedCodes)
 	}
 }
 

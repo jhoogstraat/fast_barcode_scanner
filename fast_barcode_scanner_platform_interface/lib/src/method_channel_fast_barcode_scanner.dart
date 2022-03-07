@@ -17,7 +17,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   final Stream<dynamic> _detectionEventStream =
       _detectionEvents.receiveBroadcastStream();
   StreamSubscription<dynamic>? _barcodeEventStreamSubscription;
-  void Function(Barcode)? _onDetectHandler;
+  OnDetectionHandler? _onDetectHandler;
 
   @override
   Future<PreviewConfiguration> init(
@@ -37,7 +37,7 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   }
 
   @override
-  void setOnDetectHandler(void Function(Barcode) handler) async {
+  void setOnDetectHandler(OnDetectionHandler handler) async {
     _onDetectHandler = handler;
     _barcodeEventStreamSubscription ??=
         _detectionEventStream.listen(_handlePlatformBarcodeEvent);
@@ -99,8 +99,8 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     // This might fail if the code type is not present in the list of available code types.
     // Barcode init will throw in this case. Ignore this cases and continue as if nothing happened.
     try {
-      final barcode = Barcode(data);
-      _onDetectHandler?.call(barcode);
+      final barcodes = (data as List<dynamic>).map((e) => Barcode(e)).toList();
+      _onDetectHandler?.call(barcodes);
       // ignore: empty_catches
     } catch (e) {}
   }

@@ -61,7 +61,7 @@ abstract class CameraController {
     Framerate framerate,
     CameraPosition position,
     DetectionMode detectionMode,
-    void Function(Barcode)? onScan,
+    OnDetectionHandler? onScan,
   );
 
   /// Stops the camera and disposes all associated resources.
@@ -103,7 +103,7 @@ abstract class CameraController {
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
-    void Function(Barcode)? onScan,
+    OnDetectionHandler? onScan,
   });
 
   /// Analyze a still image, which can be chosen from an image picker.
@@ -114,7 +114,7 @@ abstract class CameraController {
 
 class _CameraController implements CameraController {
   _CameraController._internal() : super();
-  
+
   StreamSubscription? _scanSilencerSubscription;
 
   final FastBarcodeScannerPlatform _platform =
@@ -152,7 +152,7 @@ class _CameraController implements CameraController {
   bool _configuring = false;
 
   /// User-defined handler, called when a barcode is detected
-  void Function(Barcode)? _onScan;
+  OnDetectionHandler? _onScan;
 
   @override
   Future<void> initialize(
@@ -161,16 +161,16 @@ class _CameraController implements CameraController {
     Framerate framerate,
     CameraPosition position,
     DetectionMode detectionMode,
-    void Function(Barcode)? onScan,
+    OnDetectionHandler? onScan,
   ) async {
     try {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      _onScan = (barcode) {
+      _onScan = (barcodes) {
         _lastScanTime = DateTime.now();
-        scannedBarcodes.value = [barcode];
-        onScan?.call(barcode);
+        scannedBarcodes.value = barcodes;
+        onScan?.call(barcodes);
       };
       _scanSilencerSubscription = Stream.periodic(scannedCodeTimeout).listen((event) {
         final scanTime = _lastScanTime;
@@ -284,7 +284,7 @@ class _CameraController implements CameraController {
     Framerate? framerate,
     DetectionMode? detectionMode,
     CameraPosition? position,
-    void Function(Barcode)? onScan,
+    OnDetectionHandler? onScan,
   }) async {
     if (state.isInitialized && !_configuring) {
       final _scannerConfig = state._scannerConfig!;
@@ -331,8 +331,28 @@ class _CameraController implements CameraController {
     }
   }
 
-  void _onDetectHandler(Barcode code) {
+  void _onDetectHandler(List<Barcode> codes) {
     events.value = ScannerEvent.detected;
-    _onScan?.call(code);
+    _onScan?.call(codes);
   }
+}
+
+class ScannedBarcodes {
+  final List<Barcode> barcodes;
+  final DateTime scannedAt;
+
+  ScannedBarcodes(this.barcodes) : scannedAt = DateTime.now();
+
+  ScannedBarcodes.none() : this([]);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScannedBarcodes &&
+          runtimeType == other.runtimeType &&
+          barcodes == other.barcodes &&
+          scannedAt == other.scannedAt;
+
+  @override
+  int get hashCode => barcodes.hashCode ^ scannedAt.hashCode;
 }
