@@ -88,8 +88,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
         if (status == AnimationStatus.completed && _filteredCodes.isEmpty) {
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
-              _controller!
-                  .forward(from: _controller!.lowerBound);
+              _controller!.forward(from: _controller!.lowerBound);
             }
           });
         }

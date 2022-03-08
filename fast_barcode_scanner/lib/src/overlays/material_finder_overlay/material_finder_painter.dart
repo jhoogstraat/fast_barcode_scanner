@@ -1,3 +1,4 @@
+import 'package:fast_barcode_scanner/src/overlays/rect_of_interest/rect_of_interest.dart';
 import 'package:flutter/material.dart';
 
 import '../../../fast_barcode_scanner.dart';

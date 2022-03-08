@@ -50,7 +50,7 @@ abstract class CameraController {
   ///
   ///
   final ValueNotifier<ScannerEvent> events =
-  ValueNotifier(ScannerEvent.uninitialized);
+      ValueNotifier(ScannerEvent.uninitialized);
 
   /// Informs the platform to initialize the camera.
   ///
@@ -178,13 +178,13 @@ class _CameraController implements CameraController {
       _onScan = _buildScanHandler(onScan);
       _scanSilencerSubscription =
           Stream.periodic(scannedCodeTimeout).listen((event) {
-            final scanTime = _lastScanTime;
-            if (scanTime != null &&
-                DateTime.now().difference(scanTime) > scannedCodeTimeout) {
-              // it's been too long since we've seen a scanned code, clear the list
-              scannedBarcodes.value = const <Barcode>[];
-            }
-          });
+        final scanTime = _lastScanTime;
+        if (scanTime != null &&
+            DateTime.now().difference(scanTime) > scannedCodeTimeout) {
+          // it's been too long since we've seen a scanned code, clear the list
+          scannedBarcodes.value = const <Barcode>[];
+        }
+      });
 
       _platform.setOnDetectHandler(_onDetectHandler);
 
@@ -352,10 +352,10 @@ class ScannedBarcodes {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is ScannedBarcodes &&
-              runtimeType == other.runtimeType &&
-              barcodes == other.barcodes &&
-              scannedAt == other.scannedAt;
+      other is ScannedBarcodes &&
+          runtimeType == other.runtimeType &&
+          barcodes == other.barcodes &&
+          scannedAt == other.scannedAt;
 
   @override
   int get hashCode => barcodes.hashCode ^ scannedAt.hashCode;
