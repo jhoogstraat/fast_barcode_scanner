@@ -17,7 +17,7 @@ class CodeBorderPainter extends CustomPainter {
   final Size imageSize;
   final List<Barcode> barcodes;
 
-  final _standardPaint = Paint()
+  static final _standardPaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 2.0
     ..color = Colors.red;
