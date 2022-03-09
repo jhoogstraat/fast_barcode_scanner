@@ -154,6 +154,8 @@ class _CameraController implements CameraController {
   /// User-defined handler, called when a barcode is detected
   OnDetectionHandler? _onScan;
 
+  /// Curried function for [_onScan]. This ensures that each scan receipt is done
+  /// consistently. We log [_lastScanTime] and update the [scannedBarcodes] ValueNotifier
   OnDetectionHandler _buildScanHandler(OnDetectionHandler? onScan) {
     return (barcodes) {
       _lastScanTime = DateTime.now();

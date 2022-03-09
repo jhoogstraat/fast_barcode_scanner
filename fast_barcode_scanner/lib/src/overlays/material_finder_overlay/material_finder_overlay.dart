@@ -1,7 +1,7 @@
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
 
+import '../../../fast_barcode_scanner.dart';
 import 'material_finder_painter.dart';
 
 /// returns a color for the finder boundary when codes are found inside
@@ -117,7 +117,7 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       final previewSize = context.size;
       if (analysisSize != null && previewSize != null) {
         _filteredCodes = cameraController.scannedBarcodes.value
-            .where(widget.rectOfInterest.codeFilter(
+            .where(widget.rectOfInterest.buildCodeFilter(
               analysisSize: analysisSize,
               previewSize: previewSize,
             ))
