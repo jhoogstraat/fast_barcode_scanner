@@ -108,7 +108,6 @@ class _ScanningScreenState extends State<ScanningScreen> {
                 }
                 return null;
               },
-              showScanLine: true,
             ),
           if (_scanningOverlayConfig.enabledOverlay ==
               ScanningOverlayType.codeBoundaryOverlay)

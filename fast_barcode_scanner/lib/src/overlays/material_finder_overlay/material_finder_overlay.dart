@@ -1,7 +1,8 @@
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
 import 'package:flutter/material.dart';
 
-import '../../../fast_barcode_scanner.dart';
+import '../../camera_controller.dart';
+import '../rect_of_interest/rect_of_interest.dart';
 import 'material_finder_painter.dart';
 
 /// returns a color for the finder boundary when codes are found inside
@@ -23,7 +24,6 @@ class MaterialPreviewOverlay extends StatefulWidget {
     Key? key,
     required this.rectOfInterest,
     this.showSensing = false,
-    this.showScanLine = false,
     this.sensingColor = Colors.white,
     this.backgroundColor = Colors.black38,
     this.cutOutBorderColor = Colors.black87,
@@ -32,7 +32,6 @@ class MaterialPreviewOverlay extends StatefulWidget {
   }) : super(key: key);
 
   final bool showSensing;
-  final bool showScanLine;
   final Color? backgroundColor;
   final Color sensingColor;
   final Color cutOutBorderColor;
@@ -162,7 +161,6 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                 borderPaint: defaultBorderPaint,
                 backgroundColor: widget.backgroundColor,
                 rectOfInterest: widget.rectOfInterest,
-                showScanLine: widget.showScanLine,
               ),
             ),
             if (widget.showSensing)
@@ -176,7 +174,6 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                     borderPaint: sensingBorderPaint,
                     backgroundColor: widget.backgroundColor,
                     rectOfInterest: widget.rectOfInterest,
-                    showScanLine: widget.showScanLine,
                   ),
                 ),
               )
