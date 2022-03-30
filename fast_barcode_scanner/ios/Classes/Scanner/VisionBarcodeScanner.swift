@@ -1,3 +1,4 @@
+import Flutter
 import AVFoundation
 import Vision
 
@@ -6,9 +7,12 @@ typealias VisionBarcodeCornerPointConverter = (VNBarcodeObservation) -> [[Int]]?
 
 @available(iOS 11.0, *)
 class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSampleBufferDelegate {
+    typealias ErrorHandler = (FlutterError?) -> Void
+
     typealias Barcode = VNBarcodeObservation
 
     var resultHandler: ResultHandler
+    var errorHandler: ErrorHandler
     var cornerPointConverter: VisionBarcodeCornerPointConverter
     var confidence: Double
     var onDetection: (() -> Void)?
@@ -66,8 +70,9 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
         }
     }
 
-    init(cornerPointConverter: @escaping VisionBarcodeCornerPointConverter, confidence: Double, resultHandler: @escaping ResultHandler) {
+    init(cornerPointConverter: @escaping VisionBarcodeCornerPointConverter, confidence: Double, resultHandler: @escaping ResultHandler, errorHandler: @escaping ErrorHandler) {
         self.resultHandler = resultHandler
+        self.errorHandler = errorHandler
         self.cornerPointConverter = cornerPointConverter
         self.confidence = confidence
         super.init()
@@ -83,7 +88,7 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
         output.setSampleBufferDelegate(nil, queue: nil)
     }
 
-    // MARK: AVFoundation capture output
+    // MARK: Vision capture output
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
@@ -109,8 +114,10 @@ class VisionBarcodeScanner: NSObject, BarcodeScanner, AVCaptureVideoDataOutputSa
 
     private func handleVisionRequestUpdate(request: VNRequest?, error: Error?) {
         guard let results = request?.results as? [VNBarcodeObservation] else {
-            print("Error scanning image: \(String(describing: error))")
-            resultHandler(error)
+            let message = error != nil ? "\(error!)" : "unknownError"
+            print("Error scanning image: \(message)")
+            let flutterError = FlutterError(code: "UNEXPECTED_SCAN_ERROR", message: message, details: error?._code)
+            errorHandler(flutterError)
             return
         }
 
