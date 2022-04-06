@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
 Widget _defaultOnError(BuildContext context, Object? error) {

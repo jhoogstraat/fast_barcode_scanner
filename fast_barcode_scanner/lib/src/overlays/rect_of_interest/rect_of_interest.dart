@@ -11,9 +11,17 @@ typedef CodeFilter = bool Function(Barcode code);
 abstract class RectOfInterest {
   const RectOfInterest();
 
+  static RectOfInterest wide({double horizontalPadding = 45}) =>
+      WideRectOfInterest(horizontalPadding: horizontalPadding);
+
+  static RectOfInterest square({required double size}) =>
+      SquareRectOfInterest(size: size);
+
   Rect rect(Rect previewWidgetRect);
 
-  CodeFilter codeFilter({
+  /// A curried function which is used for filtering scanned codes based on the
+  /// bounds of the [RectOfInterest].
+  CodeFilter buildCodeFilter({
     required Size analysisSize,
     required Size previewSize,
   }) {
@@ -106,7 +114,7 @@ class WideRectOfInterest extends RectOfInterest {
 class SquareRectOfInterest extends RectOfInterest {
   final double size;
 
-  const SquareRectOfInterest(this.size);
+  const SquareRectOfInterest({required this.size});
 
   @override
   bool operator ==(Object other) =>
