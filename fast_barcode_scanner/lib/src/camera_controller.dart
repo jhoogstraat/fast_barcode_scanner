@@ -55,14 +55,14 @@ abstract class CameraController {
   /// Informs the platform to initialize the camera.
   ///
   /// Events and errors are received via the current state's eventNotifier.
-  Future<void> initialize(
-    List<BarcodeType> types,
-    Resolution resolution,
-    Framerate framerate,
-    CameraPosition position,
-    DetectionMode detectionMode,
+  Future<void> initialize({
+    required List<BarcodeType> types,
+    required Resolution resolution,
+    required Framerate framerate,
+    required CameraPosition position,
+    required DetectionMode detectionMode,
     OnDetectionHandler? onScan,
-  );
+  });
 
   /// Stops the camera and disposes all associated resources.
   ///
@@ -154,27 +154,35 @@ class _CameraController implements CameraController {
   /// User-defined handler, called when a barcode is detected
   OnDetectionHandler? _onScan;
 
+  /// Curried function for [_onScan]. This ensures that each scan receipt is done
+  /// consistently. We log [_lastScanTime] and update the [scannedBarcodes] ValueNotifier
+  OnDetectionHandler _buildScanHandler(OnDetectionHandler? onScan) {
+    return (barcodes) {
+      _lastScanTime = DateTime.now();
+      scannedBarcodes.value = barcodes;
+      onScan?.call(barcodes);
+    };
+  }
+
   @override
-  Future<void> initialize(
-    List<BarcodeType> types,
-    Resolution resolution,
-    Framerate framerate,
-    CameraPosition position,
-    DetectionMode detectionMode,
+  Future<void> initialize({
+    required List<BarcodeType> types,
+    required Resolution resolution,
+    required Framerate framerate,
+    required CameraPosition position,
+    required DetectionMode detectionMode,
     OnDetectionHandler? onScan,
-  ) async {
+  }) async {
     try {
       state._previewConfig = await _platform.init(
           types, resolution, framerate, detectionMode, position);
 
-      _onScan = (barcodes) {
-        _lastScanTime = DateTime.now();
-        scannedBarcodes.value = barcodes;
-        onScan?.call(barcodes);
-      };
-      _scanSilencerSubscription = Stream.periodic(scannedCodeTimeout).listen((event) {
+      _onScan = _buildScanHandler(onScan);
+      _scanSilencerSubscription =
+          Stream.periodic(scannedCodeTimeout).listen((event) {
         final scanTime = _lastScanTime;
-        if (scanTime != null && DateTime.now().difference(scanTime) > scannedCodeTimeout) {
+        if (scanTime != null &&
+            DateTime.now().difference(scanTime) > scannedCodeTimeout) {
           // it's been too long since we've seen a scanned code, clear the list
           scannedBarcodes.value = const <Barcode>[];
         }
@@ -307,9 +315,7 @@ class _CameraController implements CameraController {
           position: position,
         );
 
-        if (onScan != null) {
-          _onScan = onScan;
-        }
+        _onScan = _buildScanHandler(onScan);
       } catch (error) {
         state._error = error;
         events.value = ScannerEvent.error;
