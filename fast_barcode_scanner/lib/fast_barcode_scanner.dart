@@ -16,5 +16,10 @@ export 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_pla
         PreviewConfiguration,
         IOSApiMode;
 
+export 'src/barcode_camera.dart';
+export 'src/camera_controller.dart';
 export 'src/overlays/code_boundary_overlay/code_boundary_overlay.dart';
+export 'src/overlays/overlays.dart';
 export 'src/overlays/rect_of_interest/rect_of_interest.dart';
+export 'src/types/scanner_configuration.dart';
+export 'src/types/scanner_event.dart';
