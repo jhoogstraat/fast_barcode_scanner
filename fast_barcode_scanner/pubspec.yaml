@@ -1,8 +1,9 @@
 name: fast_barcode_scanner
 description: A fast barcode scanner using MLKit on Android and AVFoundation on iOS.
-version: 2.0.0-dev.2
-homepage: https://github.com/jhoogstraat/fast_barcode_scanner
+version: 2.0.0-dev.5
+#remove this before we publish
 publish_to: none
+homepage: https://github.com/jhoogstraat/fast_barcode_scanner
 repository: https://github.com/jhoogstraat/fast_barcode_scanner
 
 environment:
