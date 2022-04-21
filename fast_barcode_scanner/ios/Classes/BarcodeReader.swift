@@ -99,6 +99,7 @@ class BarcodeReader: NSObject {
 	let codes: [String]
 
 	var torchActiveOnStop = false
+	var isForcePaused = false
 	var previewSize: CMVideoDimensions!
 
 	init(textureRegistry: FlutterTextureRegistry,
@@ -232,6 +233,7 @@ class BarcodeReader: NSObject {
 
 	func pauseIfRequired(force: Bool = false) {
 		if force {
+		    isForcePaused = true
 			stop(pause: true)
 		} else {
 			switch detectionMode {
@@ -246,7 +248,12 @@ class BarcodeReader: NSObject {
 
 	func resume() throws {
 		switch detectionMode {
-		case .continuous: return
+		case .continuous:
+            if(isForcePaused){
+                isForcePaused = false
+                try start(fromPause: true)
+            }
+		    return
 		case .pauseDetection:
 			guard !captureSession.outputs.contains(metadataOutput) else { return }
 
