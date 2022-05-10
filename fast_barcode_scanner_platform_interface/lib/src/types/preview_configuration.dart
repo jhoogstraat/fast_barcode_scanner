@@ -113,10 +113,10 @@ abstract class IOSApiMode {
 
   Map<String, dynamic> get configMap => {
         "apiMode": name,
-        ...extraConfig,
+        ...config,
       };
 
-  Map<String, dynamic> get extraConfig => {};
+  Map<String, dynamic> get config => {};
 }
 
 class AVFoundationMode extends IOSApiMode {
@@ -141,7 +141,7 @@ class VisionMode extends IOSApiMode {
   const VisionMode({this.confidence = standardConfidence});
 
   @override
-  Map<String, dynamic> get extraConfig => {
+  Map<String, dynamic> get config => {
         "confidence": confidence.clamp(0, 1),
       };
 }
