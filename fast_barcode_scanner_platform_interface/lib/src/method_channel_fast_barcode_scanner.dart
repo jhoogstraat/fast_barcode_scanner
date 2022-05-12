@@ -21,17 +21,20 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
 
   @override
   Future<PreviewConfiguration> init(
-      List<BarcodeType> types,
-      Resolution resolution,
-      Framerate framerate,
-      DetectionMode detectionMode,
-      CameraPosition position) async {
+    List<BarcodeType> types,
+    Resolution resolution,
+    Framerate framerate,
+    DetectionMode detectionMode,
+    CameraPosition position, {
+    IOSApiMode? apiMode,
+  }) async {
     final response = await _channel.invokeMethod('init', {
       'types': types.map((e) => e.name).toList(growable: false),
       'mode': detectionMode.name,
       'res': resolution.name,
       'fps': framerate.name,
-      'pos': position.name
+      'pos': position.name,
+      ...apiMode?.configMap ?? {},
     });
     return PreviewConfiguration(response);
   }

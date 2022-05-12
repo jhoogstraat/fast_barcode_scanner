@@ -61,6 +61,7 @@ abstract class CameraController {
     required Framerate framerate,
     required CameraPosition position,
     required DetectionMode detectionMode,
+    IOSApiMode? apiMode,
     OnDetectionHandler? onScan,
   });
 
@@ -171,11 +172,18 @@ class _CameraController implements CameraController {
     required Framerate framerate,
     required CameraPosition position,
     required DetectionMode detectionMode,
+    IOSApiMode? apiMode,
     OnDetectionHandler? onScan,
   }) async {
     try {
       state._previewConfig = await _platform.init(
-          types, resolution, framerate, detectionMode, position);
+        types,
+        resolution,
+        framerate,
+        detectionMode,
+        position,
+        apiMode: apiMode,
+      );
 
       _onScan = _buildScanHandler(onScan);
       _scanSilencerSubscription =

@@ -1,11 +1,11 @@
 import AVFoundation
 
-typealias BarcodeMetadataConverter = (AVMetadataObject) -> AVMetadataMachineReadableCodeObject?
+typealias AVBarcodeMetadataConverter = (AVMetadataObject) -> AVMetadataMachineReadableCodeObject?
 
 class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOutputObjectsDelegate {
     typealias Barcode = AVMetadataMachineReadableCodeObject
 
-    init(barcodeObjectLayerConverter: @escaping BarcodeMetadataConverter, resultHandler: @escaping ResultHandler) {
+    init(barcodeObjectLayerConverter: @escaping AVBarcodeMetadataConverter, resultHandler: @escaping ResultHandler) {
         self.resultHandler = resultHandler
         self.barcodeMetadataConverter = barcodeObjectLayerConverter
     }
@@ -17,7 +17,7 @@ class AVFoundationBarcodeScanner: NSObject, BarcodeScanner, AVCaptureMetadataOut
     // before some of the metadata can be used (like the location of the object's corner points), it must be converted by that layer
     // in order to decouple this class from the view, we need the plugin to provide a function in which to process these
     // objects with the videoPreviewLayer reference
-    var barcodeMetadataConverter: BarcodeMetadataConverter
+    var barcodeMetadataConverter: AVBarcodeMetadataConverter
 
     // Acts as an "on detection notifier"
     // for the Camera.

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:fast_barcode_scanner_example/utils.dart';
 import 'package:flutter/material.dart';
@@ -30,14 +32,38 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             ElevatedButton(
               child: const Text('Open Scanner'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ScanningScreen(
-                    dispose: _disposeCheckboxValue,
+              onPressed: () async {
+                IOSApiMode? apiMode;
+                if (Platform.isIOS) {
+                  apiMode = await showDialog<IOSApiMode>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                            title: const Text("Scanning Framework"),
+                            actions: [
+                              TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context, IOSApiMode.avFoundation);
+                                  },
+                                  child: const Text("AVFoundation")),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context, IOSApiMode.visionStandard);
+                                },
+                                child: const Text("Vision"),
+                              ),
+                            ],
+                          )) ?? IOSApiMode.avFoundation;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ScanningScreen(
+                      dispose: _disposeCheckboxValue,
+                      apiMode: apiMode,
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
             ElevatedButton(
               onPressed: () async {
