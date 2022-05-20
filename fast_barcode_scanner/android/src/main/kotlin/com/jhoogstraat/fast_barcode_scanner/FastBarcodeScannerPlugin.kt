@@ -12,7 +12,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.barcode.Barcode
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -241,7 +241,7 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
 
                 return pickImageCompleter!!.task.continueWithTask {
                     if (it.result == null) Tasks.forResult(null) else
-                        scanner.process(InputImage.fromFilePath(activityBinding.activity, it.result))
+                        scanner.process(InputImage.fromFilePath(activityBinding.activity, it.result as Uri))
                 }
             }
         }
