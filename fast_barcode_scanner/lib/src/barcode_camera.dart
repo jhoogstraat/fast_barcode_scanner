@@ -1,10 +1,6 @@
-import 'dart:ui';
-
 import 'package:fast_barcode_scanner/src/camera_controller.dart';
 import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 typedef ErrorCallback = Widget Function(BuildContext context, Object? error);
 
@@ -55,8 +51,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
     super.didChangeDependencies();
 
     CameraController.instance
-        .initialize(widget.types, widget.resolution, widget.framerate,
-            widget.mode, widget.position, widget.onScan)
+        .initialize(widget.types, widget.resolution, widget.framerate, widget.mode, widget.position, widget.onScan)
         .whenComplete(() => setState(() => _opacity = 1.0));
   }
 
@@ -72,11 +67,7 @@ class BarcodeCameraState extends State<BarcodeCamera> {
             ? widget.onError(context, cameraState.error!)
             : Stack(
                 fit: StackFit.expand,
-                children: [
-                  if (cameraState.isInitialized)
-                    _buildPreview(cameraState.previewConfig!),
-                  ...widget.children
-                ],
+                children: [if (cameraState.isInitialized) _buildPreview(cameraState.previewConfig!), ...widget.children],
               ),
       ),
     );
