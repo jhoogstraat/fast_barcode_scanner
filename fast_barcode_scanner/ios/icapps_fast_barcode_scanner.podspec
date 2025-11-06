@@ -3,15 +3,15 @@
 # Run `pod lib lint fast_barcode_scanner.podspec' to validate before publishing.
 #
 Pod::Spec.new do |s|
-  s.name             = 'fast_barcode_scanner'
+  s.name             = 'icapps_fast_barcode_scanner'
   s.version          = '0.0.1'
   s.summary          = 'A fast barcode scanner using ML Kit on Android and AVFoundation on iOS.'
   s.description      = <<-DESC
   A fast barcode scanner using ML Kit on Android and AVFoundation on iOS.
                        DESC
-  s.homepage         = 'https://github.com/jhoogstraat/fast_barcode_scanner'
+  s.homepage         = 'https://github.com/icapps/icapps_fast_barcode_scanner.git'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Joshua Hoogstraat' => 'https://github.com/jhoogstraat' }
+  s.author           = { 'Icapps' => 'https://github.com/icapps' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'

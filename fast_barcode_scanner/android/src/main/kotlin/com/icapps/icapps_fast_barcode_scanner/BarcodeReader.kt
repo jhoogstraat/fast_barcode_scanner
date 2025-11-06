@@ -1,4 +1,4 @@
-package com.jhoogstraat.fast_barcode_scanner
+package com.icapps.icapps_fast_barcode_scanner
 
 import android.Manifest
 import android.app.Activity
@@ -13,7 +13,7 @@ import androidx.core.util.Consumer
 import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
-import com.google.mlkit.vision.barcode.Barcode
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 
 import io.flutter.plugin.common.MethodChannel.Result
@@ -23,7 +23,7 @@ import java.util.ArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, val position: CameraPosition)
+data class CameraConfig(val formats: IntArray, val mode: DetectionMode, val resolution: Resolution, val framerate: Framerate, var position: CameraPosition)
 
 class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceTextureEntry, private val listener: (List<Barcode>) -> Unit) : RequestPermissionsResultListener {
     /* Android Lifecycle */
@@ -100,10 +100,32 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     }
 
     fun toggleTorch(result: Result) {
-        if (!isInitialized) return
+        if (!isInitialized || activity == null) return
         camera.cameraControl.enableTorch(camera.cameraInfo.torchState.value != TorchState.ON).addListener(Runnable {
             result.success(camera.cameraInfo.torchState.value == TorchState.ON)
-        }, ContextCompat.getMainExecutor(activity))
+        }, ContextCompat.getMainExecutor(activity!!))
+    }
+
+    fun canChangeCamera(result: Result) {
+        try {
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(activity!!)
+            cameraProviderFuture.addListener(Runnable {
+                val cameraProviderForChangeCamera = cameraProviderFuture.get()    
+                val hasFrontCamera = cameraProviderForChangeCamera.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+                val hasBackCamera = cameraProviderForChangeCamera.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)
+                result.success(hasFrontCamera && hasBackCamera)
+            }, ContextCompat.getMainExecutor(activity!!))
+        } catch (exc: Exception) {
+            result.success(false)
+        }
+    }
+
+    fun changeCamera(position: String, result: Result) {
+        cameraConfig.position = when (position) {
+            "front" -> CameraPosition.front
+            else -> CameraPosition.back
+        }
+        initCamera()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -148,12 +170,8 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
         // Select camera
         val selectorBuilder = CameraSelector.Builder()
         when (cameraConfig.position) {
-            CameraPosition.front -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-            }
-            CameraPosition.back -> {
-                selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
-            }
+            CameraPosition.front -> selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+            CameraPosition.back -> selectorBuilder.requireLensFacing(CameraSelector.LENS_FACING_BACK)
         }
         cameraSelector = selectorBuilder.build()
 
@@ -211,7 +229,7 @@ class BarcodeReader(private val flutterTextureEntry: TextureRegistry.SurfaceText
     }
 
     companion object {
-        private const val TAG = "fast_barcode_scanner"
+        private const val TAG = "icapps_fast_barcode_scanner"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }

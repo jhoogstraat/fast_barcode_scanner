@@ -11,7 +11,7 @@ A fast barcode scanner using **MLKit** (and **CameraX**) on Android and **AVFoun
 ## Installation
 Add the following line to your **pubspec.yaml**:
 ```yaml
-fast_barcode_scanner: ^1.1.0
+icapps_fast_barcode_scanner: ^1.1.0
 ```
 ### iOS
 Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist`, like so:
@@ -30,7 +30,7 @@ minSdkVersion 21
 The barcode scanner consists of two main classes `CameraController` and `BarcodeCamera`.
 A full example looks like this:
 ```dart
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:icapps_fast_barcode_scanner/icapps_fast_barcode_scanner.dart';
 
 class MyScannerScreen extends StatelessWidget {
     @override

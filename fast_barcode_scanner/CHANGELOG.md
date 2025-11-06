@@ -1,3 +1,25 @@
+
+## 1.5.1
+
+- Fix crashes on android
+
+## 1.5.0
+
+- Updated to be 16KB compatible
+
+## 1.4.1
+
+- Added namespace for android
+
+## 1.4.0
+
+- Further rename to icapps_fast_barcode_scanner
+
+## 1.3.0
+
+- Forked to icapps_fast_barcode_scanner
+- fix 'Type mismatch: inferred type is Activity? but Context was expected'
+
 ## 1.1.4
 
 - Fixes `pauseDetector` on iOS

@@ -1,3 +1,11 @@
+## 1.4.0
+
+- Further rename to icapps_fast_barcode_scanner
+
+## 1.3.0
+
+* Forked to icapps_fast_barcode_scanner_platform_interface
+
 ## 1.0.4
 
 * Smaller code cleanups

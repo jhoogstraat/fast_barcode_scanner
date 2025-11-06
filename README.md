@@ -2,7 +2,7 @@
 
 ## Packages
 
-### fast_barcode_scanner:
+### icapps_fast_barcode_scanner:
 code for the cross-platform facing plugin, used to display a camera view within Flutter applications
 
 [![pub package](https://img.shields.io/pub/v/fast_barcode_scanner.svg)](https://pub.dartlang.org/packages/fast_barcode_scanner)

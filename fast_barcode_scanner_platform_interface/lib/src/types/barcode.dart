@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../fast_barcode_scanner_platform_interface.dart';
+import '../../icapps_fast_barcode_scanner_platform_interface.dart';
 
 /// Describes a Barcode with type and value.
 /// [Barcode] are equatable.

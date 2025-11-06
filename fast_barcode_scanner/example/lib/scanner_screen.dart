@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
 import 'package:flutter/material.dart';
+import 'package:icapps_fast_barcode_scanner/icapps_fast_barcode_scanner.dart';
+
 import 'detections_counter.dart';
 
 final codeStream = StreamController<Barcode>.broadcast();
@@ -15,6 +16,19 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen> {
   final _torchIconState = ValueNotifier(false);
+  bool _canChangeCamera = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _checkCanChangeCamera());
+  }
+
+  Future<void> _checkCanChangeCamera() async {
+    _canChangeCamera = await CameraController.instance.canChangeCamera();
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +56,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
               },
             ),
           ),
+          if (_canChangeCamera)
+            IconButton(
+              icon: const Icon(Icons.cameraswitch),
+              onPressed: CameraController.instance.toggleCamera,
+            ),
         ],
       ),
       body: BarcodeCamera(

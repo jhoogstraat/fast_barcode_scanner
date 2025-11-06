@@ -10,7 +10,7 @@ import 'fast_barcode_scanner_platform_interface.dart';
 
 class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const MethodChannel _channel =
-      MethodChannel('com.jhoogstraat/fast_barcode_scanner');
+      MethodChannel('com.icapps/icapps_fast_barcode_scanner');
 
   void Function(Barcode)? _onDetectHandler;
 
@@ -67,6 +67,10 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   Future<bool> changeCamera(CameraPosition position) => _channel
       .invokeMethod('changeCamera', describeEnum(position))
       .then<bool>((success) => success);
+
+  @override
+  Future<bool> canChangeCamera() =>
+      _channel.invokeMethod('canChangeCamera').then<bool>((success) => success);
 
   @override
   void setOnDetectHandler(void Function(Barcode) handler) =>
