@@ -22,9 +22,25 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   static const EventChannel detectionEventsChannel =
       EventChannel('com.jhoogstraat/fast_barcode_scanner/detections');
 
-  Stream<dynamic>? _detectionEventStream;
   StreamSubscription<dynamic>? _barcodeEventStreamSubscription;
   OnDetectionHandler? _onDetectionHandler;
+
+  Future<CameraInformation> _invokeCameraInfo(
+    String method,
+    Map<String, dynamic> args,
+  ) async {
+    final response = await channel.invokeMapMethod<dynamic, dynamic>(
+      method,
+      args,
+    );
+    if (response == null) {
+      throw PlatformException(
+        code: 'INVALID_RESPONSE',
+        message: 'Native $method() returned null CameraInformation.',
+      );
+    }
+    return CameraInformation.fromMap(response);
+  }
 
   @override
   Future<CameraInformation> init(
@@ -33,31 +49,25 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     DetectionMode detectionMode,
     CameraPosition position,
     ApiMode api,
-  ) async {
-    final response = await channel.invokeMapMethod<dynamic, dynamic>('init', {
-      'types': types.map((e) => e.name).toList(growable: false),
-      'mode': mode.name,
-      'detectionMode': detectionMode.name,
-      'pos': position.name,
-      ...api.toMap(),
-    });
-
-    if (response == null) {
-      throw PlatformException(
-        code: 'INVALID_RESPONSE',
-        message: 'Native init() returned null CameraInformation.',
-      );
-    }
-
-    return CameraInformation.fromMap(response);
-  }
+  ) =>
+      _invokeCameraInfo('init', {
+        'types': types.map((e) => e.name).toList(growable: false),
+        'mode': mode.name,
+        'detectionMode': detectionMode.name,
+        'pos': position.name,
+        ...api.toMap(),
+      });
 
   @override
   void setOnDetectionHandler(OnDetectionHandler handler) {
     _onDetectionHandler = handler;
-    _detectionEventStream ??= detectionEventsChannel.receiveBroadcastStream();
     _barcodeEventStreamSubscription ??=
-        _detectionEventStream!.listen(handlePlatformBarcodeEvent);
+        detectionEventsChannel.receiveBroadcastStream().listen(
+      handlePlatformBarcodeEvent,
+      onError: (Object error, StackTrace _) {
+        debugPrint('fast_barcode_scanner: detection stream error: $error');
+      },
+    );
   }
 
   @override
@@ -73,22 +83,17 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
   Future<void> stopDetector() => channel.invokeMethod<void>('stopDetector');
 
   @override
-  Future<bool> toggleTorch() async {
-    final isOn = await channel.invokeMethod<bool>('torch');
-    return isOn ?? false;
-  }
+  Future<bool> toggleTorch() async =>
+      await channel.invokeMethod<bool>('torch') ?? false;
 
   @override
-  Future<double> setZoom(double zoomFactor) async {
-    final applied = await channel.invokeMethod<num>('setZoom', zoomFactor);
-    return applied?.toDouble() ?? zoomFactor;
-  }
+  Future<double> setZoom(double zoomFactor) async =>
+      (await channel.invokeMethod<num>('setZoom', zoomFactor))?.toDouble() ??
+      zoomFactor;
 
   @override
-  Future<bool> canSwitchCamera() async {
-    final result = await channel.invokeMethod<bool>('canSwitchCamera');
-    return result ?? false;
-  }
+  Future<bool> canSwitchCamera() async =>
+      await channel.invokeMethod<bool>('canSwitchCamera') ?? false;
 
   @override
   Future<CameraInformation> changeConfiguration({
@@ -96,24 +101,14 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
     PerformanceMode? mode,
     DetectionMode? detectionMode,
     CameraPosition? position,
-  }) async {
-    final response = await channel.invokeMapMethod<dynamic, dynamic>('config', {
-      if (types != null)
-        'types': types.map((e) => e.name).toList(growable: false),
-      if (mode != null) 'mode': mode.name,
-      if (detectionMode != null) 'detectionMode': detectionMode.name,
-      if (position != null) 'pos': position.name,
-    });
-
-    if (response == null) {
-      throw PlatformException(
-        code: 'INVALID_RESPONSE',
-        message: 'Native config() returned null CameraInformation.',
-      );
-    }
-
-    return CameraInformation.fromMap(response);
-  }
+  }) =>
+      _invokeCameraInfo('config', {
+        if (types != null)
+          'types': types.map((e) => e.name).toList(growable: false),
+        if (mode != null) 'mode': mode.name,
+        if (detectionMode != null) 'detectionMode': detectionMode.name,
+        if (position != null) 'pos': position.name,
+      });
 
   @override
   Future<void> dispose() async {
@@ -130,20 +125,12 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
       source.data,
     );
     if (response == null) return null;
-
-    return response
-        .map((e) => Barcode.fromPlatform(e as List<dynamic>))
-        .toList(growable: false);
+    return _parseBarcodeList(response);
   }
 
-  /// Parses an incoming EventChannel payload and forwards it to the registered
-  /// [OnDetectionHandler].
-  @visibleForTesting
-  void handlePlatformBarcodeEvent(dynamic data) {
-    if (data is! List) return;
-
+  List<Barcode> _parseBarcodeList(List<dynamic> rawList) {
     final barcodes = <Barcode>[];
-    for (final item in data) {
+    for (final item in rawList) {
       if (item is! List) continue;
       try {
         barcodes.add(Barcode.fromPlatform(item));
@@ -152,7 +139,15 @@ class MethodChannelFastBarcodeScanner extends FastBarcodeScannerPlatform {
             'fast_barcode_scanner: skipping invalid barcode payload: $e');
       }
     }
+    return barcodes;
+  }
 
+  /// Parses an incoming EventChannel payload and forwards it to the registered
+  /// [OnDetectionHandler].
+  @visibleForTesting
+  void handlePlatformBarcodeEvent(dynamic data) {
+    if (data is! List) return;
+    final barcodes = _parseBarcodeList(data);
     if (barcodes.isNotEmpty) {
       _onDetectionHandler?.call(barcodes);
     }

@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
+import com.google.android.gms.tasks.Tasks
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -43,19 +44,20 @@ class Camera(
 ) : RequestPermissionsResultListener {
 
     private var scannerConfiguration: ScannerConfiguration
+    private val mainExecutor = ContextCompat.getMainExecutor(activity)
+    private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
-    private var cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-    private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var preview: Preview? = null
     private var imageAnalysis: ImageAnalysis? = null
-
     private var barcodeScanner: MLKitBarcodeScanner
 
     private var isInitialized = false
+    private var isDisposed = false
+    private var isDetecting = false
     private val isRunning: Boolean
-        get() = cameraProvider != null && preview != null && cameraProvider!!.isBound(preview!!)
+        get() = preview?.let { cameraProvider?.isBound(it) } == true
 
     val torchState: Boolean
         get() = camera?.cameraInfo?.torchState?.value == TorchState.ON
@@ -73,169 +75,131 @@ class Camera(
         barcodeScanner = createScanner(scannerConfiguration.types)
     }
 
+    private fun parseTypes(raw: Any?, args: Map<*, *>): List<Int> {
+        val rawTypes = (raw as? List<*>)?.mapNotNull { it as? String }
+            ?: throw ScannerException.InvalidArguments(args)
+        val mapped = rawTypes.mapNotNull { barcodeFormatMap[it] }
+        if (rawTypes.size != mapped.size) {
+            val unsupported = rawTypes.filter { !barcodeFormatMap.containsKey(it) }
+            Log.w(TAG, "Unsupported Android barcode types selected: $unsupported")
+        }
+        return mapped
+    }
+
     private fun parseInitialConfiguration(args: Map<*, *>): ScannerConfiguration {
         try {
-            val rawTypes = (args["types"] as? List<*>)
-                ?.mapNotNull { it as? String }
-                ?: throw ScannerException.InvalidArguments(args)
-
-            val mappedTypes = rawTypes.mapNotNull { barcodeFormatMap[it] }.toIntArray()
-            if (rawTypes.size != mappedTypes.size) {
-                val unsupported = rawTypes.filter { !barcodeFormatMap.containsKey(it) }
-                Log.w(TAG, "Unsupported Android barcode types selected: $unsupported")
-            }
-
             return ScannerConfiguration(
-                types = mappedTypes,
+                types = parseTypes(args["types"], args),
                 mode = PerformanceMode.fromString(args["mode"] as? String),
                 position = CameraPosition.fromString(args["pos"] as? String),
                 detectionMode = DetectionMode.fromString(args["detectionMode"] as? String)
             )
         } catch (e: ScannerException) {
             throw e
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw ScannerException.InvalidArguments(args)
         }
     }
 
-    private fun createScanner(formats: IntArray): MLKitBarcodeScanner {
+    private fun createScanner(formats: List<Int>): MLKitBarcodeScanner {
         val optionsBuilder = BarcodeScannerOptions.Builder()
         if (formats.isEmpty()) {
             optionsBuilder.setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
         } else {
-            optionsBuilder.setBarcodeFormats(formats[0], *formats.sliceArray(1 until formats.size))
+            val extra = formats.drop(1).toIntArray()
+            optionsBuilder.setBarcodeFormats(formats.first(), *extra)
         }
 
         return MLKitBarcodeScanner(
             options = optionsBuilder.build(),
-            successListener = { codes ->
-                if (codes.isNotEmpty()) {
-                    when (scannerConfiguration.detectionMode) {
-                        DetectionMode.PauseDetection -> stopDetector()
-                        DetectionMode.PauseVideo -> stopCamera()
-                        DetectionMode.Continuous -> Unit
+            mainExecutor = mainExecutor,
+            onBarcodes = { codes ->
+                if (isDisposed || !isInitialized || !isRunning || !isDetecting) return@MLKitBarcodeScanner
+                when (scannerConfiguration.detectionMode) {
+                    DetectionMode.PauseDetection -> {
+                        isDetecting = false
+                        imageAnalysis?.clearAnalyzer()
                     }
-                    listener(codes)
+                    DetectionMode.PauseVideo -> {
+                        isDetecting = false
+                        cameraProvider?.unbindAll()
+                    }
+                    DetectionMode.Continuous -> Unit
                 }
+                listener(codes)
             },
-            failureListener = { error ->
-                Log.e(TAG, "Error in ML Kit barcode scanner", error)
-            }
+            onFailure = { error -> Log.e(TAG, "Error in ML Kit barcode scanner", error) }
         )
     }
 
     fun requestPermissions(): Task<Unit> {
-        val completer = TaskCompletionSource<Unit>()
-        permissionsCompleter = completer
-
-        if (ContextCompat.checkSelfPermission(
-                activity,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_DENIED
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(
-                activity,
-                REQUIRED_PERMISSIONS,
-                PERMISSIONS_REQUEST_CODE
-            )
-        } else {
-            completer.setResult(Unit)
+            return Tasks.forResult(Unit)
         }
 
+        permissionsCompleter?.trySetException(ScannerException.Unauthorized())
+        val completer = TaskCompletionSource<Unit>()
+        permissionsCompleter = completer
+        ActivityCompat.requestPermissions(activity, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE)
         return completer.task
     }
 
     fun loadCamera(): Task<CameraInformation> {
-        val loadingCompleter = TaskCompletionSource<CameraInformation>()
-
-        if (ContextCompat.checkSelfPermission(
-                activity,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_DENIED
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_DENIED
         ) {
-            loadingCompleter.setException(ScannerException.Unauthorized())
-            return loadingCompleter.task
+            return Tasks.forException(ScannerException.Unauthorized())
         }
 
+        val loadingCompleter = TaskCompletionSource<CameraInformation>()
         val cameraProviderFuture = ProcessCameraProvider.getInstance(activity)
         cameraProviderFuture.addListener({
+            if (isDisposed) {
+                loadingCompleter.trySetException(ScannerException.NotInitialized())
+                return@addListener
+            }
             try {
                 cameraProvider = cameraProviderFuture.get()
                 isInitialized = true
                 bindCameraUseCases()
-                loadingCompleter.setResult(getCameraInformation())
+                loadingCompleter.trySetResult(getCameraInformation())
             } catch (e: ScannerException) {
-                loadingCompleter.setException(e)
+                loadingCompleter.trySetException(e)
             } catch (e: Exception) {
-                loadingCompleter.setException(ScannerException.ConfigurationException(e))
+                loadingCompleter.trySetException(ScannerException.ConfigurationException(e))
             }
-        }, ContextCompat.getMainExecutor(activity))
+        }, mainExecutor)
 
         return loadingCompleter.task
     }
 
     @Suppress("DEPRECATION")
-    private fun currentDisplayRotation(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    private fun currentDisplayRotation(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             activity.display?.rotation ?: Surface.ROTATION_0
         } else {
             activity.windowManager.defaultDisplay?.rotation ?: Surface.ROTATION_0
         }
-    }
 
-    private fun buildSelectorAndUseCases() {
-        val provider = cameraProvider ?: throw ScannerException.NotInitialized()
-        val desiredLens = if (scannerConfiguration.position == CameraPosition.Back) {
-            CameraSelector.LENS_FACING_BACK
+    private fun resolveCameraSelector(provider: ProcessCameraProvider): CameraSelector {
+        val preferred = if (scannerConfiguration.position == CameraPosition.Back) {
+            CameraSelector.DEFAULT_BACK_CAMERA
         } else {
-            CameraSelector.LENS_FACING_FRONT
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        }
+        val fallback = if (preferred == CameraSelector.DEFAULT_BACK_CAMERA) {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        } else {
+            CameraSelector.DEFAULT_BACK_CAMERA
         }
 
-        val desiredSelector = CameraSelector.Builder()
-            .requireLensFacing(desiredLens)
-            .build()
-
-        cameraSelector = if (provider.hasCamera(desiredSelector)) {
-            desiredSelector
-        } else {
-            val fallbackLens = if (desiredLens == CameraSelector.LENS_FACING_BACK) {
-                CameraSelector.LENS_FACING_FRONT
-            } else {
-                CameraSelector.LENS_FACING_BACK
-            }
-            val fallbackSelector = CameraSelector.Builder()
-                .requireLensFacing(fallbackLens)
-                .build()
-            if (provider.hasCamera(fallbackSelector)) {
-                fallbackSelector
-            } else {
-                throw ScannerException.NoInputDeviceForConfig(scannerConfiguration)
-            }
+        return when {
+            provider.hasCamera(preferred) -> preferred
+            provider.hasCamera(fallback) -> fallback
+            else -> throw ScannerException.NoInputDeviceForConfig(scannerConfiguration)
         }
-
-        val targetSize = scannerConfiguration.mode.targetSize()
-        val resolutionSelector = ResolutionSelector.Builder()
-            .setResolutionStrategy(
-                ResolutionStrategy(
-                    targetSize,
-                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER
-                )
-            )
-            .build()
-
-        val rotation = currentDisplayRotation()
-
-        preview = Preview.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .setTargetRotation(rotation)
-            .build()
-
-        imageAnalysis = ImageAnalysis.Builder()
-            .setResolutionSelector(resolutionSelector)
-            .setTargetRotation(rotation)
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .also { it.setAnalyzer(cameraExecutor, barcodeScanner) }
     }
 
     private fun bindCameraUseCases() {
@@ -243,33 +207,52 @@ class Camera(
         val lifecycleOwner = activity as? LifecycleOwner
             ?: throw ScannerException.ActivityNotConnected()
 
-        buildSelectorAndUseCases()
+        val selector = resolveCameraSelector(provider)
+        val resolutionSelector = ResolutionSelector.Builder()
+            .setResolutionStrategy(
+                ResolutionStrategy(
+                    scannerConfiguration.mode.targetSize(),
+                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER
+                )
+            )
+            .build()
+
+        val rotation = currentDisplayRotation()
+        val activePreview = Preview.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .setTargetRotation(rotation)
+            .build()
+        val activeAnalysis = ImageAnalysis.Builder()
+            .setResolutionSelector(resolutionSelector)
+            .setTargetRotation(rotation)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also { it.setAnalyzer(cameraExecutor, barcodeScanner) }
+
+        preview = activePreview
+        imageAnalysis = activeAnalysis
+        isDetecting = true
 
         provider.unbindAll()
 
-        val activePreview = preview!!
-        val activeAnalysis = imageAnalysis!!
-
-        val surfaceProvider = Preview.SurfaceProvider { request ->
-            val surfaceTexture = flutterTextureEntry.surfaceTexture()
-            surfaceTexture.setDefaultBufferSize(
-                request.resolution.width,
-                request.resolution.height
-            )
-            val surface = Surface(surfaceTexture)
-            request.provideSurface(surface, cameraExecutor) {
-                surface.release()
+        activePreview.setSurfaceProvider(mainExecutor) { request ->
+            if (isDisposed) {
+                request.willNotProvideSurface()
+                return@setSurfaceProvider
             }
+            val surfaceTexture = flutterTextureEntry.surfaceTexture()
+            surfaceTexture.setDefaultBufferSize(request.resolution.width, request.resolution.height)
+            val surface = Surface(surfaceTexture)
+            request.provideSurface(surface, Runnable::run) { surface.release() }
         }
 
-        activePreview.setSurfaceProvider(ContextCompat.getMainExecutor(activity), surfaceProvider)
+        camera = provider.bindToLifecycle(lifecycleOwner, selector, activePreview, activeAnalysis)
+    }
 
-        camera = provider.bindToLifecycle(
-            lifecycleOwner,
-            cameraSelector,
-            activePreview,
-            activeAnalysis
-        )
+    private fun requireRunningCamera(): Camera {
+        if (!isInitialized) throw ScannerException.NotInitialized()
+        if (!isRunning) throw ScannerException.NotRunning()
+        return camera ?: throw ScannerException.NotInitialized()
     }
 
     fun canSwitchCamera(): Boolean {
@@ -284,45 +267,37 @@ class Camera(
 
     fun startCamera() {
         if (!isInitialized) throw ScannerException.NotInitialized()
-        if (isRunning) return
-        bindCameraUseCases()
+        if (!isRunning) bindCameraUseCases()
     }
 
     fun stopCamera() {
         if (!isInitialized) throw ScannerException.NotInitialized()
         if (!isRunning) return
+        isDetecting = false
         cameraProvider?.unbindAll()
     }
 
     fun startDetector() {
-        if (!isInitialized) throw ScannerException.NotInitialized()
-        if (!isRunning) throw ScannerException.NotRunning()
+        requireRunningCamera()
+        isDetecting = true
         imageAnalysis?.setAnalyzer(cameraExecutor, barcodeScanner)
     }
 
     fun stopDetector() {
-        if (!isInitialized) throw ScannerException.NotInitialized()
-        if (!isRunning) throw ScannerException.NotRunning()
+        requireRunningCamera()
+        isDetecting = false
         imageAnalysis?.clearAnalyzer()
     }
 
-    fun toggleTorch(): ListenableFuture<Void> {
-        if (!isInitialized) throw ScannerException.NotInitialized()
-        if (!isRunning) throw ScannerException.NotRunning()
-        val activeCamera = camera ?: throw ScannerException.NotInitialized()
-        return activeCamera.cameraControl.enableTorch(!torchState)
-    }
+    fun toggleTorch(): ListenableFuture<Void> =
+        requireRunningCamera().cameraControl.enableTorch(!torchState)
 
     fun setZoom(zoomFactor: Double): Double {
-        if (!isInitialized) throw ScannerException.NotInitialized()
-        if (!isRunning) throw ScannerException.NotRunning()
-        val activeCamera = camera ?: throw ScannerException.NotInitialized()
-
+        val activeCamera = requireRunningCamera()
         val zoomState = activeCamera.cameraInfo.zoomState.value
         val minZoom = zoomState?.minZoomRatio?.toDouble() ?: 1.0
-        val maxZoom = zoomState?.maxZoomRatio?.toDouble() ?: 1.0
+        val maxZoom = maxOf(minZoom, zoomState?.maxZoomRatio?.toDouble() ?: 1.0)
         val clamped = zoomFactor.coerceIn(minZoom, maxZoom)
-
         activeCamera.cameraControl.setZoomRatio(clamped.toFloat())
         return clamped
     }
@@ -330,70 +305,71 @@ class Camera(
     fun changeConfiguration(args: Map<*, *>): CameraInformation {
         if (!isInitialized) throw ScannerException.NotInitialized()
 
-        var typesChanged = false
-
+        val previous = scannerConfiguration
         try {
-            val formats = if (args.containsKey("types")) {
-                val rawTypes = (args["types"] as? List<*>)
-                    ?.mapNotNull { it as? String }
-                    ?: throw ScannerException.InvalidArguments(args)
-                typesChanged = true
-                rawTypes.mapNotNull { barcodeFormatMap[it] }.toIntArray()
-            } else {
-                scannerConfiguration.types
-            }
-
-            val mode = if (args.containsKey("mode")) {
-                PerformanceMode.fromString(args["mode"] as? String)
-            } else {
-                scannerConfiguration.mode
-            }
-
-            val detectionMode = if (args.containsKey("detectionMode")) {
-                DetectionMode.fromString(args["detectionMode"] as? String)
-            } else {
-                scannerConfiguration.detectionMode
-            }
-
-            val position = if (args.containsKey("pos")) {
-                CameraPosition.fromString(args["pos"] as? String)
-            } else {
-                scannerConfiguration.position
-            }
-
-            scannerConfiguration = scannerConfiguration.copy(
-                types = formats,
-                mode = mode,
-                position = position,
-                detectionMode = detectionMode
+            scannerConfiguration = previous.copy(
+                types = if (args.containsKey("types")) parseTypes(args["types"], args) else previous.types,
+                mode = if (args.containsKey("mode")) PerformanceMode.fromString(args["mode"] as? String) else previous.mode,
+                detectionMode = if (args.containsKey("detectionMode")) {
+                    DetectionMode.fromString(args["detectionMode"] as? String)
+                } else {
+                    previous.detectionMode
+                },
+                position = if (args.containsKey("pos")) CameraPosition.fromString(args["pos"] as? String) else previous.position
             )
         } catch (e: ScannerException) {
             throw e
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw ScannerException.InvalidArguments(args)
         }
 
+        val typesChanged = scannerConfiguration.types != previous.types
+        val needsRebind = scannerConfiguration.mode != previous.mode ||
+            scannerConfiguration.position != previous.position
+
+        var oldScanner: MLKitBarcodeScanner? = null
         if (typesChanged) {
-            val previousScanner = barcodeScanner
+            oldScanner = barcodeScanner
             barcodeScanner = createScanner(scannerConfiguration.types)
-            previousScanner.close()
         }
 
-        bindCameraUseCases()
+        if (needsRebind && isRunning) {
+            bindCameraUseCases()
+        } else if (typesChanged && isRunning && isDetecting) {
+            imageAnalysis?.setAnalyzer(cameraExecutor, barcodeScanner)
+        }
+
+        // Close old scanner only after analyzer has been swapped out.
+        oldScanner?.close()
+
         return getCameraInformation()
     }
 
     fun dispose() {
+        if (isDisposed) return
+        isDisposed = true
+        isInitialized = false
+        isDetecting = false
+
+        permissionsCompleter?.trySetException(ScannerException.ActivityNotConnected())
+        permissionsCompleter = null
+
+        imageAnalysis?.clearAnalyzer()
+        preview?.setSurfaceProvider(null)
         try {
             cameraProvider?.unbindAll()
         } catch (e: Exception) {
             Log.w(TAG, "Error unbinding camera during dispose", e)
         }
+
         barcodeScanner.close()
         flutterTextureEntry.release()
         cameraExecutor.shutdown()
+
         camera = null
-        isInitialized = false
+        preview = null
+        imageAnalysis = null
+        cameraProvider = null
     }
 
     override fun onRequestPermissionsResult(
@@ -401,9 +377,7 @@ class Camera(
         permissions: Array<out String>,
         grantResults: IntArray
     ): Boolean {
-        if (requestCode != PERMISSIONS_REQUEST_CODE) {
-            return false
-        }
+        if (requestCode != PERMISSIONS_REQUEST_CODE) return false
 
         permissionsCompleter?.let { completer ->
             permissionsCompleter = null
@@ -415,21 +389,18 @@ class Camera(
                 completer.trySetException(ScannerException.Unauthorized())
             }
         }
-
         return true
     }
 
     private fun getCameraInformation(): CameraInformation {
-        val previewRes = preview?.resolutionInfo?.resolution
-            ?: throw ScannerException.NotInitialized()
-        val analysisRes = imageAnalysis?.resolutionInfo?.resolution
-            ?: previewRes
+        val fallback = scannerConfiguration.mode.targetSize()
+        val previewRes = preview?.resolutionInfo?.resolution ?: fallback
+        val analysisRes = imageAnalysis?.resolutionInfo?.resolution ?: previewRes
 
         val cameraInfo = camera?.cameraInfo
-        val sensorOrientation = cameraInfo?.sensorRotationDegrees ?: 90
         val zoomState = cameraInfo?.zoomState?.value
         val minZoom = zoomState?.minZoomRatio?.toDouble() ?: 1.0
-        val maxZoom = zoomState?.maxZoomRatio?.toDouble() ?: 1.0
+        val maxZoom = maxOf(minZoom, zoomState?.maxZoomRatio?.toDouble() ?: 1.0)
 
         return CameraInformation(
             videoWidth = previewRes.width.toDouble(),
@@ -437,7 +408,7 @@ class Camera(
             analysisWidth = analysisRes.width.toDouble(),
             analysisHeight = analysisRes.height.toDouble(),
             textureId = flutterTextureEntry.id(),
-            sensorOrientation = sensorOrientation,
+            sensorOrientation = cameraInfo?.sensorRotationDegrees ?: 90,
             minZoom = minZoom,
             maxZoom = maxZoom
         )

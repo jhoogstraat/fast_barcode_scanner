@@ -14,7 +14,7 @@ data class CameraInformation(
         val offsetX = maxOf(0.0, videoWidth - analysisWidth)
         val offsetY = maxOf(0.0, videoHeight - analysisHeight)
 
-        return hashMapOf(
+        return mapOf(
             "video_size" to listOf(videoWidth, videoHeight),
             "analysis_frame" to listOf(offsetX / 2.0, offsetY / 2.0, analysisWidth, analysisHeight),
             "texture_id" to textureId,

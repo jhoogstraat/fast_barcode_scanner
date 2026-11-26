@@ -1,3 +1,8 @@
+## 2.0.1
+
+- Added `onError` handler to the detection `EventChannel` stream.
+- Switched `Barcode.fromPlatform` symbology lookup to O(1) map lookup and unified barcode list parsing.
+
 ## 2.0.0
 
 - Finalized v2.0.0 platform interface API (`PerformanceMode`, `DetectionMode`, `CameraPosition`, `ApiMode`, `AppleApiMode`, `AVFoundationApiMode`, `VisionApiMode`, `AndroidApiMode`).

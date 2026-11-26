@@ -13,41 +13,17 @@ Offset scaleCodeCornerPoint({
   }
 
   final isWidgetPortrait = widgetSize.height >= widgetSize.width;
-  final isAnalysisLandscape =
-      analysisImageSize.width > analysisImageSize.height;
+  final analysis =
+      (isWidgetPortrait == (analysisImageSize.width > analysisImageSize.height))
+          ? analysisImageSize.flipped
+          : analysisImageSize;
 
-  final double analysisWidth;
-  final double analysisHeight;
-  if (isWidgetPortrait && isAnalysisLandscape) {
-    analysisWidth = analysisImageSize.height;
-    analysisHeight = analysisImageSize.width;
-  } else if (!isWidgetPortrait && !isAnalysisLandscape) {
-    analysisWidth = analysisImageSize.height;
-    analysisHeight = analysisImageSize.width;
-  } else {
-    analysisWidth = analysisImageSize.width;
-    analysisHeight = analysisImageSize.height;
-  }
-
-  final scaleX = widgetSize.width / analysisWidth;
-  final scaleY = widgetSize.height / analysisHeight;
-  final scale = max(scaleX, scaleY);
-
-  final scaledWidth = analysisWidth * scale;
-  final scaledHeight = analysisHeight * scale;
-  final cropAdjustmentX = (scaledWidth - widgetSize.width) / 2.0;
-  final cropAdjustmentY = (scaledHeight - widgetSize.height) / 2.0;
-
-  return Offset(
-    (cornerPoint.dx * scale) - cropAdjustmentX,
-    (cornerPoint.dy * scale) - cropAdjustmentY,
+  final scale = max(
+    widgetSize.width / analysis.width,
+    widgetSize.height / analysis.height,
   );
-}
+  final cropX = (analysis.width * scale - widgetSize.width) / 2.0;
+  final cropY = (analysis.height * scale - widgetSize.height) / 2.0;
 
-extension PointExtension on Point {
-  Offset toOffset() => Offset(x.toDouble(), y.toDouble());
-}
-
-extension SizeExtensions on Size {
-  Rect toRect() => Rect.fromLTWH(0, 0, width, height);
+  return Offset(cornerPoint.dx * scale - cropX, cornerPoint.dy * scale - cropY);
 }

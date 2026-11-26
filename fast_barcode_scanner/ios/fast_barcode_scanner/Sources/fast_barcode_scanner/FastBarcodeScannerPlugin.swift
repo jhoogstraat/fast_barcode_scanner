@@ -2,96 +2,68 @@ import AVFoundation
 import Flutter
 import UIKit
 
+@MainActor
 public final class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
-  private let commandChannel: FlutterMethodChannel
-  private let barcodeEventChannel: FlutterEventChannel
   private let factory: PreviewViewFactory
-
   private var camera: Camera?
   private var picker: ImagePicker?
   private var detectionsSink: FlutterEventSink?
 
-  init(
-    commands: FlutterMethodChannel,
-    events: FlutterEventChannel,
-    factory: PreviewViewFactory
-  ) {
-    self.commandChannel = commands
-    self.barcodeEventChannel = events
+  init(factory: PreviewViewFactory) {
     self.factory = factory
   }
 
-  public static func register(with registrar: FlutterPluginRegistrar) {
-    let commandChannel = FlutterMethodChannel(
-      name: "com.jhoogstraat/fast_barcode_scanner",
-      binaryMessenger: registrar.messenger()
-    )
-
-    let barcodeEventChannel = FlutterEventChannel(
-      name: "com.jhoogstraat/fast_barcode_scanner/detections",
-      binaryMessenger: registrar.messenger()
-    )
-
-    let instance = FastBarcodeScannerPlugin(
-      commands: commandChannel,
-      events: barcodeEventChannel,
-      factory: PreviewViewFactory()
-    )
-
-    registrar.register(instance.factory, withId: "fast_barcode_scanner.preview")
-    registrar.addMethodCallDelegate(instance, channel: commandChannel)
-    barcodeEventChannel.setStreamHandler(instance)
+  public nonisolated static func register(with registrar: FlutterPluginRegistrar) {
+    MainActor.assumeIsolated {
+      let commandChannel = FlutterMethodChannel(
+        name: "com.jhoogstraat/fast_barcode_scanner",
+        binaryMessenger: registrar.messenger()
+      )
+      let barcodeEventChannel = FlutterEventChannel(
+        name: "com.jhoogstraat/fast_barcode_scanner/detections",
+        binaryMessenger: registrar.messenger()
+      )
+      let instance = FastBarcodeScannerPlugin(factory: PreviewViewFactory())
+      registrar.register(instance.factory, withId: "fast_barcode_scanner.preview")
+      registrar.addMethodCallDelegate(instance, channel: commandChannel)
+      barcodeEventChannel.setStreamHandler(instance)
+    }
   }
 
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    Task {
+  public nonisolated func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    Task { @MainActor in
       do {
         var response: Any?
-
         switch call.method {
-        case "init":
-          response = try await initialize(args: call.arguments).serialized
-        case "start":
-          try await start()
-        case "stop":
-          try await stop()
-        case "startDetector":
-          try startDetector()
-        case "stopDetector":
-          try stopDetector()
-        case "torch":
-          response = try toggleTorch()
-        case "setZoom":
-          response = try setZoom(args: call.arguments)
-        case "canSwitchCamera":
-          response = Camera.canSwitchCamera()
-        case "config":
-          response = try await updateConfiguration(call: call).serialized
-        case "scan":
-          response = try await analyzeImage(args: call.arguments)
-        case "dispose":
-          await dispose()
-        default:
-          response = FlutterMethodNotImplemented
+        case "init": response = try await initialize(args: call.arguments).serialized
+        case "start": try await requireCamera().start()
+        case "stop": await try requireCamera().stop()
+        case "startDetector": try requireCamera().startScanner()
+        case "stopDetector": try requireCamera().stopScanner()
+        case "torch": response = try await requireCamera().toggleTorch()
+        case "setZoom": response = try await setZoom(args: call.arguments)
+        case "canSwitchCamera": response = Camera.canSwitchCamera()
+        case "config": response = try await requireCamera().updateConfiguration(args: call.arguments).serialized
+        case "scan": response = try await analyzeImage(args: call.arguments)
+        case "dispose": await dispose()
+        default: response = FlutterMethodNotImplemented
         }
-
-        await MainActor.run {
-          result(response)
-        }
+        result(response)
       } catch {
-        await MainActor.run {
-          result(error.flutterError)
-        }
+        result(error.flutterError)
       }
     }
   }
 
+  private func requireCamera() throws -> Camera {
+    guard let camera = camera else { throw ScannerError.notInitialized }
+    return camera
+  }
+
   private func initialize(args: Any?) async throws -> CameraInformation {
-    // Gracefully clean up any previous camera (for example, after a Flutter Hot Restart).
     if camera != nil {
       await dispose()
     }
-
     guard let cameraConfiguration = CameraConfiguration(args) else {
       throw ScannerError.invalidArguments(args)
     }
@@ -106,22 +78,20 @@ public final class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStr
       }
     case .vision(let confidence):
       scanner = VisionBarcodeScanner(confidence: confidence) { [weak self] observation in
-        guard let previewLayer = self?.factory.preview?.videoPreviewLayer else {
-          return nil
-        }
-        let rect = previewLayer.layerRectConverted(
-          fromMetadataOutputRect: observation.boundingBox
-        )
+        guard let previewLayer = self?.factory.preview?.videoPreviewLayer else { return nil }
+        // Flip Vision bottom-left coordinates into AVFoundation top-left metadata space.
+        let box = observation.boundingBox
+        let flippedBox = CGRect(
+          x: box.minX, y: 1.0 - box.maxY, width: box.width, height: box.height)
+        let rect = previewLayer.layerRectConverted(fromMetadataOutputRect: flippedBox)
         let corners = [
           observation.topLeft,
           observation.topRight,
           observation.bottomRight,
           observation.bottomLeft,
-        ].map { point in
-          // Vision uses bottom-left origin; AVFoundation metadata rect uses top-left origin.
+        ].map {
           previewLayer.layerPointConverted(
-            fromCaptureDevicePoint: CGPoint(x: point.x, y: 1.0 - point.y)
-          )
+            fromCaptureDevicePoint: CGPoint(x: $0.x, y: 1.0 - $0.y))
         }
         return (rect, corners)
       } resultHandler: { [weak self] barcodes in
@@ -130,26 +100,16 @@ public final class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStr
     }
 
     let newCamera = try await Camera(configuration: cameraConfiguration, scanner: scanner)
-    self.camera = newCamera
-    factory.session = newCamera.session
-
-    try await newCamera.start()
-
-    return newCamera.cameraInformation
-  }
-
-  private func start() async throws {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
+    do {
+      let info = try await newCamera.configureSession(configuration: cameraConfiguration)
+      try await newCamera.start()
+      self.camera = newCamera
+      self.factory.session = newCamera.session
+      return info
+    } catch {
+      await newCamera.dispose()
+      throw error
     }
-    try await camera.start()
-  }
-
-  private func stop() async throws {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
-    await camera.stop()
   }
 
   private func dispose() async {
@@ -160,111 +120,54 @@ public final class FastBarcodeScannerPlugin: NSObject, FlutterPlugin, FlutterStr
     }
   }
 
-  private func startDetector() throws {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
-    camera.startScanner()
-  }
-
-  private func stopDetector() throws {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
-    camera.stopScanner()
-  }
-
-  private func toggleTorch() throws -> Bool {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
-    return try camera.toggleTorch()
-  }
-
-  private func setZoom(args: Any?) throws -> Double {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
+  private func setZoom(args: Any?) async throws -> Double {
     guard let zoomFactor = (args as? NSNumber)?.doubleValue else {
       throw ScannerError.invalidArguments(args)
     }
-    return try camera.setZoom(zoomFactor)
-  }
-
-  private func updateConfiguration(call: FlutterMethodCall) async throws -> CameraInformation {
-    guard let camera = camera else {
-      throw ScannerError.notInitialized
-    }
-
-    guard let config = camera.targetConfiguration.copy(with: call.arguments) else {
-      throw ScannerError.invalidArguments(call.arguments)
-    }
-
-    try await camera.configureSession(configuration: config)
-    return camera.cameraInformation
+    return try await requireCamera().setZoom(zoomFactor)
   }
 
   private func analyzeImage(args: Any?) async throws -> Any? {
     let image: UIImage?
-
     if let container = args as? [Any] {
-      guard let byteBuffer = container.first as? FlutterStandardTypedData else {
-        throw ScannerError.loadingDataFailed
-      }
-      guard let decoded = UIImage(data: byteBuffer.data) else {
-        throw ScannerError.loadingDataFailed
-      }
+      guard
+        let byteBuffer = container.first as? FlutterStandardTypedData,
+        let decoded = UIImage(data: byteBuffer.data)
+      else { throw ScannerError.loadingDataFailed }
       image = decoded
     } else {
-      let rootViewController: UIViewController? = await MainActor.run {
+      guard picker == nil else { return nil }
+      let root =
         UIApplication.shared.connectedScenes
-          .compactMap { $0 as? UIWindowScene }
-          .flatMap(\.windows)
-          .first(where: \.isKeyWindow)?
-          .rootViewController
-          ?? UIApplication.shared.delegate?.window??.rootViewController
-      }
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap(\.windows)
+        .first(where: \.isKeyWindow)?
+        .rootViewController
+        ?? UIApplication.shared.delegate?.window??.rootViewController
+      guard let root = root else { return nil }
 
-      guard let root = rootViewController else {
-        return nil
-      }
-
-      let activePicker: ImagePicker
-      if #available(iOS 14, *) {
-        activePicker = await PHImagePicker()
-      } else {
-        activePicker = await UIImagePicker()
-      }
-
+      let activePicker: ImagePicker =
+        if #available(iOS 14, *) { PHImagePicker() } else { UIImagePicker() }
       self.picker = activePicker
       defer { self.picker = nil }
 
       image = await activePicker.show(over: root)
-      // User cancelled the photo picker.
-      guard image != nil else {
-        return nil
-      }
     }
 
-    guard let uiImage = image else {
-      return nil
-    }
-
+    guard let uiImage = image else { return nil }
     return try await VisionBarcodeScanner.scanStillImage(uiImage)
   }
 
-  // MARK: FlutterStreamHandler
-
-  public func onListen(
+  public nonisolated func onListen(
     withArguments arguments: Any?,
     eventSink events: @escaping FlutterEventSink
   ) -> FlutterError? {
-    detectionsSink = events
+    MainActor.assumeIsolated { detectionsSink = events }
     return nil
   }
 
-  public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-    detectionsSink = nil
+  public nonisolated func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    MainActor.assumeIsolated { detectionsSink = nil }
     return nil
   }
 }

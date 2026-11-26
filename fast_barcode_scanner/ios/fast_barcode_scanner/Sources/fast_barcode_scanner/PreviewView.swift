@@ -13,11 +13,7 @@ final class PreviewView: UIView, FlutterPlatformView {
     videoPreviewLayer.videoGravity = .resizeAspectFill
   }
 
-  func view() -> UIView {
-    self
-  }
-
-  // MARK: AVFoundation session
+  func view() -> UIView { self }
 
   var session: AVCaptureSession? {
     get { videoPreviewLayer.session }
@@ -31,49 +27,40 @@ final class PreviewView: UIView, FlutterPlatformView {
     layer as! AVCaptureVideoPreviewLayer
   }
 
-  // MARK: UIView
-
   override class var layerClass: AnyClass {
     AVCaptureVideoPreviewLayer.self
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
-    videoPreviewLayer.frame = bounds
     updateVideoOrientation()
   }
 
   private func updateVideoOrientation() {
-    guard let connection = videoPreviewLayer.connection else { return }
-
-    let interfaceOrientation: UIInterfaceOrientation?
-    if #available(iOS 13.0, *) {
-      interfaceOrientation = window?.windowScene?.interfaceOrientation
-    } else {
-      interfaceOrientation = nil
-    }
-
-    guard let orientation = interfaceOrientation else { return }
+    guard
+      let connection = videoPreviewLayer.connection,
+      let orientation = window?.windowScene?.interfaceOrientation
+    else { return }
 
     if #available(iOS 17.0, *) {
-      let angle: CGFloat
-      switch orientation {
-      case .portrait: angle = 90
-      case .portraitUpsideDown: angle = 270
-      case .landscapeLeft: angle = 180
-      case .landscapeRight: angle = 0
-      default: angle = 90
+      let angle: CGFloat = switch orientation {
+      case .portraitUpsideDown: 270
+      case .landscapeLeft: 180
+      case .landscapeRight: 0
+      default: 90
       }
-      if connection.isVideoRotationAngleSupported(angle) {
+      if connection.isVideoRotationAngleSupported(angle), connection.videoRotationAngle != angle {
         connection.videoRotationAngle = angle
       }
     } else if connection.isVideoOrientationSupported {
-      switch orientation {
-      case .portrait: connection.videoOrientation = .portrait
-      case .portraitUpsideDown: connection.videoOrientation = .portraitUpsideDown
-      case .landscapeLeft: connection.videoOrientation = .landscapeLeft
-      case .landscapeRight: connection.videoOrientation = .landscapeRight
-      default: connection.videoOrientation = .portrait
+      let videoOrientation: AVCaptureVideoOrientation = switch orientation {
+      case .portraitUpsideDown: .portraitUpsideDown
+      case .landscapeLeft: .landscapeLeft
+      case .landscapeRight: .landscapeRight
+      default: .portrait
+      }
+      if connection.videoOrientation != videoOrientation {
+        connection.videoOrientation = videoOrientation
       }
     }
   }

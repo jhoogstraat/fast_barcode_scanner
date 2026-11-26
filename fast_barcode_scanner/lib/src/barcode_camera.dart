@@ -42,35 +42,15 @@ class BarcodeCamera extends StatefulWidget {
     ErrorCallback? onError,
   }) : onError = onError ?? _defaultOnError;
 
-  /// The barcode symbologies to detect.
   final List<BarcodeType> types;
-
-  /// Camera performance/resolution preset.
   final PerformanceMode mode;
-
-  /// How the scanner behaves after detecting a barcode.
   final DetectionMode detectionMode;
-
-  /// Initial camera lens position.
   final CameraPosition position;
-
-  /// Platform-specific native scanning API selection.
   final ApiMode api;
-
-  /// Callback invoked when one or more barcodes are detected.
   final OnDetectionHandler? onScan;
-
-  /// Overlay widgets stacked above the camera preview.
   final List<Widget> children;
-
-  /// Builder displayed if camera initialization or scanning fails.
   final ErrorCallback onError;
-
-  /// Whether to dispose the shared [CameraController] when this widget is
-  /// removed from the tree. If `false`, the camera is only paused.
   final bool dispose;
-
-  /// Enables pinch-to-zoom gestures on the camera preview.
   final bool enablePinchToZoom;
 
   @override
@@ -79,6 +59,7 @@ class BarcodeCamera extends StatefulWidget {
 
 class BarcodeCameraState extends State<BarcodeCamera>
     with WidgetsBindingObserver {
+  final Object _ownerToken = Object();
   double _opacity = 0.0;
   double _baseZoom = 1.0;
   bool _pausedByLifecycle = false;
@@ -88,62 +69,62 @@ class BarcodeCameraState extends State<BarcodeCamera>
   @override
   void initState() {
     super.initState();
+    cameraController.attachOwner(_ownerToken);
     WidgetsBinding.instance.addObserver(this);
     _initOrConfigure();
   }
 
   void _initOrConfigure() {
-    final Future<void> future = cameraController.state.value.isInitialized
-        ? cameraController.configure(
-            types: widget.types,
-            mode: widget.mode,
-            detectionMode: widget.detectionMode,
-            position: widget.position,
-            onScan: widget.onScan,
-          )
-        : cameraController.initialize(
-            types: widget.types,
-            mode: widget.mode,
-            position: widget.position,
-            detectionMode: widget.detectionMode,
-            onScan: widget.onScan,
-            api: widget.api,
-          );
+    Future<void> future;
+    if (cameraController.state.value.isInitialized) {
+      cameraController.setOnScan(widget.onScan);
+      future = cameraController.configure(
+        types: widget.types,
+        mode: widget.mode,
+        detectionMode: widget.detectionMode,
+        position: widget.position,
+      );
+      if (cameraController.eventNotifier.value == ScannerEvent.paused) {
+        future = future.then((_) => cameraController.resumeCamera());
+      }
+    } else {
+      future = cameraController.initialize(
+        types: widget.types,
+        mode: widget.mode,
+        position: widget.position,
+        detectionMode: widget.detectionMode,
+        onScan: widget.onScan,
+        api: widget.api,
+      );
+    }
 
-    future.then<void>(
-      (_) {
-        if (mounted) {
-          setState(() => _opacity = 1.0);
-        }
-      },
-      onError: (_, __) {
-        if (mounted) {
-          setState(() => _opacity = 1.0);
-        }
-      },
-    );
+    future.whenComplete(() {
+      if (mounted && _opacity != 1.0) {
+        setState(() => _opacity = 1.0);
+      }
+    }).catchError((_) {});
   }
 
   @override
   void didUpdateWidget(covariant BarcodeCamera oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (!cameraController.state.value.isInitialized) return;
+    if (oldWidget.onScan != widget.onScan) {
+      cameraController.setOnScan(widget.onScan);
+    }
 
-    final configChanged = !listEquals(oldWidget.types, widget.types) ||
+    final nativeConfigChanged = !listEquals(oldWidget.types, widget.types) ||
         oldWidget.mode != widget.mode ||
         oldWidget.detectionMode != widget.detectionMode ||
-        oldWidget.position != widget.position ||
-        oldWidget.onScan != widget.onScan;
+        oldWidget.position != widget.position;
 
-    if (configChanged) {
+    if (nativeConfigChanged) {
       cameraController
           .configure(
             types: widget.types,
             mode: widget.mode,
             detectionMode: widget.detectionMode,
             position: widget.position,
-            onScan: widget.onScan,
           )
           .catchError((_) {});
     }
@@ -151,23 +132,27 @@ class BarcodeCameraState extends State<BarcodeCamera>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!cameraController.state.value.isInitialized) return;
+    if (!cameraController.state.value.isInitialized ||
+        !cameraController.isOwner(_ownerToken)) {
+      return;
+    }
 
     switch (state) {
-      case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
-        if (cameraController.eventNotifier.value == ScannerEvent.resumed) {
+        final event = cameraController.eventNotifier.value;
+        if (event != ScannerEvent.paused &&
+            event != ScannerEvent.uninitialized &&
+            event != ScannerEvent.error) {
           _pausedByLifecycle = true;
           cameraController.pauseCamera().catchError((_) {});
         }
-        break;
       case AppLifecycleState.resumed:
         if (_pausedByLifecycle) {
           _pausedByLifecycle = false;
           cameraController.resumeCamera().catchError((_) {});
         }
-        break;
+      case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
         break;
     }
@@ -176,10 +161,12 @@ class BarcodeCameraState extends State<BarcodeCamera>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    if (widget.dispose) {
-      cameraController.dispose().catchError((_) {});
-    } else {
-      cameraController.pauseCamera().catchError((_) {});
+    if (cameraController.isOwner(_ownerToken)) {
+      if (widget.dispose) {
+        cameraController.dispose().catchError((_) {});
+      } else {
+        cameraController.pauseCamera().catchError((_) {});
+      }
     }
     super.dispose();
   }
@@ -188,45 +175,45 @@ class BarcodeCameraState extends State<BarcodeCamera>
   Widget build(BuildContext context) {
     return ColoredBox(
       color: const Color(0xFF000000),
-      child: ValueListenableBuilder<ScannerState>(
-        valueListenable: cameraController.state,
-        builder: (context, cameraState, _) {
-          return AnimatedOpacity(
-            opacity: _opacity,
-            duration: const Duration(milliseconds: 250),
-            child: cameraState.hasError
-                ? widget.onError(
-                    context,
-                    cameraState.error ?? 'Unknown error occurred',
-                  )
-                : GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onScaleStart: widget.enablePinchToZoom
-                        ? (_) {
-                            _baseZoom = cameraController.state.value.zoom;
-                          }
-                        : null,
-                    onScaleUpdate: widget.enablePinchToZoom
-                        ? (details) {
-                            if (details.pointerCount < 2) return;
-                            cameraController
-                                .setZoom(_baseZoom * details.scale)
-                                .catchError((_) => _baseZoom);
-                          }
-                        : null,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        if (cameraState.isInitialized)
-                          _CameraPreview(
-                            cameraInformation: cameraState.cameraInformation!,
-                          ),
-                        ...widget.children,
-                      ],
+      child: AnimatedOpacity(
+        opacity: _opacity,
+        duration: const Duration(milliseconds: 250),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onScaleStart: widget.enablePinchToZoom
+              ? (_) => _baseZoom = cameraController.state.value.zoom
+              : null,
+          onScaleUpdate: widget.enablePinchToZoom
+              ? (details) {
+                  if (details.pointerCount < 2) return;
+                  cameraController
+                      .setZoom(_baseZoom * details.scale)
+                      .catchError((_) => _baseZoom);
+                }
+              : null,
+          child: ValueListenableBuilder<ScannerState>(
+            valueListenable: cameraController.state,
+            child: Stack(fit: StackFit.expand, children: widget.children),
+            builder: (context, cameraState, overlays) {
+              if (cameraState.hasError) {
+                return widget.onError(
+                  context,
+                  cameraState.error ?? 'Unknown error occurred',
+                );
+              }
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (cameraState.isInitialized)
+                    _CameraPreview(
+                      cameraInformation: cameraState.cameraInformation!,
                     ),
-                  ),
-          );
-        },
+                  overlays!,
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -239,62 +226,42 @@ class _CameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // PreviewView uses AVCaptureVideoPreviewLayer with .resizeAspectFill.
+      return const UiKitView(
+        viewType: 'fast_barcode_scanner.preview',
+        creationParamsCodec: StandardMessageCodec(),
+      );
+    }
+
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError(
+        'fast_barcode_scanner is only supported on iOS and Android.',
+      );
+    }
+
     return OrientationBuilder(
       builder: (context, orientation) {
         final rawSize = cameraInformation.videoSize;
         final isPortrait = orientation == Orientation.portrait;
+        final size = (isPortrait == (rawSize.width > rawSize.height))
+            ? rawSize.flipped
+            : rawSize;
 
-        // Native video buffers are typically landscape (width > height).
-        // Swap dimensions in portrait mode so BoxFit.cover preserves aspect ratio.
-        final double previewWidth;
-        final double previewHeight;
-        if (isPortrait && rawSize.width > rawSize.height) {
-          previewWidth = rawSize.height;
-          previewHeight = rawSize.width;
-        } else if (!isPortrait && rawSize.height > rawSize.width) {
-          previewWidth = rawSize.height;
-          previewHeight = rawSize.width;
-        } else {
-          previewWidth = rawSize.width;
-          previewHeight = rawSize.height;
-        }
-
-        final Widget nativePreview;
-        switch (defaultTargetPlatform) {
-          case TargetPlatform.android:
-            final textureId = cameraInformation.textureId;
-            if (textureId != null) {
-              nativePreview = Texture(
-                textureId: textureId,
-                filterQuality: FilterQuality.low,
-              );
-            } else {
-              nativePreview = const AndroidView(
-                viewType: 'fast_barcode_scanner.preview',
-                creationParamsCodec: StandardMessageCodec(),
-              );
-            }
-          case TargetPlatform.iOS:
-            // On iOS, PreviewView uses AVCaptureVideoPreviewLayer with
-            // videoGravity = .resizeAspectFill, so filling the parent directly
-            // avoids double-scaling across portrait/landscape rotations.
-            return const UiKitView(
-              viewType: 'fast_barcode_scanner.preview',
-              creationParamsCodec: StandardMessageCodec(),
-            );
-          default:
-            throw UnsupportedError(
-              'fast_barcode_scanner is only supported on iOS and Android.',
-            );
-        }
-
+        final textureId = cameraInformation.textureId;
         return FittedBox(
           fit: BoxFit.cover,
           clipBehavior: Clip.hardEdge,
           child: SizedBox(
-            width: previewWidth,
-            height: previewHeight,
-            child: nativePreview,
+            width: size.width,
+            height: size.height,
+            child: textureId != null
+                ? Texture(
+                    textureId: textureId, filterQuality: FilterQuality.low)
+                : const AndroidView(
+                    viewType: 'fast_barcode_scanner.preview',
+                    creationParamsCodec: StandardMessageCodec(),
+                  ),
           ),
         );
       },

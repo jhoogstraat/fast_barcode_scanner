@@ -1,9 +1,6 @@
 import AVFoundation
-import UIKit
 
 final class Camera: NSObject {
-  // MARK: Session Management
-
   let session = AVCaptureSession()
   private let sessionQueue = DispatchQueue(
     label: "com.jhoogstraat.fast_barcode_scanner.session",
@@ -13,9 +10,7 @@ final class Camera: NSObject {
   private var captureDevice: AVCaptureDevice? { deviceInput?.device }
   private let scanner: BarcodeScanner
 
-  private(set) var targetConfiguration: CameraConfiguration
-  private(set) var cameraInformation: CameraInformation!
-
+  private var targetConfiguration: CameraConfiguration
   private var wasUsingTorch = false
   private var isDisposed = false
 
@@ -24,21 +19,17 @@ final class Camera: NSObject {
     self.targetConfiguration = configuration
     super.init()
 
-    let authorizationGranted: Bool
+    let authorized: Bool
     switch AVCaptureDevice.authorizationStatus(for: .video) {
     case .authorized:
-      authorizationGranted = true
+      authorized = true
     case .notDetermined:
-      authorizationGranted = await AVCaptureDevice.requestAccess(for: .video)
+      authorized = await AVCaptureDevice.requestAccess(for: .video)
     default:
-      authorizationGranted = false
+      authorized = false
     }
 
-    guard authorizationGranted else {
-      throw ScannerError.unauthorized
-    }
-
-    try await configureSession(configuration: configuration)
+    guard authorized else { throw ScannerError.unauthorized }
     addObservers()
   }
 
@@ -47,27 +38,23 @@ final class Camera: NSObject {
   }
 
   static func canSwitchCamera() -> Bool {
-    let discovery = AVCaptureDevice.DiscoverySession(
+    let devices = AVCaptureDevice.DiscoverySession(
       deviceTypes: [.builtInWideAngleCamera],
       mediaType: .video,
       position: .unspecified
-    )
-    let hasBack = discovery.devices.contains { $0.position == .back }
-    let hasFront = discovery.devices.contains { $0.position == .front }
-    return hasBack && hasFront
+    ).devices
+    return devices.contains { $0.position == .back } && devices.contains { $0.position == .front }
   }
 
-  func configureSession(configuration: CameraConfiguration) async throws {
-    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+  private func onSessionQueue<T>(_ body: @escaping (Camera) throws -> T) async throws -> T {
+    try await withCheckedThrowingContinuation { continuation in
       sessionQueue.async { [weak self] in
         guard let self = self, !self.isDisposed else {
           continuation.resume(throwing: ScannerError.notInitialized)
           return
         }
-
         do {
-          try self.configureSessionOnQueue(configuration: configuration)
-          continuation.resume()
+          continuation.resume(returning: try body(self))
         } catch {
           continuation.resume(throwing: error)
         }
@@ -75,51 +62,61 @@ final class Camera: NSObject {
     }
   }
 
-  private func configureSessionOnQueue(configuration: CameraConfiguration) throws {
-    let requestedDevice: AVCaptureDevice?
-    if let device = AVCaptureDevice.default(
-      .builtInWideAngleCamera,
-      for: .video,
-      position: configuration.position
-    ) {
-      requestedDevice = device
-    } else if let fallback = AVCaptureDevice.default(
-      .builtInWideAngleCamera,
-      for: .video,
-      position: configuration.position == .back ? .front : .back
-    ) {
-      requestedDevice = fallback
-    } else {
-      requestedDevice = nil
+  func configureSession(configuration: CameraConfiguration) async throws -> CameraInformation {
+    try await onSessionQueue { camera in
+      try camera.configureSessionOnQueue(configuration: configuration)
     }
+  }
 
-    guard let device = requestedDevice else {
+  func updateConfiguration(args: Any?) async throws -> CameraInformation {
+    try await onSessionQueue { camera in
+      guard let config = camera.targetConfiguration.copy(with: args) else {
+        throw ScannerError.invalidArguments(args)
+      }
+      return try camera.configureSessionOnQueue(configuration: config)
+    }
+  }
+
+  private func configureSessionOnQueue(configuration: CameraConfiguration) throws -> CameraInformation {
+    let device =
+      AVCaptureDevice.default(
+        .builtInWideAngleCamera, for: .video, position: configuration.position)
+      ?? AVCaptureDevice.default(
+        .builtInWideAngleCamera,
+        for: .video,
+        position: configuration.position == .back ? .front : .back)
+
+    guard let device = device else {
       throw ScannerError.noInputDeviceForConfig(configuration)
     }
+
+    // Create new input before mutating session so failures never leave the session inputless.
+    let newInput = try AVCaptureDeviceInput(device: device)
 
     session.beginConfiguration()
     defer { session.commitConfiguration() }
 
-    for input in session.inputs {
-      session.removeInput(input)
-    }
+    let previousInputs = session.inputs
+    previousInputs.forEach(session.removeInput)
 
-    let input = try AVCaptureDeviceInput(device: device)
-    guard session.canAddInput(input) else {
+    guard session.canAddInput(newInput) else {
+      previousInputs.filter(session.canAddInput).forEach(session.addInput)
       throw ScannerError.configurationError("Could not add video device input to session")
     }
 
-    session.addInput(input)
-    self.deviceInput = input
+    session.addInput(newInput)
+    self.deviceInput = newInput
 
+    let detectionMode = configuration.detectionMode
     scanner.session = session
     scanner.symbologies = configuration.codes
     scanner.onDetection = { [weak self] in
       guard let self = self else { return }
-      switch self.targetConfiguration.detectionMode {
+      switch detectionMode {
       case .pauseDetection:
         self.scanner.stop()
       case .pauseVideo:
+        self.scanner.stop()
         Task { await self.stop() }
       case .continuous:
         break
@@ -127,46 +124,40 @@ final class Camera: NSObject {
     }
 
     applyPerformanceMode(configuration.performanceMode, to: device)
-
     self.targetConfiguration = configuration
 
-    let dimensions = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+    let dims = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
     let minZoom = Double(device.minAvailableVideoZoomFactor)
-    let maxZoom = min(Double(device.activeFormat.videoMaxZoomFactor), 10.0)
+    let maxZoom = max(minZoom, min(Double(device.activeFormat.videoMaxZoomFactor), 10.0))
 
-    self.cameraInformation = CameraInformation(
-      videoWidth: dimensions.width,
-      videoHeight: dimensions.height,
-      analysisWidth: dimensions.width,
-      analysisHeight: dimensions.height,
+    return CameraInformation(
+      videoWidth: dims.width,
+      videoHeight: dims.height,
       sensorOrientation: 90,
       minZoom: minZoom,
-      maxZoom: max(minZoom, maxZoom)
+      maxZoom: maxZoom
     )
   }
 
   private func applyPerformanceMode(_ mode: PerformanceMode, to device: AVCaptureDevice) {
-    // Select best matching format without failing on constrained devices.
-    let targetW = mode.targetWidth
-    let targetH = mode.targetHeight
+    let (targetW, targetH) = mode.targetSize
     let targetFps = mode.targetFramerate
 
-    let candidates = device.formats.filter { format in
-      let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
-      let subType = CMFormatDescriptionGetMediaSubType(format.formatDescription).toString()
-      let maxFps = format.videoSupportedFrameRateRanges.map(\.maxFrameRate).max() ?? 0
-      return (subType == "420f" || subType == "420v")
-        && dims.width >= targetW
-        && dims.height >= targetH
-        && maxFps >= targetFps
-    }
-
-    // Prefer the smallest format that still meets the target (avoids unnecessary 4K overhead in system/economic mode).
-    let optimalFormat = candidates.min { lhs, rhs in
-      let lDims = CMVideoFormatDescriptionGetDimensions(lhs.formatDescription)
-      let rDims = CMVideoFormatDescriptionGetDimensions(rhs.formatDescription)
-      return (Int64(lDims.width) * Int64(lDims.height)) < (Int64(rDims.width) * Int64(rDims.height))
-    }
+    let optimalFormat = device.formats
+      .filter { format in
+        let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        let subType = CMFormatDescriptionGetMediaSubType(format.formatDescription)
+        return (subType == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+          || subType == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange)
+          && dims.width >= targetW
+          && dims.height >= targetH
+          && format.videoSupportedFrameRateRanges.contains { $0.maxFrameRate >= targetFps }
+      }
+      .min { lhs, rhs in
+        let l = CMVideoFormatDescriptionGetDimensions(lhs.formatDescription)
+        let r = CMVideoFormatDescriptionGetDimensions(rhs.formatDescription)
+        return (Int64(l.width) * Int64(l.height)) < (Int64(r.width) * Int64(r.height))
+      }
 
     do {
       try device.lockForConfiguration()
@@ -174,8 +165,11 @@ final class Camera: NSObject {
 
       if let format = optimalFormat {
         device.activeFormat = format
-        if let range = format.videoSupportedFrameRateRanges.first {
-          let desiredFps = min(targetFps, range.maxFrameRate)
+        let range =
+          format.videoSupportedFrameRateRanges.first { $0.maxFrameRate >= targetFps }
+          ?? format.videoSupportedFrameRateRanges.first
+        if let range = range {
+          let desiredFps = max(range.minFrameRate, min(targetFps, range.maxFrameRate))
           let duration = CMTime(value: 1, timescale: CMTimeScale(desiredFps))
           device.activeVideoMinFrameDuration = duration
           device.activeVideoMaxFrameDuration = duration
@@ -184,7 +178,6 @@ final class Camera: NSObject {
         session.sessionPreset = mode.fallbackPreset
       }
 
-      // Optimize autofocus for fast barcode acquisition (including curved/close objects).
       if device.isFocusModeSupported(.continuousAutoFocus) {
         device.focusMode = .continuousAutoFocus
       }
@@ -202,23 +195,13 @@ final class Camera: NSObject {
   }
 
   func start() async throws {
-    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-      sessionQueue.async { [weak self] in
-        guard let self = self, !self.isDisposed else {
-          continuation.resume(throwing: ScannerError.notInitialized)
-          return
-        }
-
-        if !self.session.isRunning {
-          self.scanner.start()
-          self.session.startRunning()
-        }
-
-        if self.wasUsingTorch {
-          _ = try? self.setTorchOnQueue(enabled: true)
-        }
-
-        continuation.resume()
+    try await onSessionQueue { camera in
+      if !camera.session.isRunning {
+        camera.scanner.start()
+        camera.session.startRunning()
+      }
+      if camera.wasUsingTorch {
+        _ = try? camera.setTorchOnQueue(enabled: true)
       }
     }
   }
@@ -230,17 +213,13 @@ final class Camera: NSObject {
           continuation.resume()
           return
         }
-
         if let device = self.captureDevice {
           self.wasUsingTorch = device.isTorchActive
         }
-
         self.scanner.stop()
-
         if self.session.isRunning {
           self.session.stopRunning()
         }
-
         continuation.resume()
       }
     }
@@ -253,60 +232,48 @@ final class Camera: NSObject {
           continuation.resume()
           return
         }
-
         self.isDisposed = true
         self.removeObservers()
         self.scanner.stop()
-
         if self.session.isRunning {
           self.session.stopRunning()
         }
-
         self.session.beginConfiguration()
-        for input in self.session.inputs {
-          self.session.removeInput(input)
-        }
-        for output in self.session.outputs {
-          self.session.removeOutput(output)
-        }
+        self.session.inputs.forEach(self.session.removeInput)
+        self.session.outputs.forEach(self.session.removeOutput)
         self.session.commitConfiguration()
-
         self.deviceInput = nil
         continuation.resume()
       }
     }
   }
 
-  @discardableResult
-  func toggleTorch() throws -> Bool {
-    guard let device = captureDevice, device.isTorchAvailable else { return false }
-    return try setTorchOnQueue(enabled: !device.isTorchActive)
+  func toggleTorch() async throws -> Bool {
+    try await onSessionQueue { camera in
+      guard let device = camera.captureDevice, device.isTorchAvailable else { return false }
+      return try camera.setTorchOnQueue(enabled: !device.isTorchActive)
+    }
   }
 
   private func setTorchOnQueue(enabled: Bool) throws -> Bool {
     guard let device = captureDevice, device.isTorchAvailable else { return false }
-
     try device.lockForConfiguration()
     defer { device.unlockForConfiguration() }
-
     device.torchMode = enabled ? .on : .off
     return device.torchMode == .on
   }
 
-  func setZoom(_ factor: Double) throws -> Double {
-    guard let device = captureDevice else {
-      throw ScannerError.notInitialized
+  func setZoom(_ factor: Double) async throws -> Double {
+    try await onSessionQueue { camera in
+      guard let device = camera.captureDevice else { throw ScannerError.notInitialized }
+      let minZoom = Double(device.minAvailableVideoZoomFactor)
+      let maxZoom = max(minZoom, min(Double(device.activeFormat.videoMaxZoomFactor), 10.0))
+      let clamped = max(minZoom, min(factor, maxZoom))
+      try device.lockForConfiguration()
+      defer { device.unlockForConfiguration() }
+      device.videoZoomFactor = CGFloat(clamped)
+      return Double(device.videoZoomFactor)
     }
-
-    let minZoom = Double(device.minAvailableVideoZoomFactor)
-    let maxZoom = min(Double(device.activeFormat.videoMaxZoomFactor), 10.0)
-    let clamped = max(minZoom, min(factor, maxZoom))
-
-    try device.lockForConfiguration()
-    defer { device.unlockForConfiguration() }
-
-    device.videoZoomFactor = CGFloat(clamped)
-    return Double(device.videoZoomFactor)
   }
 
   func startScanner() {
@@ -318,39 +285,29 @@ final class Camera: NSObject {
 
   func stopScanner() {
     sessionQueue.async { [weak self] in
-      guard let self = self else { return }
-      self.scanner.stop()
+      self?.scanner.stop()
     }
   }
 
-  // MARK: Notifications
-
   private func addObservers() {
     NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(sessionRuntimeError),
-      name: .AVCaptureSessionRuntimeError,
-      object: session
-    )
+      self, selector: #selector(sessionRuntimeError),
+      name: .AVCaptureSessionRuntimeError, object: session)
   }
 
   private func removeObservers() {
     NotificationCenter.default.removeObserver(
-      self,
-      name: .AVCaptureSessionRuntimeError,
-      object: session
-    )
+      self, name: .AVCaptureSessionRuntimeError, object: session)
   }
 
   @objc
   private func sessionRuntimeError(notification: NSNotification) {
-    guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError else { return }
-
-    if error.code == .mediaServicesWereReset {
-      sessionQueue.async { [weak self] in
-        guard let self = self, !self.isDisposed, !self.session.isRunning else { return }
-        self.session.startRunning()
-      }
+    guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError,
+      error.code == .mediaServicesWereReset
+    else { return }
+    sessionQueue.async { [weak self] in
+      guard let self = self, !self.isDisposed, !self.session.isRunning else { return }
+      self.session.startRunning()
     }
   }
 }

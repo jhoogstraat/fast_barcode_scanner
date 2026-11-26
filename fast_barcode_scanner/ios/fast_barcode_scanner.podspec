@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'fast_barcode_scanner'
-  s.version          = '2.0.0'
+  s.version          = '2.0.1'
   s.summary          = 'A fast barcode scanner using ML Kit on Android and AVFoundation/Vision on iOS.'
   s.description      = <<-DESC
 A fast barcode scanner using ML Kit and CameraX on Android, and AVFoundation and Vision on iOS.
