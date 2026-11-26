@@ -1,3 +1,15 @@
+## 2.0.1
+
+### Stability & Concurrency
+- **iOS**: Isolated `FastBarcodeScannerPlugin` and `PreviewViewFactory` on `@MainActor`, moved `toggleTorch`/`setZoom` onto the serial `sessionQueue`, protected scanner state with `NSLock`, fixed inverted live Vision `boundingBox` and EXIF-rotated still-image coordinates, clamped frame rates safely, and prevented `ImagePicker` continuation leaks.
+- **Android**: Fixed `MLKitBarcodeScanner` `analyze()`/`close()` TOCTOU race and guaranteed `ImageProxy` closure on throw; made `Camera.dispose()` idempotent and race-safe against pending `loadCamera()`/`SurfaceProvider`; scoped `init` failure cleanup to the specific camera instance.
+- **Dart/Flutter**: Added operation serialization and generation guards to `CameraController`, prevented `BarcodeCamera` parent rebuilds from reconfiguring the camera on inline `onScan` closures, fixed background pause after scans in `continuous`/`pauseDetection` modes, and fixed `dispose: false` remount & route-transition overlap.
+
+### Performance
+- **Android**: Eliminated 60–120 main-thread hops/sec on empty frames in `MLKitBarcodeScanner`, avoided unnecessary CameraX rebinds when only `detectionMode` or `types` change, and offloaded still-image decoding/I/O to a background executor with `Bitmap.recycle()`.
+- **iOS**: Filtered/normalized barcodes on scanner background queues before dispatching to main and removed per-format string allocations during camera format selection.
+- **Dart/Flutter**: Replaced `Stream.periodic` with a one-shot `Timer` (zero idle wakeups), eliminated per-frame `AnimatedBuilder` rebuilds and black-flash bug in `MaterialPreviewOverlay`, clipped `BlurPreviewOverlay` with `ClipRect`, and disposed `TextPainter` in `CodeBorderPainter`.
+
 ## 2.0.0
 
 ### Highlights

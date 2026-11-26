@@ -14,9 +14,17 @@ final class AVFoundationBarcodeScanner: NSObject, BarcodeScanner,
     label: "com.jhoogstraat.fast_barcode_scanner.avfoundation",
     qos: .userInitiated
   )
+  private let stateLock = NSLock()
   private weak var _session: AVCaptureSession?
   private var _symbologies = [String]()
-  private var isActive = false
+  private var acceptsUpcA = false
+  private var acceptsEan13 = false
+  private var _isActive = false
+
+  private var isActive: Bool {
+    get { stateLock.withLock { _isActive } }
+    set { stateLock.withLock { _isActive = newValue } }
+  }
 
   init(
     objectBoundsConverter: @escaping AVMetadataObjectBoundsConverter,
@@ -28,9 +36,13 @@ final class AVFoundationBarcodeScanner: NSObject, BarcodeScanner,
   }
 
   var symbologies: [String] {
-    get { _symbologies }
+    get { stateLock.withLock { _symbologies } }
     set {
-      _symbologies = newValue
+      stateLock.withLock {
+        _symbologies = newValue
+        acceptsUpcA = newValue.contains("upcA")
+        acceptsEan13 = newValue.contains("ean13")
+      }
       let requested = avMetadataObjectTypes(for: newValue)
       let available = Set(output.availableMetadataObjectTypes)
       output.metadataObjectTypes = requested.filter { available.contains($0) }
@@ -62,53 +74,41 @@ final class AVFoundationBarcodeScanner: NSObject, BarcodeScanner,
     didOutput metadataObjects: [AVMetadataObject],
     from connection: AVCaptureConnection
   ) {
-    guard isActive, !metadataObjects.isEmpty else { return }
+    let (active, upcA, ean13) = stateLock.withLock { (_isActive, acceptsUpcA, acceptsEan13) }
+    guard active, !metadataObjects.isEmpty else { return }
 
-    let readableCodes = metadataObjects.compactMap { $0 as? AVMetadataMachineReadableCodeObject }
-    guard !readableCodes.isEmpty else { return }
+    // Filter and normalize on metadataQueue before hopping to main.
+    var matched: [(AVMetadataMachineReadableCodeObject, String, String)] = []
+    for obj in metadataObjects {
+      guard
+        let code = obj as? AVMetadataMachineReadableCodeObject,
+        let rawType = flutterType(for: code.type),
+        let rawValue = code.stringValue,
+        let (type, value) = normalizeBarcodeTypeAndValue(
+          type: rawType,
+          value: rawValue,
+          isEan13: code.type == .ean13,
+          acceptsUpcA: upcA,
+          acceptsEan13: ean13
+        )
+      else { continue }
+      matched.append((code, type, value))
+    }
 
-    let currentSymbologies = _symbologies
+    guard !matched.isEmpty else { return }
 
     DispatchQueue.main.async { [weak self] in
       guard let self = self, self.isActive else { return }
-
-      var scannedCodes: [[Any?]] = []
-
-      for readableCode in readableCodes {
-        guard
-          var type = flutterType(for: readableCode.type),
-          var value = readableCode.stringValue
-        else {
-          continue
-        }
-
-        // Apple reports UPC-A as EAN-13 with a leading "0".
-        if readableCode.type == .ean13 {
-          if value.hasPrefix("0") && currentSymbologies.contains("upcA") {
-            type = "upcA"
-            value.removeFirst()
-          } else if !currentSymbologies.contains("ean13") {
-            continue
-          }
-        }
-
+      let scannedCodes = matched.map { code, type, value -> [Any] in
         let transformed =
-          self.objectBoundsConverter(readableCode) as? AVMetadataMachineReadableCodeObject
-        let bounds = transformed?.bounds ?? readableCode.bounds
-        let corners = (transformed?.corners ?? readableCode.corners).map {
-          [Double($0.x), Double($0.y)]
-        }
-
-        scannedCodes.append([
-          type,
-          value,
-          [Double(bounds.minX), Double(bounds.minY), Double(bounds.maxX), Double(bounds.maxY)],
-          corners,
-        ])
+          self.objectBoundsConverter(code) as? AVMetadataMachineReadableCodeObject
+        return serializeBarcode(
+          type: type,
+          value: value,
+          bounds: transformed?.bounds ?? code.bounds,
+          corners: transformed?.corners ?? code.corners
+        )
       }
-
-      guard !scannedCodes.isEmpty else { return }
-
       self.onDetection?()
       self.resultHandler(scannedCodes)
     }

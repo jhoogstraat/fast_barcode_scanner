@@ -18,15 +18,14 @@ class Barcode {
     this.cornerPoints,
   });
 
+  static final Map<String, BarcodeType> _typesByName = {
+    for (final t in BarcodeType.values) t.name: t,
+  };
+
   /// Creates a [Barcode] from the serialized platform wire payload.
   ///
   /// Expected wire format:
   /// `[type, value]` or `[type, value, boundingBox, cornerPoints]`
-  /// where:
-  /// - `type` is a [String] matching a [BarcodeType.name]
-  /// - `value` is the decoded [String]
-  /// - `boundingBox` (optional) is `[left, top, right, bottom]` of [num]
-  /// - `cornerPoints` (optional) is `[[x, y], ...]` of [num] pairs
   factory Barcode.fromPlatform(List<dynamic> data) {
     if (data.length < 2) {
       throw FormatException(
@@ -35,10 +34,10 @@ class Barcode {
     }
 
     final typeName = data[0] as String;
-    final type = BarcodeType.values.firstWhere(
-      (e) => e.name == typeName,
-      orElse: () => throw FormatException('Unknown BarcodeType: $typeName'),
-    );
+    final type = _typesByName[typeName];
+    if (type == null) {
+      throw FormatException('Unknown BarcodeType: $typeName');
+    }
 
     final value = data[1] as String;
 

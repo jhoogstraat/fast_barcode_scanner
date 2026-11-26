@@ -1,70 +1,70 @@
 import 'package:fast_barcode_scanner/src/overlays/rect_of_interest.dart';
 import 'package:flutter/widgets.dart';
 
-/// The MaterialFinderPainter draws a box around the [rectOfInterest] as well as
-/// an optional "scan line" as a guide for the user to locate the desired code
-/// to scan.
+/// Draws the viewfinder cutout and optional animated sensing border for
+/// [MaterialPreviewOverlay].
 class MaterialFinderPainter extends CustomPainter {
   MaterialFinderPainter({
-    required this.borderPaint,
-    required this.backgroundColor,
+    required this.borderColor,
     required this.rectOfInterest,
-    this.inflate = 0.0,
-    this.opacity = 1.0,
-    this.sensingColor = const Color(0xFFFFFFFF),
-  });
+    this.backgroundColor,
+    this.inflateAnimation,
+    this.opacityAnimation,
+  }) : super(
+          repaint: inflateAnimation != null && opacityAnimation != null
+              ? Listenable.merge([inflateAnimation, opacityAnimation])
+              : null,
+        );
 
-  final double inflate;
-  final double opacity;
-  final Color sensingColor;
-  final Paint borderPaint;
+  final Color borderColor;
   final Color? backgroundColor;
   final RectOfInterest rectOfInterest;
+  final Animation<double>? inflateAnimation;
+  final Animation<double>? opacityAnimation;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final screenRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final screenRect = Offset.zero & size;
+    final cutOut = RRect.fromRectXY(rectOfInterest.rect(screenRect), 12, 12);
 
-    final cutOut = RRect.fromRectXY(
-      rectOfInterest.rect(screenRect),
-      12,
-      12,
-    );
-
-    if (opacity != 1 || inflate != 0) {
-      borderPaint.color = sensingColor.withAlpha((255 * opacity).toInt());
-      borderPaint.strokeWidth = 5 - 4 * inflate;
-    }
+    final inflate = inflateAnimation?.value ?? 0.0;
+    final opacity = opacityAnimation?.value ?? 1.0;
 
     if (backgroundColor != null) {
-      final backgroundPaint = Paint()..color = backgroundColor!;
       final cutOutPath = Path.combine(
         PathOperation.difference,
         Path()..addRect(screenRect),
         Path()..addRRect(cutOut),
       );
-
-      canvas.drawPath(cutOutPath, backgroundPaint);
+      canvas.drawPath(cutOutPath, Paint()..color = backgroundColor!);
     }
 
-    canvas.drawRRect(
-      _inflate(cutOut.deflate(borderPaint.strokeWidth / 2)),
-      borderPaint,
-    );
-  }
+    if (opacity <= 0.0) return;
 
-  /// Inflates a rect, but keeps the border radius.
-  RRect _inflate(RRect rect) {
-    return RRect.fromRectAndRadius(
-        rect.outerRect.inflate(inflate * 20), rect.blRadius);
+    final strokeWidth = inflateAnimation != null ? 5.0 - 4.0 * inflate : 5.0;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..color = opacity < 1.0
+          ? borderColor.withAlpha((255 * opacity).round())
+          : borderColor;
+
+    final base = cutOut.deflate(strokeWidth / 2.0);
+    final drawn = inflate > 0.0
+        ? RRect.fromRectAndRadius(
+            base.outerRect.inflate(inflate * 20.0),
+            base.blRadius,
+          )
+        : base;
+
+    canvas.drawRRect(drawn, paint);
   }
 
   @override
-  bool shouldRepaint(MaterialFinderPainter oldDelegate) {
-    return oldDelegate.opacity != opacity ||
-        oldDelegate.inflate != inflate ||
-        oldDelegate.sensingColor != sensingColor ||
-        oldDelegate.borderPaint != borderPaint ||
-        oldDelegate.backgroundColor != backgroundColor;
-  }
+  bool shouldRepaint(MaterialFinderPainter oldDelegate) =>
+      oldDelegate.borderColor != borderColor ||
+      oldDelegate.backgroundColor != backgroundColor ||
+      oldDelegate.rectOfInterest != rectOfInterest ||
+      oldDelegate.inflateAnimation != inflateAnimation ||
+      oldDelegate.opacityAnimation != opacityAnimation;
 }

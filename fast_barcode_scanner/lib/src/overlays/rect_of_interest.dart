@@ -27,7 +27,7 @@ abstract class RectOfInterest {
     required Size analysisSize,
     required Size previewSize,
   }) {
-    final roi = rect(previewSize.toRect());
+    final roi = rect(Offset.zero & previewSize);
     return (code) {
       final List<Offset> points;
       if (code.cornerPoints != null && code.cornerPoints!.isNotEmpty) {
@@ -44,9 +44,7 @@ abstract class RectOfInterest {
           analysisImageSize: analysisSize,
           widgetSize: previewSize,
         );
-        if (!roi.contains(scaled)) {
-          return false;
-        }
+        if (!roi.contains(scaled)) return false;
       }
       return true;
     };
@@ -58,6 +56,7 @@ abstract class RectOfInterest {
     required Size analysisSize,
     required Size previewSize,
   }) {
+    if (codes.isEmpty) return const [];
     return codes
         .where(
           buildCodeFilter(
@@ -79,11 +78,10 @@ class WideRectOfInterest extends RectOfInterest {
   Rect rect(Rect previewWidgetRect) {
     final width = (previewWidgetRect.width - horizontalPadding)
         .clamp(0.0, double.infinity);
-    final height = (9.0 / 16.0) * width;
     return Rect.fromCenter(
       center: previewWidgetRect.center,
       width: width,
-      height: height,
+      height: (9.0 / 16.0) * width,
     );
   }
 
@@ -105,13 +103,11 @@ class SquareRectOfInterest extends RectOfInterest {
   final double size;
 
   @override
-  Rect rect(Rect previewWidgetRect) {
-    return Rect.fromCenter(
-      center: previewWidgetRect.center,
-      width: size,
-      height: size,
-    );
-  }
+  Rect rect(Rect previewWidgetRect) => Rect.fromCenter(
+        center: previewWidgetRect.center,
+        width: size,
+        height: size,
+      );
 
   @override
   bool operator ==(Object other) =>

@@ -2,7 +2,7 @@ name: fast_barcode_scanner_platform_interface
 description: A common platform interface for the fast_barcode_scanner plugin.
 homepage: https://github.com/jhoogstraat/fast_barcode_scanner/tree/main/fast_barcode_scanner_platform_interface
 repository: https://github.com/jhoogstraat/fast_barcode_scanner
-version: 2.0.0
+version: 2.0.1
 resolution: workspace
 
 environment:

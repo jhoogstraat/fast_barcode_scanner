@@ -4,28 +4,11 @@ import android.util.Size
 import com.google.mlkit.vision.barcode.common.Barcode
 
 data class ScannerConfiguration(
-    val types: IntArray,
+    val types: List<Int>,
     val mode: PerformanceMode,
     val position: CameraPosition,
     val detectionMode: DetectionMode
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is ScannerConfiguration) return false
-        return types.contentEquals(other.types) &&
-            mode == other.mode &&
-            position == other.position &&
-            detectionMode == other.detectionMode
-    }
-
-    override fun hashCode(): Int {
-        var result = types.contentHashCode()
-        result = 31 * result + mode.hashCode()
-        result = 31 * result + position.hashCode()
-        result = 31 * result + detectionMode.hashCode()
-        return result
-    }
-}
+)
 
 enum class PerformanceMode(val wireName: String) {
     System("system"),
@@ -68,7 +51,7 @@ enum class CameraPosition(val wireName: String) {
     }
 }
 
-val barcodeFormatMap: Map<String, Int> = hashMapOf(
+val barcodeFormatMap: Map<String, Int> = mapOf(
     "aztec" to Barcode.FORMAT_AZTEC,
     "code128" to Barcode.FORMAT_CODE_128,
     "code39" to Barcode.FORMAT_CODE_39,

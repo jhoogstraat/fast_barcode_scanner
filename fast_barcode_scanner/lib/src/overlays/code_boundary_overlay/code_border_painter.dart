@@ -15,16 +15,9 @@ class CodeBorderPainter extends CustomPainter {
     this.barcodeValueStyle,
   });
 
-  /// Custom [Paint] builder per barcode.
   final CodeBorderPaintBuilder? barcodePaintSelector;
-
-  /// Optional [TextStyle] builder to draw the barcode value below its bounds.
   final TextStyle Function(Barcode)? barcodeValueStyle;
-
-  /// Size of the native analysis frame used to scale coordinates.
   final Size imageSize;
-
-  /// Detected barcodes to render.
   final List<Barcode> barcodes;
 
   static final Paint _standardPaint = Paint()
@@ -48,23 +41,22 @@ class CodeBorderPainter extends CustomPainter {
       return;
     }
 
-    final offsets = sourcePoints
-        .map(
-          (point) => scaleCodeCornerPoint(
-            cornerPoint: point,
-            analysisImageSize: imageSize,
-            widgetSize: size,
-          ),
-        )
-        .toList(growable: false);
+    final first = scaleCodeCornerPoint(
+      cornerPoint: sourcePoints.first,
+      analysisImageSize: imageSize,
+      widgetSize: size,
+    );
+    final path = Path()..moveTo(first.dx, first.dy);
+    var minX = first.dx;
+    var maxX = first.dx;
+    var maxY = first.dy;
 
-    final path = Path()..moveTo(offsets.first.dx, offsets.first.dy);
-    var minX = offsets.first.dx;
-    var maxX = offsets.first.dx;
-    var maxY = offsets.first.dy;
-
-    for (var i = 1; i < offsets.length; i++) {
-      final offset = offsets[i];
+    for (var i = 1; i < sourcePoints.length; i++) {
+      final offset = scaleCodeCornerPoint(
+        cornerPoint: sourcePoints[i],
+        analysisImageSize: imageSize,
+        widgetSize: size,
+      );
       minX = min(minX, offset.dx);
       maxX = max(maxX, offset.dx);
       maxY = max(maxY, offset.dy);
@@ -72,8 +64,8 @@ class CodeBorderPainter extends CustomPainter {
     }
     path.close();
 
-    final barcodePaint = barcodePaintSelector?.call(barcode) ?? _standardPaint;
-    canvas.drawPath(path, barcodePaint);
+    canvas.drawPath(
+        path, barcodePaintSelector?.call(barcode) ?? _standardPaint);
 
     final styleBuilder = barcodeValueStyle;
     if (styleBuilder == null) return;
@@ -86,6 +78,7 @@ class CodeBorderPainter extends CustomPainter {
 
     final centerX = minX + ((maxX - minX) / 2.0);
     tp.paint(canvas, Offset(centerX - (tp.width / 2.0), maxY + 5.0));
+    tp.dispose();
   }
 
   @override
@@ -96,8 +89,9 @@ class CodeBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CodeBorderPainter oldDelegate) {
-    return oldDelegate.imageSize != imageSize ||
-        oldDelegate.barcodes != barcodes;
-  }
+  bool shouldRepaint(CodeBorderPainter oldDelegate) =>
+      oldDelegate.imageSize != imageSize ||
+      oldDelegate.barcodes != barcodes ||
+      oldDelegate.barcodePaintSelector != barcodePaintSelector ||
+      oldDelegate.barcodeValueStyle != barcodeValueStyle;
 }

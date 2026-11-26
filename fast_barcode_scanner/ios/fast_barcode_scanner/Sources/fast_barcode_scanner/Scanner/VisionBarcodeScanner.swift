@@ -1,5 +1,4 @@
 import AVFoundation
-import Flutter
 import UIKit
 import Vision
 
@@ -20,9 +19,22 @@ final class VisionBarcodeScanner: NSObject, BarcodeScanner,
     attributes: [],
     autoreleaseFrequency: .workItem
   )
-
+  private let stateLock = NSLock()
   private let visionSequenceHandler = VNSequenceRequestHandler()
-  private lazy var barcodeRequest: VNDetectBarcodesRequest = {
+  private let barcodeRequest = VisionBarcodeScanner.makeBarcodeRequest()
+
+  private var _symbologies = [String]()
+  private var acceptsUpcA = false
+  private var acceptsEan13 = false
+  private var _isActive = false
+  private weak var _session: AVCaptureSession?
+
+  private var isActive: Bool {
+    get { stateLock.withLock { _isActive } }
+    set { stateLock.withLock { _isActive = newValue } }
+  }
+
+  private static func makeBarcodeRequest() -> VNDetectBarcodesRequest {
     let request = VNDetectBarcodesRequest()
     if #available(iOS 17, *) {
       request.revision = VNDetectBarcodesRequestRevision4
@@ -32,17 +44,20 @@ final class VisionBarcodeScanner: NSObject, BarcodeScanner,
       request.revision = VNDetectBarcodesRequestRevision2
     }
     return request
-  }()
-
-  private var _symbologies = [String]()
-  private weak var _session: AVCaptureSession?
-  private var isActive = false
+  }
 
   var symbologies: [String] {
-    get { _symbologies }
+    get { stateLock.withLock { _symbologies } }
     set {
-      _symbologies = newValue
-      barcodeRequest.symbologies = vnBarcodeSymbologies(for: newValue)
+      stateLock.withLock {
+        _symbologies = newValue
+        acceptsUpcA = newValue.contains("upcA")
+        acceptsEan13 = newValue.contains("ean13")
+      }
+      let mapped = vnBarcodeSymbologies(for: newValue)
+      outputQueue.async { [weak self] in
+        self?.barcodeRequest.symbologies = mapped
+      }
     }
   }
 
@@ -78,150 +93,113 @@ final class VisionBarcodeScanner: NSObject, BarcodeScanner,
     output.setSampleBufferDelegate(nil, queue: nil)
   }
 
-  // MARK: Live video frame capture
-
   func captureOutput(
     _ output: AVCaptureOutput,
     didOutput sampleBuffer: CMSampleBuffer,
     from connection: AVCaptureConnection
   ) {
-    guard isActive, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    let (active, upcA, ean13) = stateLock.withLock { (_isActive, acceptsUpcA, acceptsEan13) }
+    guard active, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
     do {
       try visionSequenceHandler.perform([barcodeRequest], on: pixelBuffer)
       guard let observations = barcodeRequest.results, !observations.isEmpty else { return }
-      handleObservations(observations)
-    } catch {
-      // Transient Vision frame errors should not crash or terminate the live stream.
-      print("fast_barcode_scanner: Vision frame error: \(error)")
-    }
-  }
 
-  private func handleObservations(_ observations: [VNBarcodeObservation]) {
-    let currentSymbologies = _symbologies
-    var seen = Set<String>()
+      var seen: Set<String>? = observations.count > 1 ? Set<String>() : nil
+      var matched: [(VNBarcodeObservation, String, String)] = []
 
-    let validObservations = observations.filter { observation in
-      guard observation.confidence >= confidence,
-        let payload = observation.payloadStringValue
-      else {
-        return false
-      }
-      return seen.insert("\(observation.symbology.rawValue)|\(payload)").inserted
-    }
-
-    guard !validObservations.isEmpty else { return }
-
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self, self.isActive else { return }
-
-      var scannedCodes: [[Any?]] = []
-
-      for observation in validObservations {
+      for observation in observations {
         guard
-          var type = flutterType(for: observation.symbology),
-          var value = observation.payloadStringValue
-        else {
+          observation.confidence >= confidence,
+          let rawPayload = observation.payloadStringValue,
+          let rawType = flutterType(for: observation.symbology),
+          let (type, value) = normalizeBarcodeTypeAndValue(
+            type: rawType,
+            value: rawPayload,
+            isEan13: observation.symbology == .ean13,
+            acceptsUpcA: upcA,
+            acceptsEan13: ean13
+          )
+        else { continue }
+
+        if seen != nil && !(seen!.insert("\(type)|\(value)").inserted) {
           continue
         }
-
-        if observation.symbology == .ean13 {
-          if value.hasPrefix("0") && currentSymbologies.contains("upcA") {
-            type = "upcA"
-            value.removeFirst()
-          } else if !currentSymbologies.contains("ean13") {
-            continue
-          }
-        }
-
-        let converted = self.boundsConverter?(observation)
-        let rect = converted?.0 ?? observation.boundingBox
-        let corners = (converted?.1 ?? [
-          observation.topLeft,
-          observation.topRight,
-          observation.bottomRight,
-          observation.bottomLeft,
-        ]).map { [Double($0.x), Double($0.y)] }
-
-        scannedCodes.append([
-          type,
-          value,
-          [Double(rect.minX), Double(rect.minY), Double(rect.maxX), Double(rect.maxY)],
-          corners,
-        ])
+        matched.append((observation, type, value))
       }
 
-      guard !scannedCodes.isEmpty else { return }
+      guard !matched.isEmpty else { return }
 
-      self.onDetection?()
-      self.resultHandler(scannedCodes)
+      DispatchQueue.main.async { [weak self] in
+        guard let self = self, self.isActive else { return }
+        let scannedCodes = matched.map { observation, type, value -> [Any] in
+          let converted = self.boundsConverter?(observation)
+          return serializeBarcode(
+            type: type,
+            value: value,
+            bounds: converted?.0 ?? observation.boundingBox,
+            corners: converted?.1 ?? [
+              observation.topLeft,
+              observation.topRight,
+              observation.bottomRight,
+              observation.bottomLeft,
+            ]
+          )
+        }
+        self.onDetection?()
+        self.resultHandler(scannedCodes)
+      }
+    } catch {
+      print("fast_barcode_scanner: Vision frame error: \(error)")
     }
   }
 
   // MARK: Still image processing
 
-  static func scanStillImage(_ uiImage: UIImage) async throws -> [[Any?]] {
+  static func scanStillImage(_ uiImage: UIImage) async throws -> [[Any]] {
     guard let cgImage = uiImage.cgImage else {
       throw ScannerError.loadingDataFailed
     }
 
     let orientation = cgImagePropertyOrientation(from: uiImage.imageOrientation)
+    // Vision returns coordinates in the oriented (upright) pixel space.
+    let width = Double(uiImage.size.width * uiImage.scale)
+    let height = Double(uiImage.size.height * uiImage.scale)
 
     return try await withCheckedThrowingContinuation { continuation in
       DispatchQueue.global(qos: .userInitiated).async {
-        let request = VNDetectBarcodesRequest()
-        if #available(iOS 17, *) {
-          request.revision = VNDetectBarcodesRequestRevision4
-        } else if #available(iOS 16, *) {
-          request.revision = VNDetectBarcodesRequestRevision3
-        } else if #available(iOS 15, *) {
-          request.revision = VNDetectBarcodesRequestRevision2
-        }
-
+        let request = makeBarcodeRequest()
         let handler = VNImageRequestHandler(
-          cgImage: cgImage,
-          orientation: orientation,
-          options: [:]
-        )
+          cgImage: cgImage, orientation: orientation, options: [:])
 
         do {
           try handler.perform([request])
           let observations = request.results ?? []
-          let width = Double(cgImage.width)
-          let height = Double(cgImage.height)
-
           var seen = Set<String>()
-          var results: [[Any?]] = []
+          var results: [[Any]] = []
 
           for observation in observations {
             guard
               let payload = observation.payloadStringValue,
               let type = flutterType(for: observation.symbology),
               seen.insert("\(type)|\(payload)").inserted
-            else {
-              continue
-            }
+            else { continue }
 
-            // Convert Vision's normalized bottom-left coordinates to image pixel top-left coordinates.
             let box = observation.boundingBox
-            let left = Double(box.minX) * width
-            let top = (1.0 - Double(box.maxY)) * height
-            let right = Double(box.maxX) * width
-            let bottom = (1.0 - Double(box.minY)) * height
-
+            let rect = CGRect(
+              x: Double(box.minX) * width,
+              y: (1.0 - Double(box.maxY)) * height,
+              width: Double(box.width) * width,
+              height: Double(box.height) * height
+            )
             let corners = [
               observation.topLeft,
               observation.topRight,
               observation.bottomRight,
               observation.bottomLeft,
-            ].map { [Double($0.x) * width, (1.0 - Double($0.y)) * height] }
+            ].map { CGPoint(x: Double($0.x) * width, y: (1.0 - Double($0.y)) * height) }
 
-            results.append([
-              type,
-              payload,
-              [left, top, right, bottom],
-              corners,
-            ])
+            results.append(serializeBarcode(type: type, value: payload, bounds: rect, corners: corners))
           }
 
           continuation.resume(returning: results)

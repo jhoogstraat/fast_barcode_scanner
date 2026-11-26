@@ -3,84 +3,50 @@ package com.jhoogstraat.fast_barcode_scanner.types
 import io.flutter.plugin.common.MethodChannel.Result
 import java.io.IOException
 
-sealed class ScannerException : Exception() {
-    class NotInitialized : ScannerException()
-    class AlreadyInitialized : ScannerException()
-    class NotRunning : ScannerException()
-    class AlreadyRunning : ScannerException()
-    class NoInputDeviceForConfig(val configuration: ScannerConfiguration) : ScannerException()
-    class Unauthorized : ScannerException()
-    class ConfigurationException(val error: Exception) : ScannerException()
-    class InvalidArguments(val args: Any?) : ScannerException()
-    class InvalidCodeType(val type: String) : ScannerException()
-    class InvalidImageData : ScannerException()
-    class LoadingFailed(val error: IOException) : ScannerException()
-    class AnalysisFailed(val error: Exception) : ScannerException()
-    class AlreadyPicking : ScannerException()
-    class Unknown(val error: Exception) : ScannerException()
-    class ActivityNotConnected : ScannerException()
+sealed class ScannerException(
+    val code: String,
+    val errorMessage: String,
+    val details: Any? = null
+) : Exception(errorMessage) {
+    class NotInitialized : ScannerException("NOT_INITIALIZED", "Camera has not been initialized")
+    class NotRunning : ScannerException("NOT_RUNNING", "Camera is not running")
+    class Unauthorized : ScannerException(
+        "UNAUTHORIZED",
+        "The application is not authorized to use the camera device"
+    )
+    class ActivityNotConnected : ScannerException("NO_ACTIVITY", "No activity is connected")
+    class InvalidImageData : ScannerException(
+        "INVALID_IMAGEDATA",
+        "Could not parse image byte array"
+    )
+    class AlreadyPicking : ScannerException("ALREADY_PICKING", "Already picking an image to analyze")
+    class NoInputDeviceForConfig(configuration: ScannerConfiguration) : ScannerException(
+        "NO_INPUT_DEVICE",
+        "No input device found for configuration. Are you using an emulator without a camera?",
+        configuration.toString()
+    )
+    class ConfigurationException(error: Exception) : ScannerException(
+        "CONFIGURATION_FAILED",
+        "The configuration could not be applied",
+        error.localizedMessage
+    )
+    class InvalidArguments(args: Any?) : ScannerException(
+        "INVALID_ARGUMENT",
+        "Invalid arguments provided",
+        args?.toString()
+    )
+    class LoadingFailed(error: IOException) : ScannerException(
+        "LOADING_FAILED",
+        "Could not load image",
+        error.localizedMessage
+    )
+    class Unknown(error: Exception) : ScannerException(
+        "UNKNOWN",
+        "Unknown error occurred",
+        error.localizedMessage
+    )
 
     fun throwFlutterError(result: Result) {
-        when (this) {
-            is AlreadyInitialized -> result.error(
-                "ALREADY_INITIALIZED",
-                "Camera is already initialized",
-                null
-            )
-            is NotInitialized -> result.error(
-                "NOT_INITIALIZED",
-                "Camera has not been initialized",
-                null
-            )
-            is NotRunning -> result.error("NOT_RUNNING", "Camera is not running", null)
-            is AlreadyRunning -> result.error("ALREADY_RUNNING", "Camera is already running", null)
-            is ConfigurationException -> result.error(
-                "CONFIGURATION_FAILED",
-                "The configuration could not be applied",
-                error.localizedMessage
-            )
-            is NoInputDeviceForConfig -> result.error(
-                "NO_INPUT_DEVICE",
-                "No input device found for configuration. Are you using an emulator without a camera?",
-                "$configuration"
-            )
-            is Unauthorized -> result.error(
-                "UNAUTHORIZED",
-                "The application is not authorized to use the camera device",
-                null
-            )
-            is InvalidArguments -> result.error(
-                "INVALID_ARGUMENT",
-                "Invalid arguments provided",
-                args?.toString()
-            )
-            is InvalidCodeType -> result.error("INVALID_CODE", "Invalid code type", type)
-            is ActivityNotConnected -> result.error("NO_ACTIVITY", "No activity is connected", null)
-            is InvalidImageData -> result.error(
-                "INVALID_IMAGEDATA",
-                "Could not parse image byte array",
-                null
-            )
-            is LoadingFailed -> result.error(
-                "LOADING_FAILED",
-                "Could not load image",
-                error.localizedMessage
-            )
-            is AnalysisFailed -> result.error(
-                "ANALYSIS_FAILED",
-                "Could not analyze image",
-                error.localizedMessage
-            )
-            is AlreadyPicking -> result.error(
-                "ALREADY_PICKING",
-                "Already picking an image to analyze",
-                null
-            )
-            is Unknown -> result.error(
-                "UNKNOWN",
-                "Unknown error occurred",
-                error.localizedMessage
-            )
-        }
+        result.error(code, errorMessage, details)
     }
 }

@@ -19,12 +19,7 @@ class ScannerState {
   });
 
   /// Initial state before [CameraController.initialize] has completed.
-  const ScannerState.uninitialized()
-      : cameraInformation = null,
-        scannerConfig = null,
-        torch = false,
-        zoom = 1.0,
-        error = null;
+  const ScannerState.uninitialized() : this();
 
   /// Metadata about the active camera stream, or `null` if uninitialized.
   final CameraInformation? cameraInformation;
@@ -66,13 +61,7 @@ class ScannerState {
       );
 
   /// Returns a state carrying the given [error].
-  ScannerState withError(Object error) => ScannerState(
-        cameraInformation: null,
-        scannerConfig: null,
-        torch: false,
-        zoom: 1.0,
-        error: error,
-      );
+  ScannerState withError(Object error) => ScannerState(error: error);
 
   @override
   bool operator ==(Object other) =>
@@ -92,9 +81,6 @@ class ScannerState {
 
 /// High-level controller managing the native camera lifecycle, scanner
 /// configuration, torch, zoom, and barcode detection events.
-///
-/// Use [CameraController.shared] for typical single-camera apps, or interact
-/// directly with [FastBarcodeScannerPlatform.instance] for custom flows.
 class CameraController {
   CameraController._internal();
 
@@ -107,9 +93,6 @@ class CameraController {
 
   FastBarcodeScannerPlatform get _platform =>
       FastBarcodeScannerPlatform.instance;
-
-  StreamSubscription<void>? _scanSilencerSubscription;
-  DateTime? _lastScanTime;
 
   /// Notifies listeners whenever the camera state changes.
   final ValueNotifier<ScannerState> state =
@@ -129,15 +112,74 @@ class CameraController {
   /// are reported.
   static const Duration scannedCodeTimeout = Duration(milliseconds: 250);
 
-  bool _isConfiguringLock = false;
+  Timer? _scanSilencerTimer;
+  Future<void> _opQueue = Future<void>.value();
+  int _generation = 0;
+  int _zoomRequestId = 0;
+  Object? _ownerToken;
   OnDetectionHandler? _onScan;
 
-  OnDetectionHandler _buildScanHandler(OnDetectionHandler? onScan) {
-    return (barcodes) {
-      _lastScanTime = DateTime.now();
-      resultNotifier.value = barcodes;
-      onScan?.call(barcodes);
-    };
+  /// Claims widget ownership of this controller so overlapping route
+  /// transitions do not let a departing widget dispose a newly mounted one.
+  void attachOwner(Object token) => _ownerToken = token;
+
+  /// Returns `true` if [token] is the active owner (or no owner is attached).
+  bool isOwner(Object token) => _ownerToken == null || _ownerToken == token;
+
+  /// Updates the detection callback without invoking any native reconfiguration.
+  void setOnScan(OnDetectionHandler? onScan) {
+    _onScan = onScan;
+  }
+
+  /// Serializes mutating platform calls so concurrent requests (e.g. torch +
+  /// configure) never drop or race each other.
+  Future<T> _enqueue<T>(Future<T> Function() action) {
+    final completer = Completer<T>();
+    _opQueue = _opQueue.then((_) async {
+      try {
+        completer.complete(await action());
+      } catch (e, s) {
+        completer.completeError(e, s);
+      }
+    });
+    return completer.future;
+  }
+
+  Future<T> _runGuarded<T>(int gen, Future<T> Function() action) async {
+    try {
+      return await action();
+    } catch (error) {
+      if (gen == _generation) {
+        state.value = state.value.withError(error);
+        eventNotifier.value = ScannerEvent.error;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _setEvent(
+    Future<void> Function() action,
+    ScannerEvent nextEvent,
+  ) {
+    final gen = _generation;
+    return _enqueue(() async {
+      if (gen != _generation || !state.value.isInitialized) return;
+      await _runGuarded(gen, () async {
+        await action();
+        if (gen == _generation) {
+          if (nextEvent == ScannerEvent.paused) _clearResults();
+          eventNotifier.value = nextEvent;
+        }
+      });
+    });
+  }
+
+  void _clearResults() {
+    _scanSilencerTimer?.cancel();
+    _scanSilencerTimer = null;
+    if (resultNotifier.value.isNotEmpty) {
+      resultNotifier.value = const <Barcode>[];
+    }
   }
 
   /// Initializes and starts the camera and barcode scanner.
@@ -148,149 +190,94 @@ class CameraController {
     required DetectionMode detectionMode,
     required ApiMode api,
     OnDetectionHandler? onScan,
-  }) async {
-    try {
-      final cameraInfo = await _platform.init(
-        types,
-        mode,
-        detectionMode,
-        position,
-        api,
-      );
+  }) {
+    final gen = ++_generation;
+    _onScan = onScan;
+    return _enqueue(() => _runGuarded(gen, () async {
+          final cameraInfo = await _platform.init(
+            types,
+            mode,
+            detectionMode,
+            position,
+            api,
+          );
+          if (gen != _generation) return;
 
-      _onScan = _buildScanHandler(onScan);
+          _platform.setOnDetectionHandler(_onDetectHandler);
 
-      await _scanSilencerSubscription?.cancel();
-      _scanSilencerSubscription =
-          Stream<void>.periodic(scannedCodeTimeout).listen((_) {
-        final scanTime = _lastScanTime;
-        if (scanTime != null &&
-            DateTime.now().difference(scanTime) > scannedCodeTimeout &&
-            resultNotifier.value.isNotEmpty) {
-          resultNotifier.value = const <Barcode>[];
-        }
-      });
-
-      _platform.setOnDetectionHandler(_onDetectHandler);
-
-      final scanner =
-          ScannerConfiguration(types, mode, position, detectionMode);
-
-      state.value = ScannerState(
-        cameraInformation: cameraInfo,
-        scannerConfig: scanner,
-        torch: false,
-        zoom: cameraInfo.minZoom,
-      );
-      eventNotifier.value = ScannerEvent.resumed;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
+          state.value = ScannerState(
+            cameraInformation: cameraInfo,
+            scannerConfig:
+                ScannerConfiguration(types, mode, position, detectionMode),
+            torch: false,
+            zoom: cameraInfo.minZoom,
+          );
+          eventNotifier.value = ScannerEvent.resumed;
+        }));
   }
 
   /// Stops the camera and releases all native resources.
-  Future<void> dispose() async {
-    await _scanSilencerSubscription?.cancel();
-    _scanSilencerSubscription = null;
-    _lastScanTime = null;
+  Future<void> dispose() {
+    final gen = ++_generation;
+    _clearResults();
     _onScan = null;
-    resultNotifier.value = const <Barcode>[];
-
-    try {
-      await _platform.dispose();
-      state.value = const ScannerState.uninitialized();
-      eventNotifier.value = ScannerEvent.uninitialized;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
+    return _enqueue(() => _runGuarded(gen, () async {
+          await _platform.dispose();
+          if (gen == _generation) {
+            state.value = const ScannerState.uninitialized();
+            eventNotifier.value = ScannerEvent.uninitialized;
+          }
+        }));
   }
 
   /// Pauses both the camera preview and barcode detector.
-  Future<void> pauseCamera() async {
-    if (!state.value.isInitialized) return;
-    try {
-      await _platform.stop();
-      eventNotifier.value = ScannerEvent.paused;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
-  }
+  Future<void> pauseCamera() => _setEvent(_platform.stop, ScannerEvent.paused);
 
   /// Resumes the camera preview and barcode detector.
-  Future<void> resumeCamera() async {
-    if (!state.value.isInitialized) return;
-    try {
-      await _platform.start();
-      eventNotifier.value = ScannerEvent.resumed;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
-  }
+  Future<void> resumeCamera() =>
+      _setEvent(_platform.start, ScannerEvent.resumed);
 
   /// Pauses barcode detection while keeping the camera preview active.
-  Future<void> pauseScanner() async {
-    if (!state.value.isInitialized) return;
-    try {
-      await _platform.stopDetector();
-      eventNotifier.value = ScannerEvent.paused;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
-  }
+  Future<void> pauseScanner() =>
+      _setEvent(_platform.stopDetector, ScannerEvent.paused);
 
   /// Resumes barcode detection while the camera preview is active.
-  Future<void> resumeScanner() async {
-    if (!state.value.isInitialized) return;
-    try {
-      await _platform.startDetector();
-      eventNotifier.value = ScannerEvent.resumed;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    }
-  }
+  Future<void> resumeScanner() =>
+      _setEvent(_platform.startDetector, ScannerEvent.resumed);
 
   /// Toggles the camera torch and returns the new state (`true` = on).
-  Future<bool> toggleTorch() async {
-    if (!state.value.isInitialized || _isConfiguringLock) {
-      return state.value.torch;
-    }
-
-    _isConfiguringLock = true;
-    try {
-      final torchState = await _platform.toggleTorch();
-      state.value = state.value.withTorch(torchState);
-      return torchState;
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    } finally {
-      _isConfiguringLock = false;
-    }
+  Future<bool> toggleTorch() {
+    final gen = _generation;
+    return _enqueue(() async {
+      if (gen != _generation || !state.value.isInitialized) {
+        return state.value.torch;
+      }
+      return _runGuarded(gen, () async {
+        final torchState = await _platform.toggleTorch();
+        if (gen == _generation) {
+          state.value = state.value.withTorch(torchState);
+        }
+        return torchState;
+      });
+    });
   }
 
   /// Sets the camera zoom factor, clamped to the device's supported range.
   Future<double> setZoom(double zoomFactor) async {
+    final gen = _generation;
     final info = state.value.cameraInformation;
     if (!state.value.isInitialized || info == null) {
       return state.value.zoom;
     }
 
-    final clamped = zoomFactor.clamp(info.minZoom, info.maxZoom);
+    final maxZoom = info.maxZoom < info.minZoom ? info.minZoom : info.maxZoom;
+    final clamped = zoomFactor.clamp(info.minZoom, maxZoom);
+    final reqId = ++_zoomRequestId;
+
     final applied = await _platform.setZoom(clamped);
-    state.value = state.value.withZoom(applied);
+    if (gen == _generation && reqId == _zoomRequestId) {
+      state.value = state.value.withZoom(applied);
+    }
     return applied;
   }
 
@@ -305,10 +292,11 @@ class CameraController {
   Future<void> switchCamera() async {
     final currentPosition = state.value.scannerConfig?.position;
     if (currentPosition == null) return;
-    final nextPosition = currentPosition == CameraPosition.back
-        ? CameraPosition.front
-        : CameraPosition.back;
-    await configure(position: nextPosition);
+    await configure(
+      position: currentPosition == CameraPosition.back
+          ? CameraPosition.front
+          : CameraPosition.back,
+    );
   }
 
   /// Dynamically updates one or more scanner configuration parameters.
@@ -318,55 +306,49 @@ class CameraController {
     DetectionMode? detectionMode,
     CameraPosition? position,
     OnDetectionHandler? onScan,
-  }) async {
-    if (!state.value.isInitialized || _isConfiguringLock) return;
+  }) {
+    if (onScan != null) _onScan = onScan;
+    final gen = _generation;
+    return _enqueue(() async {
+      if (gen != _generation || !state.value.isInitialized) return;
+      final scannerConfig = state.value.scannerConfig!;
 
-    _isConfiguringLock = true;
-    final scannerConfig = state.value.scannerConfig!;
+      await _runGuarded(gen, () async {
+        final cameraInfo = await _platform.changeConfiguration(
+          types: types,
+          mode: mode,
+          detectionMode: detectionMode,
+          position: position,
+        );
+        if (gen != _generation) return;
 
-    try {
-      final cameraInfo = await _platform.changeConfiguration(
-        types: types,
-        mode: mode,
-        detectionMode: detectionMode,
-        position: position,
-      );
-
-      final updatedConfig = scannerConfig.copyWith(
-        types: types,
-        mode: mode,
-        detectionMode: detectionMode,
-        position: position,
-      );
-
-      if (onScan != null) {
-        _onScan = _buildScanHandler(onScan);
-      }
-
-      state.value = ScannerState(
-        cameraInformation: cameraInfo,
-        scannerConfig: updatedConfig,
-        torch: state.value.torch,
-        zoom: cameraInfo.minZoom,
-      );
-    } catch (error) {
-      state.value = state.value.withError(error);
-      eventNotifier.value = ScannerEvent.error;
-      rethrow;
-    } finally {
-      _isConfiguringLock = false;
-    }
+        state.value = ScannerState(
+          cameraInformation: cameraInfo,
+          scannerConfig: scannerConfig.copyWith(
+            types: types,
+            mode: mode,
+            detectionMode: detectionMode,
+            position: position,
+          ),
+          torch: state.value.torch,
+          zoom: cameraInfo.minZoom,
+        );
+      });
+    });
   }
 
   /// Scans a still image from [source] independently of the live camera.
-  ///
-  /// Returns `null` if the user cancelled the native image picker, or the list
-  /// of detected [Barcode]s.
-  Future<List<Barcode>?> scanImage(ImageSource source) {
-    return _platform.scanImage(source);
-  }
+  Future<List<Barcode>?> scanImage(ImageSource source) =>
+      _platform.scanImage(source);
 
   void _onDetectHandler(List<Barcode> codes) {
+    _scanSilencerTimer?.cancel();
+    _scanSilencerTimer = Timer(scannedCodeTimeout, () {
+      if (resultNotifier.value.isNotEmpty) {
+        resultNotifier.value = const <Barcode>[];
+      }
+    });
+    resultNotifier.value = codes;
     eventNotifier.value = ScannerEvent.detected;
     _onScan?.call(codes);
   }

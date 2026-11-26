@@ -2,52 +2,44 @@ import AVFoundation
 import Vision
 
 enum PerformanceMode: String {
-  case system
-  case economic
-  case high
+  case system, economic, high
 
-  var targetWidth: Int32 {
+  var targetSize: (width: Int32, height: Int32) {
     switch self {
-    case .economic: return 1280
-    case .system: return 1920
-    case .high: return 3840
-    }
-  }
-
-  var targetHeight: Int32 {
-    switch self {
-    case .economic: return 720
-    case .system: return 1080
-    case .high: return 2160
+    case .economic: return (1280, 720)
+    case .system: return (1920, 1080)
+    case .high: return (3840, 2160)
     }
   }
 
   var targetFramerate: Double {
-    switch self {
-    case .economic: return 30
-    case .system: return 30
-    case .high: return 60
-    }
+    self == .high ? 60 : 30
   }
 
   var fallbackPreset: AVCaptureSession.Preset {
-    switch self {
-    case .economic: return .hd1280x720
-    case .system: return .hd1920x1080
-    case .high: return .hd1920x1080
-    }
+    self == .economic ? .hd1280x720 : .hd1920x1080
   }
 }
 
 enum DetectionMode: String {
-  case pauseDetection
-  case pauseVideo
-  case continuous
+  case pauseDetection, pauseVideo, continuous
 }
 
 enum ApiOptions {
   case avFoundation
   case vision(confidence: Float)
+
+  init?(api: String, options: [String: Any]) {
+    switch api {
+    case "avfoundation":
+      self = .avFoundation
+    case "vision":
+      let confidence = (options["confidence"] as? NSNumber)?.floatValue ?? 0.6
+      self = .vision(confidence: confidence)
+    default:
+      return nil
+    }
+  }
 }
 
 struct CameraConfiguration {
@@ -57,20 +49,20 @@ struct CameraConfiguration {
   let codes: [String]
   let apiOptions: ApiOptions
 
-  init(
-    position: AVCaptureDevice.Position,
-    performanceMode: PerformanceMode,
-    detectionMode: DetectionMode,
-    codes: [String],
-    apiOptions: ApiOptions
-  ) {
-    self.position = position
-    self.performanceMode = performanceMode
-    self.detectionMode = detectionMode
-    self.codes = codes
-    self.apiOptions = apiOptions
+  func copy(with args: Any?) -> CameraConfiguration? {
+    guard let dict = args as? [String: Any] else { return nil }
+    return CameraConfiguration(
+      position: cameraPositions[dict["pos"] as? String ?? ""] ?? position,
+      performanceMode: PerformanceMode(rawValue: dict["mode"] as? String ?? "") ?? performanceMode,
+      detectionMode: DetectionMode(rawValue: dict["detectionMode"] as? String ?? "")
+        ?? detectionMode,
+      codes: dict["types"] as? [String] ?? codes,
+      apiOptions: apiOptions
+    )
   }
+}
 
+extension CameraConfiguration {
   init?(_ args: Any?) {
     guard
       let dict = args as? [String: Any],
@@ -78,20 +70,9 @@ struct CameraConfiguration {
       let performanceMode = PerformanceMode(rawValue: dict["mode"] as? String ?? ""),
       let detectionMode = DetectionMode(rawValue: dict["detectionMode"] as? String ?? ""),
       let codes = dict["types"] as? [String],
-      let api = dict["api"] as? String
+      let api = dict["api"] as? String,
+      let apiOptions = ApiOptions(api: api, options: dict["options"] as? [String: Any] ?? [:])
     else {
-      return nil
-    }
-
-    let options = dict["options"] as? [String: Any] ?? [:]
-    let apiOptions: ApiOptions
-    switch api {
-    case "avfoundation":
-      apiOptions = .avFoundation
-    case "vision":
-      let confidence = (options["confidence"] as? NSNumber)?.floatValue ?? 0.6
-      apiOptions = .vision(confidence: confidence)
-    default:
       return nil
     }
 
@@ -103,34 +84,6 @@ struct CameraConfiguration {
       apiOptions: apiOptions
     )
   }
-
-  func copy(with args: Any?) -> CameraConfiguration? {
-    guard let dict = args as? [String: Any] else {
-      return nil
-    }
-
-    var updatedApiOptions = apiOptions
-    if let api = dict["api"] as? String {
-      let options = dict["options"] as? [String: Any] ?? [:]
-      switch api {
-      case "avfoundation":
-        updatedApiOptions = .avFoundation
-      case "vision":
-        let confidence = (options["confidence"] as? NSNumber)?.floatValue ?? 0.6
-        updatedApiOptions = .vision(confidence: confidence)
-      default:
-        return nil
-      }
-    }
-
-    return CameraConfiguration(
-      position: cameraPositions[dict["pos"] as? String ?? ""] ?? position,
-      performanceMode: PerformanceMode(rawValue: dict["mode"] as? String ?? "") ?? performanceMode,
-      detectionMode: DetectionMode(rawValue: dict["detectionMode"] as? String ?? "") ?? detectionMode,
-      codes: dict["types"] as? [String] ?? codes,
-      apiOptions: updatedApiOptions
-    )
-  }
 }
 
 let cameraPositions: [String: AVCaptureDevice.Position] = [
@@ -140,207 +93,107 @@ let cameraPositions: [String: AVCaptureDevice.Position] = [
 
 // MARK: - AVFoundation symbology mappings
 
+private let avSymbologyTable: [String: [AVMetadataObject.ObjectType]] = {
+  var map: [String: [AVMetadataObject.ObjectType]] = [
+    "aztec": [.aztec],
+    "code128": [.code128],
+    "code39": [.code39, .code39Mod43],
+    "code93": [.code93],
+    "dataMatrix": [.dataMatrix],
+    "ean13": [.ean13],
+    "ean8": [.ean8],
+    "itf": [.itf14, .interleaved2of5],
+    "pdf417": [.pdf417],
+    "qr": [.qr],
+    "upcA": [.ean13],
+    "upcE": [.upce],
+  ]
+  if #available(iOS 15.4, *) {
+    map["codabar"] = [.codabar]
+    map["gs1DataBar"] = [.gs1DataBar, .gs1DataBarExpanded, .gs1DataBarLimited]
+  }
+  return map
+}()
+
+private let avToFlutterMap: [AVMetadataObject.ObjectType: String] = {
+  var reverse: [AVMetadataObject.ObjectType: String] = [:]
+  for (name, types) in avSymbologyTable where name != "upcA" {
+    for type in types { reverse[type] = name }
+  }
+  return reverse
+}()
+
 func avMetadataObjectTypes(for flutterTypes: [String]) -> [AVMetadataObject.ObjectType] {
   var result: [AVMetadataObject.ObjectType] = []
-  var unsupported: [String] = []
-
-  func appendUnique(_ type: AVMetadataObject.ObjectType) {
-    if !result.contains(type) {
+  var seen = Set<AVMetadataObject.ObjectType>()
+  for name in flutterTypes {
+    guard let mapped = avSymbologyTable[name] else {
+      print("fast_barcode_scanner: Unsupported AVFoundation barcode type: \(name)")
+      continue
+    }
+    for type in mapped where seen.insert(type).inserted {
       result.append(type)
     }
   }
-
-  for name in flutterTypes {
-    switch name {
-    case "aztec":
-      appendUnique(.aztec)
-    case "codabar":
-      if #available(iOS 15.4, *) {
-        appendUnique(.codabar)
-      } else {
-        unsupported.append(name)
-      }
-    case "code128":
-      appendUnique(.code128)
-    case "code39":
-      appendUnique(.code39)
-      appendUnique(.code39Mod43)
-    case "code93":
-      appendUnique(.code93)
-    case "dataMatrix":
-      appendUnique(.dataMatrix)
-    case "ean13":
-      appendUnique(.ean13)
-    case "ean8":
-      appendUnique(.ean8)
-    case "gs1DataBar":
-      if #available(iOS 15.4, *) {
-        appendUnique(.gs1DataBar)
-        appendUnique(.gs1DataBarExpanded)
-        appendUnique(.gs1DataBarLimited)
-      } else {
-        unsupported.append(name)
-      }
-    case "itf":
-      appendUnique(.itf14)
-      appendUnique(.interleaved2of5)
-    case "pdf417":
-      appendUnique(.pdf417)
-    case "qr":
-      appendUnique(.qr)
-    case "upcA":
-      // UPC-A is reported by AVFoundation as EAN-13 with a leading "0".
-      appendUnique(.ean13)
-    case "upcE":
-      appendUnique(.upce)
-    default:
-      unsupported.append(name)
-    }
-  }
-
-  if !unsupported.isEmpty {
-    print("fast_barcode_scanner: Unsupported AVFoundation barcode types on this iOS version: \(unsupported)")
-  }
-
   return result
 }
 
 func flutterType(for avType: AVMetadataObject.ObjectType) -> String? {
-  if #available(iOS 15.4, *) {
-    switch avType {
-    case .codabar: return "codabar"
-    case .gs1DataBar, .gs1DataBarExpanded, .gs1DataBarLimited: return "gs1DataBar"
-    default: break
-    }
-  }
-
-  switch avType {
-  case .aztec: return "aztec"
-  case .code128: return "code128"
-  case .code39, .code39Mod43: return "code39"
-  case .code93: return "code93"
-  case .dataMatrix: return "dataMatrix"
-  case .ean13: return "ean13"
-  case .ean8: return "ean8"
-  case .itf14, .interleaved2of5: return "itf"
-  case .pdf417: return "pdf417"
-  case .qr: return "qr"
-  case .upce: return "upcE"
-  default: return nil
-  }
+  avToFlutterMap[avType]
 }
 
 // MARK: - Vision symbology mappings
 
+private let vnSymbologyTable: [String: [VNBarcodeSymbology]] = {
+  var map: [String: [VNBarcodeSymbology]] = [
+    "aztec": [.aztec],
+    "code128": [.code128],
+    "code39": [.code39, .code39Checksum, .code39FullASCII, .code39FullASCIIChecksum],
+    "code93": [.code93, .code93i],
+    "dataMatrix": [.dataMatrix],
+    "ean13": [.ean13],
+    "ean8": [.ean8],
+    "itf": [.itf14, .i2of5, .i2of5Checksum],
+    "pdf417": [.pdf417],
+    "qr": [.qr],
+    "upcA": [.ean13],
+    "upcE": [.upce],
+  ]
+  if #available(iOS 15.0, *) {
+    map["codabar"] = [.codabar]
+    map["gs1DataBar"] = [.gs1DataBar, .gs1DataBarExpanded, .gs1DataBarLimited]
+    map["pdf417"]?.append(.microPDF417)
+    map["qr"]?.append(.microQR)
+  }
+  if #available(iOS 17.0, *) {
+    map["msi"] = [.msiPlessey]
+  }
+  return map
+}()
+
+private let vnToFlutterMap: [VNBarcodeSymbology: String] = {
+  var reverse: [VNBarcodeSymbology: String] = [:]
+  for (name, symbologies) in vnSymbologyTable where name != "upcA" {
+    for symbology in symbologies { reverse[symbology] = name }
+  }
+  return reverse
+}()
+
 func vnBarcodeSymbologies(for flutterTypes: [String]) -> [VNBarcodeSymbology] {
   var result: [VNBarcodeSymbology] = []
-  var unsupported: [String] = []
-
-  func appendUnique(_ symbology: VNBarcodeSymbology) {
-    if !result.contains(symbology) {
+  var seen = Set<VNBarcodeSymbology>()
+  for name in flutterTypes {
+    guard let mapped = vnSymbologyTable[name] else {
+      print("fast_barcode_scanner: Unsupported Vision barcode type: \(name)")
+      continue
+    }
+    for symbology in mapped where seen.insert(symbology).inserted {
       result.append(symbology)
     }
   }
-
-  for name in flutterTypes {
-    switch name {
-    case "aztec":
-      appendUnique(.aztec)
-    case "codabar":
-      if #available(iOS 15.0, *) {
-        appendUnique(.codabar)
-      } else {
-        unsupported.append(name)
-      }
-    case "code128":
-      appendUnique(.code128)
-    case "code39":
-      appendUnique(.code39)
-      appendUnique(.code39Checksum)
-      appendUnique(.code39FullASCII)
-      appendUnique(.code39FullASCIIChecksum)
-    case "code93":
-      appendUnique(.code93)
-      appendUnique(.code93i)
-    case "dataMatrix":
-      appendUnique(.dataMatrix)
-    case "ean13":
-      appendUnique(.ean13)
-    case "ean8":
-      appendUnique(.ean8)
-    case "gs1DataBar":
-      if #available(iOS 15.0, *) {
-        appendUnique(.gs1DataBar)
-        appendUnique(.gs1DataBarExpanded)
-        appendUnique(.gs1DataBarLimited)
-      } else {
-        unsupported.append(name)
-      }
-    case "itf":
-      appendUnique(.itf14)
-      appendUnique(.i2of5)
-      appendUnique(.i2of5Checksum)
-    case "msi":
-      if #available(iOS 17.0, *) {
-        appendUnique(.msiPlessey)
-      } else {
-        unsupported.append(name)
-      }
-    case "pdf417":
-      appendUnique(.pdf417)
-      if #available(iOS 15.0, *) {
-        appendUnique(.microPDF417)
-      }
-    case "qr":
-      appendUnique(.qr)
-      if #available(iOS 15.0, *) {
-        appendUnique(.microQR)
-      }
-    case "upcA":
-      appendUnique(.ean13)
-    case "upcE":
-      appendUnique(.upce)
-    default:
-      unsupported.append(name)
-    }
-  }
-
-  if !unsupported.isEmpty {
-    print("fast_barcode_scanner: Unsupported Vision barcode types on this iOS version: \(unsupported)")
-  }
-
   return result
 }
 
 func flutterType(for vnSymbology: VNBarcodeSymbology) -> String? {
-  if #available(iOS 17.0, *) {
-    if vnSymbology == .msiPlessey {
-      return "msi"
-    }
-  }
-
-  if #available(iOS 15.0, *) {
-    switch vnSymbology {
-    case .codabar: return "codabar"
-    case .gs1DataBar, .gs1DataBarExpanded, .gs1DataBarLimited: return "gs1DataBar"
-    case .microPDF417: return "pdf417"
-    case .microQR: return "qr"
-    default: break
-    }
-  }
-
-  switch vnSymbology {
-  case .aztec: return "aztec"
-  case .code128: return "code128"
-  case .code39, .code39Checksum, .code39FullASCII, .code39FullASCIIChecksum: return "code39"
-  case .code93, .code93i: return "code93"
-  case .dataMatrix: return "dataMatrix"
-  case .ean13: return "ean13"
-  case .ean8: return "ean8"
-  case .itf14, .i2of5, .i2of5Checksum: return "itf"
-  case .pdf417: return "pdf417"
-  case .qr: return "qr"
-  case .upce: return "upcE"
-  default: return nil
-  }
+  vnToFlutterMap[vnSymbology]
 }
