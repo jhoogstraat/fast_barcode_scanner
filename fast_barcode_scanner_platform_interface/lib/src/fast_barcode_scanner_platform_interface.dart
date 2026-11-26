@@ -1,75 +1,122 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import 'method_channel_fast_barcode_scanner.dart';
 import 'types/barcode.dart';
 import 'types/barcode_type.dart';
-import 'types/preview_configuration.dart';
-import 'method_channel_fast_barcode_scanner.dart';
+import 'types/camera_information.dart';
+import 'types/image_source.dart';
 
-/// The interface that implementations of fast_barcode_scanner must implement.
+/// A callback that receives all uniquely scanned barcodes in a camera frame.
+typedef OnDetectionHandler = void Function(List<Barcode> barcodes);
+
+/// The common platform interface for `fast_barcode_scanner`.
 ///
-/// Platform implementations should extend this class rather than implement it as `fast_barcode_scanner`
-/// does not consider newly added methods to be breaking changes. Extending this class
-/// (using `extends`) ensures that the subclass will get the default implementation, while
-/// platform implementations that `implements` this interface will be broken by newly added
-/// [FastBarcodeScannerPlatform] methods.
+/// Platform implementations should `extend` this class rather than `implement`
+/// it so that newly added methods provide default implementations.
 abstract class FastBarcodeScannerPlatform extends PlatformInterface {
+  /// Constructs a [FastBarcodeScannerPlatform].
   FastBarcodeScannerPlatform() : super(token: _token);
 
-  static const Object _token = Object();
+  static final Object _token = Object();
 
   static FastBarcodeScannerPlatform _instance =
       MethodChannelFastBarcodeScanner();
 
-  /// The default instance of [FastBarcodeScannerPlatform] to use.
+  /// The active [FastBarcodeScannerPlatform] implementation.
   ///
   /// Defaults to [MethodChannelFastBarcodeScanner].
   static FastBarcodeScannerPlatform get instance => _instance;
 
-  /// Platform specific plugins should set this with their own platform-specific
-  /// class that extends [FastBarcodeScannerPlatform] when they register themselves.
+  /// Sets a custom [FastBarcodeScannerPlatform] implementation (for example,
+  /// a platform-specific package or a mock in tests).
   static set instance(FastBarcodeScannerPlatform instance) {
-    PlatformInterface.verifyToken(instance, _token);
+    PlatformInterface.verify(instance, _token);
     _instance = instance;
   }
 
-  /// Returns a [PreviewConfiguration] containing the parameters with
-  /// which the camera is set up.
+  /// Initializes and starts the native camera and barcode scanner.
   ///
-  Future<PreviewConfiguration> init(
-      List<BarcodeType> types,
-      Resolution resolution,
-      Framerate framerate,
-      DetectionMode detectionMode,
-      CameraPosition position) {
-    throw UnimplementedError('init() has not been implemented');
+  /// Returns the [CameraInformation] describing the active stream.
+  Future<CameraInformation> init(
+    List<BarcodeType> types,
+    PerformanceMode mode,
+    DetectionMode detectionMode,
+    CameraPosition position,
+    ApiMode api,
+  ) {
+    throw UnimplementedError('init() has not been implemented.');
   }
 
-  /// Pauses the camera on the platform.
-  Future<void> pause() {
-    throw UnimplementedError('pause() has not been implemented');
+  /// Registers the callback invoked whenever barcodes are detected.
+  void setOnDetectionHandler(OnDetectionHandler handler) {
+    throw UnimplementedError(
+        'setOnDetectionHandler() has not been implemented.');
   }
 
-  /// Resumes the camera from the paused state on the platform.
-  Future<void> resume() {
-    throw UnimplementedError('resume() has not been implemented');
+  /// Starts (or resumes) the camera preview and barcode detector.
+  Future<void> start() {
+    throw UnimplementedError('start() has not been implemented.');
   }
 
-  /// Stops and clears the camera ressources.
-  Future<void> dispose() {
-    throw UnimplementedError('dispose() has not been implemented');
+  /// Stops (or pauses) the camera preview and barcode detector.
+  Future<void> stop() {
+    throw UnimplementedError('stop() has not been implemented.');
   }
 
-  /// Toggles the torch, if available.
+  /// Resumes the barcode detector while the camera preview is running.
+  Future<void> startDetector() {
+    throw UnimplementedError('startDetector() has not been implemented.');
+  }
+
+  /// Pauses the barcode detector while keeping the camera preview running.
+  Future<void> stopDetector() {
+    throw UnimplementedError('stopDetector() has not been implemented.');
+  }
+
+  /// Toggles the camera torch (flashlight), if available on the active camera.
+  ///
+  /// Returns `true` if the torch is now turned on, `false` otherwise.
   Future<bool> toggleTorch() {
-    throw UnimplementedError('toggleTorch() has not been implemented');
+    throw UnimplementedError('toggleTorch() has not been implemented.');
   }
 
-  Future<bool> changeCamera(CameraPosition position) {
-    throw UnimplementedError('changeCamera() has not been implemented');
+  /// Sets the camera zoom factor.
+  ///
+  /// The value is clamped on the native side to `[minZoom, maxZoom]` reported
+  /// in [CameraInformation]. Returns the applied zoom factor.
+  Future<double> setZoom(double zoomFactor) {
+    throw UnimplementedError('setZoom() has not been implemented.');
   }
 
-  /// Set the method to be called when a barcode is detected
-  void setOnDetectHandler(void Function(Barcode) handler) {
-    throw UnimplementedError('setOnReadHandler() has not been implemented');
+  /// Returns `true` if the device supports switching between front and back
+  /// cameras.
+  Future<bool> canSwitchCamera() {
+    throw UnimplementedError('canSwitchCamera() has not been implemented.');
+  }
+
+  /// Updates the active camera and scanner configuration.
+  ///
+  /// Any `null` parameter retains its current value. Returns the updated
+  /// [CameraInformation].
+  Future<CameraInformation> changeConfiguration({
+    List<BarcodeType>? types,
+    PerformanceMode? mode,
+    DetectionMode? detectionMode,
+    CameraPosition? position,
+  }) {
+    throw UnimplementedError('changeConfiguration() has not been implemented.');
+  }
+
+  /// Stops the camera and releases all native resources.
+  Future<void> dispose() {
+    throw UnimplementedError('dispose() has not been implemented.');
+  }
+
+  /// Scans a still image from [source] independently of the live camera.
+  ///
+  /// Returns `null` if the user cancelled the native image picker, an empty
+  /// list if no barcodes were found, or the list of detected [Barcode]s.
+  Future<List<Barcode>?> scanImage(ImageSource source) {
+    throw UnimplementedError('scanImage() has not been implemented.');
   }
 }

@@ -1,22 +1,19 @@
-## 1.0.4
+## 2.0.0
 
-* Smaller code cleanups
-* Updated CameraX and ML Kit to latest versions.
+- Finalized v2.0.0 platform interface API (`PerformanceMode`, `DetectionMode`, `CameraPosition`, `ApiMode`, `AppleApiMode`, `AVFoundationApiMode`, `VisionApiMode`, `AndroidApiMode`).
+- Added `setZoom(double)` and `canSwitchCamera()` to `FastBarcodeScannerPlatform` and `MethodChannelFastBarcodeScanner`.
+- Extended `CameraInformation` with `textureId`, `sensorOrientation`, `minZoom`, and `maxZoom`.
+- Updated `Barcode` to expose `Rect? boundingBox` and `List<Offset>? cornerPoints` with proper value equality and `Object.hash`.
+- Converted `ImageSource` to a sealed class (`BinaryImageSource`, `PickerImageSource`) with `ImageSource.bytes(...)` convenience factory.
+- Fixed `MethodChannelFastBarcodeScanner.init` serializing `PerformanceMode` enum instead of `mode.name`.
+- Added comprehensive unit test suite.
 
-## 1.0.3
+## 2.0.0-dev.2
 
-* Camera position now taken into account on Android.
-* Fix DetectionMode.pauseDetection on Android.
-* Updated CameraX to v1.1.0-alpha05
+- Refactoring
+- Moved detections to separate event channel
 
-## 1.0.2
+## 2.0.0-dev.1
 
-* Even more documentation.
-
-## 1.0.1
-
-* Updated documentation.
-
-## 1.0.0
-
-* Initial release.
+- Add ability to update the scanner configuration.
+- Add ability to request a single image detection.

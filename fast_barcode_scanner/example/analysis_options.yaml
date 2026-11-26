@@ -1,1 +1,10 @@
 include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Keep compatibility with Flutter 3.27+ while Flutter 3.47+ migrates material.dart.
+    deprecated_member_use: ignore
+  exclude:
+    - build/**
+    - android/**
+    - ios/**

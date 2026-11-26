@@ -1,40 +1,41 @@
-## 1.1.4
+## 2.0.0
 
-- Fixes `pauseDetector` on iOS
-- Fixes no error reported when permissions are denied on Android
-- Updates CameraX (compileSdk is now 31)
+### Highlights
+- **Stable v2.0.0 release** with unified cross-platform wire protocol across Dart, iOS (Swift), and Android (Kotlin).
+- **Modernized Android stack**: Kotlin DSL (`build.gradle.kts`), AGP 9.3.1 / Gradle 9.5, Kotlin 2.4.20, `namespace` support, `compileSdk 36`, `minSdk 24`, Java 17, CameraX 1.4.1, ML Kit 17.3.0, and zero-copy Flutter `Texture` preview rendering.
+- **Hardened iOS stack**: Dedicated serial `AVCaptureSession` queue (eliminating main-thread warnings and background `EXC_BAD_ACCESS` crashes), PrivacyInfo manifest bundled in podspec, full AVFoundation + Vision symbology support (including Codabar, GS1 DataBar, GS1 DataMatrix, and MSI on iOS 17+).
 
-## 1.1.3
+### New Features
+- **Zoom control**: `CameraController.setZoom(double)` and built-in pinch-to-zoom on `BarcodeCamera` (`enablePinchToZoom`).
+- **Camera switching**: `CameraController.canSwitchCamera()` and `CameraController.switchCamera()`, plus live `configure(position: ...)`.
+- **Landscape & orientation support**: Automatic orientation handling on both iOS (`AVCaptureVideoPreviewLayer`) and Android (`Texture` + CameraX display rotation).
+- **Barcode corner points**: `Barcode.boundingBox` (`Rect?`) and `Barcode.cornerPoints` (`List<Offset>?`) returned on both iOS and Android, wired into `CodeBoundaryOverlay` and `MaterialPreviewOverlay`.
+- **Hot Restart resilience**: Re-initializing cleanly disposes any stale native camera session instead of failing with `ALREADY_INITIALIZED`.
+- **Automatic app lifecycle management**: `BarcodeCamera` automatically pauses/resumes the camera when the app moves to/from background.
 
-- Remove references to FlutterActivity (required by local_auth package)
+### Bug Fixes
+- Fixed `startDetector` / `stopDetector` method name mismatch on iOS.
+- Fixed first-launch black screen on Android after granting camera permission.
+- Fixed crash on Android when denying camera permission.
+- Fixed Android `CameraInformation.serialized()` returning `Unit` and `scanImage` double-submitting results / using unsupported `Bitmap.Config.HARDWARE`.
+- Fixed iOS `VisionBarcodeScanner` firing empty detections and potential main-queue deadlock.
+- Fixed `CameraController` ignoring `PlatformException` (previously caught `Error` instead of `Object`) and leaking `_isConfiguringLock` on failure.
+- Fixed `MaterialPreviewOverlay` ROI filtering (previously had `analysisSize = null`).
+- Removed dependency on `package:flutter/material.dart` inside the plugin library so it works in Cupertino and Widgets-only apps.
 
-## 1.1.2
+## 2.0.0-dev.2
 
-- Fixed a bug where the app would crash when denying permissions on iOS.
-- Smaller code cleanups
-- Updated CameraX and ML Kit to latest versions.
+- Analyze still images from binary or native image pickers on iOS and Android
+- Added options to customize the QR scanner: sensingColor, backgroundColor, cutOutShape, cutOutBorderColor
+- Added first tests
+- Even more refactoring
+- Simplified Readme
 
-## 1.1.1
+## 2.0.0-dev.1
 
-- Camera position now taken into account on Android.
-- Fix DetectionMode.pauseDetection on Android.
-- Updated CameraX to v1.1.0-alpha05
-
-## 1.1.0
-
-- Relaxed kotlin version to 1.3.50
-- Updated MLKit version (16.1.2)
-- The camera state now contains the torch state (on/off)
-- Fixed toggling the torch in the example project
-
-## 1.0.2
-
-- Even more documentation.
-
-## 1.0.1
-
-- Updated documentation.
-
-## 1.0.0
-
-- Initial pre-release.
+- Added ability to change the scanner configuration while running
+- Restructured and simplified native code on iOS and Android
+- Fully implemented error handling
+- UPC-A is now correctly reported on iOS (EAN-13 with a leading 0 is regarded as UPC-A).
+- Massively improved sample app with controls over all features.
+- Updated CameraX and ML Kit to the newest versions

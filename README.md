@@ -1,30 +1,33 @@
-# Flutter Barcode Scanner Plugin
+# Flutter Fast Barcode Scanner
+
+A fast, modern Flutter barcode & QR code scanning plugin powered by native platform APIs (**CameraX + ML Kit** on Android, **AVFoundation / Vision** on iOS).
 
 ## Packages
 
-### fast_barcode_scanner:
-code for the cross-platform facing plugin, used to display a camera view within Flutter applications
+### [fast_barcode_scanner](fast_barcode_scanner/)
 
-[![pub package](https://img.shields.io/pub/v/fast_barcode_scanner.svg)](https://pub.dartlang.org/packages/fast_barcode_scanner)
+[![Pub Version](https://img.shields.io/pub/v/fast_barcode_scanner?style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner)
 
-### fast_barcode_scanner_platform_interface:
-code for the common platform interface
+The main Flutter plugin providing `BarcodeCamera`, `CameraController`, built-in overlays, and native iOS/Android implementations.
 
-[![pub package](https://img.shields.io/pub/v/fast_barcode_scanner_platform_interface.svg)](https://pub.dartlang.org/packages/fast_barcode_scanner_platform_interface)
+### [fast_barcode_scanner_platform_interface](fast_barcode_scanner_platform_interface/)
 
-Most developers are likely here as they are looking to use the fast_barcode_scanner plugin. There is a readme file within each directory with more information.
+[![Pub Version](https://img.shields.io/pub/v/fast_barcode_scanner_platform_interface?style=for-the-badge)](https://pub.dev/packages/fast_barcode_scanner_platform_interface)
 
+The common platform interface shared across implementations.
 
-## Issues
+## Development
 
-If you run into bugs, please raise them on the GitHub repository.
-Please do not email them to me, as GitHub is the appropriate place for them and allows for members of the community to answer questions, particularly if I miss the email.
+This repository uses a Dart Pub Workspace (`pubspec.yaml` at the root):
 
-It would also be much appreciated if issues could be limited to actual bugs or feature requests.
-If you're looking at how you could use the plugin to do a particular kind of notification, check the example app, which provides detailed code samples for each supported feature.
-Also try to check the READMEs first in case you have missed something e.g. platform-specific setup.
+```bash
+flutter pub get
+flutter analyze
+(cd fast_barcode_scanner_platform_interface && flutter test)
+(cd fast_barcode_scanner && flutter test)
+(cd fast_barcode_scanner/example && flutter test)
+```
 
+## Issues & Contributions
 
-## Contributions
-
-The guidelines around submitting pull requests can be found in  [CONTRIBUTING.md](CONTRIBUTING.md).
+Please report bugs and feature requests via [GitHub Issues](https://github.com/jhoogstraat/fast_barcode_scanner/issues). See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
