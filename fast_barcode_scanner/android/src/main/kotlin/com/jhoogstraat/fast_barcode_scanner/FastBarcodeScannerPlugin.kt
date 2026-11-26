@@ -1,21 +1,19 @@
 package com.jhoogstraat.fast_barcode_scanner
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Point
+import android.graphics.Rect
 import android.net.Uri
 import android.provider.MediaStore
-import androidx.annotation.NonNull
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.jhoogstraat.fast_barcode_scanner.types.CameraInformation
 import com.jhoogstraat.fast_barcode_scanner.types.ScannerException
@@ -34,8 +32,13 @@ import io.flutter.plugin.common.PluginRegistry
 import java.io.IOException
 
 /** FastBarcodeScannerPlugin */
-class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler, ActivityAware,
+class FastBarcodeScannerPlugin :
+    FlutterPlugin,
+    MethodCallHandler,
+    StreamHandler,
+    ActivityAware,
     PluginRegistry.ActivityResultListener {
+
     private var commandChannel: MethodChannel? = null
     private var detectionChannel: EventChannel? = null
     private var detectionEventSink: EventSink? = null
@@ -44,7 +47,13 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
     private var activityBinding: ActivityPluginBinding? = null
     private var camera: Camera? = null
 
-    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    private var pickImageCompleter: TaskCompletionSource<Uri?>? = null
+
+    companion object {
+        private const val PICK_IMAGE_REQUEST_CODE = 4210
+    }
+
+    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         commandChannel = MethodChannel(
             flutterPluginBinding.binaryMessenger,
             "com.jhoogstraat/fast_barcode_scanner"
@@ -53,19 +62,21 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
             flutterPluginBinding.binaryMessenger,
             "com.jhoogstraat/fast_barcode_scanner/detections"
         )
-
         pluginBinding = flutterPluginBinding
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        commandChannel?.setMethodCallHandler(null)
+        detectionChannel?.setStreamHandler(null)
+        commandChannel = null
+        detectionChannel = null
         pluginBinding = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        commandChannel!!.setMethodCallHandler(this)
-        detectionChannel!!.setStreamHandler(this)
+        commandChannel?.setMethodCallHandler(this)
+        detectionChannel?.setStreamHandler(this)
         activityBinding = binding
-
         binding.addActivityResultListener(this)
     }
 
@@ -75,9 +86,6 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         commandChannel?.setMethodCallHandler(null)
         detectionChannel?.setStreamHandler(null)
         activityBinding?.removeActivityResultListener(this)
-
-        commandChannel = null
-        detectionChannel = null
         activityBinding = null
     }
 
@@ -89,8 +97,9 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         onDetachedFromActivity()
     }
 
-    /* Detections EventChannel */
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+    // MARK: EventChannel.StreamHandler
+
+    override fun onListen(arguments: Any?, events: EventSink?) {
         detectionEventSink = events
     }
 
@@ -98,48 +107,85 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         detectionEventSink = null
     }
 
-    /* Command MethodChannel */
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+    // MARK: MethodChannel.MethodCallHandler
+
+    override fun onMethodCall(call: MethodCall, result: Result) {
         try {
             var response: Any? = null
 
             when (call.method) {
                 "init" -> {
-                    initialize(call.arguments as HashMap<String, Any>)
+                    val args = call.arguments as? Map<*, *>
+                        ?: throw ScannerException.InvalidArguments(call.arguments)
+                    initialize(args)
                         .addOnSuccessListener { result.success(it.serialized()) }
-                        .addOnFailureListener { (it as ScannerException).throwFlutterError(result) }
+                        .addOnFailureListener { error ->
+                            dispose()
+                            val scannerError = error as? ScannerException
+                                ?: ScannerException.Unknown(error)
+                            scannerError.throwFlutterError(result)
+                        }
                     return
                 }
+
                 "scan" -> {
                     scanImage(call.arguments)
                         .addOnSuccessListener { barcodes ->
-                            result.success(barcodes?.map { encode(listOf(it)) })
+                            result.success(barcodes?.let { encode(it) })
                         }
-                        .addOnFailureListener { (it as ScannerException).throwFlutterError(result) }
+                        .addOnFailureListener { error ->
+                            val scannerError = error as? ScannerException
+                                ?: ScannerException.Unknown(error)
+                            scannerError.throwFlutterError(result)
+                        }
+                    return
                 }
+
+                "dispose" -> {
+                    dispose()
+                }
+
                 else -> {
-                    val camera = this.camera ?: throw ScannerException.NotInitialized()
+                    val activeCamera = this.camera ?: throw ScannerException.NotInitialized()
                     when (call.method) {
-                        "start" -> camera.startCamera()
-                        "stop" -> camera.stopCamera()
-                        "startDetector" -> camera.startDetector()
-                        "stopDetector" -> camera.stopDetector()
-                        "config" -> response =
-                            camera.changeConfiguration(call.arguments as HashMap<String, Any>)
-                                .serialized()
+                        "start" -> activeCamera.startCamera()
+                        "stop" -> activeCamera.stopCamera()
+                        "startDetector" -> activeCamera.startDetector()
+                        "stopDetector" -> activeCamera.stopDetector()
+                        "canSwitchCamera" -> response = activeCamera.canSwitchCamera()
+                        "setZoom" -> {
+                            val zoomFactor = (call.arguments as? Number)?.toDouble()
+                                ?: throw ScannerException.InvalidArguments(call.arguments)
+                            response = activeCamera.setZoom(zoomFactor)
+                        }
+                        "config" -> {
+                            val args = call.arguments as? Map<*, *>
+                                ?: throw ScannerException.InvalidArguments(call.arguments)
+                            response = activeCamera.changeConfiguration(args).serialized()
+                        }
                         "torch" -> {
-                            camera.toggleTorch()
-                                .addListener(
-                                    { result.success(camera.torchState) },
-                                    ContextCompat.getMainExecutor(camera.activity)
-                                )
+                            val future = activeCamera.toggleTorch()
+                            future.addListener(
+                                {
+                                    try {
+                                        future.get()
+                                        result.success(activeCamera.torchState)
+                                    } catch (e: Exception) {
+                                        ScannerException.Unknown(e).throwFlutterError(result)
+                                    }
+                                },
+                                ContextCompat.getMainExecutor(activeCamera.activity)
+                            )
                             return
                         }
-                        "dispose" -> dispose()
-                        else -> result.notImplemented()
+                        else -> {
+                            result.notImplemented()
+                            return
+                        }
                     }
                 }
             }
+
             result.success(response)
         } catch (e: ScannerException) {
             e.throwFlutterError(result)
@@ -148,131 +194,153 @@ class FastBarcodeScannerPlugin : FlutterPlugin, MethodCallHandler, StreamHandler
         }
     }
 
-    /**
-     * each barcode comes with an optional set of 4 points for each of the corners of the scanned code.
-     * In order to send this over the event channel we will serialize this point list as a list of arrays
-     * [[x,y], [x,y], [x,y], [x,y]]
-     */
-    private fun buildPointList(points: Array<Point>?): List<List<Int>>? {
-        return points?.map { listOf(it.x, it.y) }
+    private fun buildBoundingBox(rect: Rect?): List<Double>? {
+        return rect?.let {
+            listOf(
+                it.left.toDouble(),
+                it.top.toDouble(),
+                it.right.toDouble(),
+                it.bottom.toDouble()
+            )
+        }
     }
 
-    private fun encode(barcodes: List<Barcode>): List<List<*>> {
-        return barcodes.map { listOf(
-                barcodeStringMap[it.format],
-                it.rawValue,
-                it.valueType,
-                buildPointList(it.cornerPoints)
-        ) }
+    private fun buildPointList(points: Array<Point>?): List<List<Double>>? {
+        return points?.map { listOf(it.x.toDouble(), it.y.toDouble()) }
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun initialize(configuration: HashMap<String, Any>): Task<CameraInformation> {
-        if (this.camera != null)
-            throw ScannerException.AlreadyInitialized()
+    private fun encode(barcodes: List<Barcode>): List<List<Any?>> {
+        return barcodes.mapNotNull { barcode ->
+            val type = barcodeStringMap[barcode.format] ?: return@mapNotNull null
+            val rawValue = barcode.rawValue ?: return@mapNotNull null
+            listOf(
+                type,
+                rawValue,
+                buildBoundingBox(barcode.boundingBox),
+                buildPointList(barcode.cornerPoints)
+            )
+        }
+    }
+
+    private fun initialize(configuration: Map<*, *>): Task<CameraInformation> {
+        // Gracefully clean up any previous camera (for example, after a Flutter Hot Restart).
+        if (this.camera != null) {
+            dispose()
+        }
 
         val pluginBinding = this.pluginBinding ?: throw ScannerException.ActivityNotConnected()
         val activityBinding = this.activityBinding ?: throw ScannerException.ActivityNotConnected()
 
-        val camera = Camera(
-            activityBinding.activity,
-            pluginBinding.textureRegistry.createSurfaceTexture(),
-            configuration
+        val newCamera = Camera(
+            activity = activityBinding.activity,
+            flutterTextureEntry = pluginBinding.textureRegistry.createSurfaceTexture(),
+            args = configuration
         ) { barcodes ->
-            detectionEventSink?.success(encode(barcodes))
+            val encoded = encode(barcodes)
+            if (encoded.isNotEmpty()) {
+                activityBinding.activity.runOnUiThread {
+                    detectionEventSink?.success(encoded)
+                }
+            }
         }
 
-        this.camera = camera
+        this.camera = newCamera
+        activityBinding.addRequestPermissionsResultListener(newCamera)
 
-        activityBinding.addRequestPermissionsResultListener(camera)
-
-        return camera.requestPermissions()
-            .continueWithTask { camera.loadCamera() }
+        return newCamera.requestPermissions()
+            .continueWithTask { permissionTask ->
+                if (!permissionTask.isSuccessful) {
+                    val error = permissionTask.exception ?: ScannerException.Unauthorized()
+                    Tasks.forException(error)
+                } else {
+                    newCamera.loadCamera()
+                }
+            }
     }
 
     private fun dispose() {
-        camera?.also {
-            it.stopCamera()
-            it.flutterTextureEntry.release()
-            activityBinding?.removeRequestPermissionsResultListener(it)
+        camera?.let { activeCamera ->
+            activityBinding?.removeRequestPermissionsResultListener(activeCamera)
+            activeCamera.dispose()
         }
-
         camera = null
     }
 
-    private var pickImageCompleter: TaskCompletionSource<Uri?>? = null
     private fun scanImage(source: Any?): Task<List<Barcode>?> {
-        val options =
-            BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build()
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+            .build()
         val scanner = BarcodeScanning.getClient(options)
 
         return when (source) {
-            // Binary
             is List<*> -> {
-                val options = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.HARDWARE }
-                val bitmap = BitmapFactory.decodeByteArray(
-                    source[0] as ByteArray,
-                    0,
-                    (source[0] as ByteArray).size,
-                    options
-                )
-                if (bitmap == null) {
-                    throw ScannerException.InvalidImageData()
-                }
+                val bytes = source.getOrNull(0) as? ByteArray
+                    ?: throw ScannerException.InvalidImageData()
+                val rotation = (source.getOrNull(1) as? Number)?.toInt() ?: 0
 
-                scanner.process(
-                    InputImage.fromBitmap(bitmap, 0)
-                )
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    ?: throw ScannerException.InvalidImageData()
+
+                scanner.process(InputImage.fromBitmap(bitmap, rotation))
+                    .addOnCompleteListener { scanner.close() }
             }
 
-            // Picker
             else -> {
-                if (pickImageCompleter?.task?.isComplete == false)
+                if (pickImageCompleter?.task?.isComplete == false) {
+                    scanner.close()
                     throw ScannerException.AlreadyPicking()
+                }
 
-                val activityBinding =
-                    activityBinding ?: throw ScannerException.ActivityNotConnected()
+                val binding = activityBinding ?: run {
+                    scanner.close()
+                    throw ScannerException.ActivityNotConnected()
+                }
 
                 val intent = Intent(
                     Intent.ACTION_PICK,
-                    MediaStore.Images.Media.INTERNAL_CONTENT_URI
-                )
-                intent.type = "image/*"
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                ).apply {
+                    type = "image/*"
+                }
 
-                this.pickImageCompleter = TaskCompletionSource<Uri?>()
+                val completer = TaskCompletionSource<Uri?>()
+                pickImageCompleter = completer
 
-                activityBinding.activity.startActivityForResult(intent, 1)
+                binding.activity.startActivityForResult(intent, PICK_IMAGE_REQUEST_CODE)
 
-                return pickImageCompleter!!.task.continueWithTask {
-                    if (it.result == null) Tasks.forResult(null) else
-                        scanner.process(InputImage.fromFilePath(activityBinding.activity, it.result as Uri))
+                completer.task.continueWithTask { uriTask ->
+                    val uri = uriTask.result
+                    if (uri == null) {
+                        scanner.close()
+                        Tasks.forResult(null)
+                    } else {
+                        try {
+                            val inputImage = InputImage.fromFilePath(binding.activity, uri)
+                            scanner.process(inputImage)
+                                .addOnCompleteListener { scanner.close() }
+                        } catch (e: IOException) {
+                            scanner.close()
+                            Tasks.forException(ScannerException.LoadingFailed(e))
+                        }
+                    }
                 }
             }
         }
     }
 
-    /* Activity Result Listener for picking images from Intent */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != 1) {
+        if (requestCode != PICK_IMAGE_REQUEST_CODE) {
             return false
         }
 
         val completer = pickImageCompleter ?: return false
-
-        when (resultCode) {
-            Activity.RESULT_OK -> {
-                try {
-                    completer.setResult(data?.data)
-                } catch (e: IOException) {
-                    completer.setException(ScannerException.LoadingFailed(e))
-                }
-            }
-            else -> {
-                completer.setResult(null)
-            }
-        }
-
         pickImageCompleter = null
+
+        if (resultCode == Activity.RESULT_OK) {
+            completer.trySetResult(data?.data)
+        } else {
+            completer.trySetResult(null)
+        }
 
         return true
     }

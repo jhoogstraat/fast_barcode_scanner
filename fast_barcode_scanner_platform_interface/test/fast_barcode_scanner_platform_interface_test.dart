@@ -14,7 +14,7 @@ void main() {
     expect(() {
       FastBarcodeScannerPlatform.instance =
           ImplementsFastBarcodeScannerPlatform();
-    }, throwsNoSuchMethodError);
+    }, throwsAssertionError);
   });
 
   test('Can be extended', () {

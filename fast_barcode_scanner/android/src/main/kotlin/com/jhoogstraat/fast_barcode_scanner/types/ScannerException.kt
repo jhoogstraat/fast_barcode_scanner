@@ -11,21 +11,17 @@ sealed class ScannerException : Exception() {
     class NoInputDeviceForConfig(val configuration: ScannerConfiguration) : ScannerException()
     class Unauthorized : ScannerException()
     class ConfigurationException(val error: Exception) : ScannerException()
-    class InvalidArguments(val args: HashMap<String, Any>) : ScannerException()
+    class InvalidArguments(val args: Any?) : ScannerException()
     class InvalidCodeType(val type: String) : ScannerException()
-    class InvalidImageData() : ScannerException()
+    class InvalidImageData : ScannerException()
     class LoadingFailed(val error: IOException) : ScannerException()
     class AnalysisFailed(val error: Exception) : ScannerException()
-    class AlreadyPicking() : ScannerException()
+    class AlreadyPicking : ScannerException()
     class Unknown(val error: Exception) : ScannerException()
-    class CameraNotSuitable(val resolution: Resolution, val framerate: Framerate) :
-        ScannerException()
-
-    /* Android specific */
     class ActivityNotConnected : ScannerException()
 
     fun throwFlutterError(result: Result) {
-        return when (this) {
+        when (this) {
             is AlreadyInitialized -> result.error(
                 "ALREADY_INITIALIZED",
                 "Camera is already initialized",
@@ -38,11 +34,6 @@ sealed class ScannerException : Exception() {
             )
             is NotRunning -> result.error("NOT_RUNNING", "Camera is not running", null)
             is AlreadyRunning -> result.error("ALREADY_RUNNING", "Camera is already running", null)
-            is CameraNotSuitable -> result.error(
-                "CAMERA_NOT_SUITABLE",
-                "The camera does not support the requested resolution and framerate combination",
-                "$resolution $framerate"
-            )
             is ConfigurationException -> result.error(
                 "CONFIGURATION_FAILED",
                 "The configuration could not be applied",
@@ -50,7 +41,7 @@ sealed class ScannerException : Exception() {
             )
             is NoInputDeviceForConfig -> result.error(
                 "NO_INPUT_DEVICE",
-                "No input device found for configuration. Are you using a simulator?",
+                "No input device found for configuration. Are you using an emulator without a camera?",
                 "$configuration"
             )
             is Unauthorized -> result.error(
@@ -61,19 +52,23 @@ sealed class ScannerException : Exception() {
             is InvalidArguments -> result.error(
                 "INVALID_ARGUMENT",
                 "Invalid arguments provided",
-                args
+                args?.toString()
             )
             is InvalidCodeType -> result.error("INVALID_CODE", "Invalid code type", type)
             is ActivityNotConnected -> result.error("NO_ACTIVITY", "No activity is connected", null)
-            is InvalidImageData -> result.error("INVALID_IMAGEDATA", "Could not parse image byte array", null)
+            is InvalidImageData -> result.error(
+                "INVALID_IMAGEDATA",
+                "Could not parse image byte array",
+                null
+            )
             is LoadingFailed -> result.error(
                 "LOADING_FAILED",
-                "Could not load asset",
+                "Could not load image",
                 error.localizedMessage
             )
             is AnalysisFailed -> result.error(
                 "ANALYSIS_FAILED",
-                "Could not analyse asset",
+                "Could not analyze image",
                 error.localizedMessage
             )
             is AlreadyPicking -> result.error(

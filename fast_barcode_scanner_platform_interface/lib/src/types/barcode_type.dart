@@ -1,53 +1,52 @@
-/// The currently supported barcode types.
+/// The supported barcode symbologies.
 ///
 /// Sources:
-///
 /// - https://developer.apple.com/documentation/vision/vnbarcodesymbology
 /// - https://developer.apple.com/documentation/avfoundation/avmetadatamachinereadablecodeobject/machine-readable_object_types
 /// - https://developers.google.com/android/reference/com/google/mlkit/vision/barcode/common/Barcode.BarcodeFormat
 enum BarcodeType {
-  /// iOS, Android
+  /// Aztec 2D barcode (iOS, Android).
   aztec,
 
-  /// iOS, Android
+  /// Codabar 1D barcode (iOS 15.4+, Android).
   codabar,
 
-  /// iOS, Android
+  /// Code 128 1D barcode (iOS, Android).
   code128,
 
-  /// iOS, Android
+  /// Code 39 1D barcode (iOS, Android).
   code39,
 
-  /// iOS, Android
+  /// Code 93 1D barcode (iOS, Android).
   code93,
 
-  /// iOS, Android
+  /// Data Matrix 2D barcode, including GS1 DataMatrix (iOS, Android).
   dataMatrix,
 
-  /// iOS, Android
+  /// EAN-13 1D barcode (iOS, Android).
   ean13,
 
-  /// iOS, Android
+  /// EAN-8 1D barcode (iOS, Android).
   ean8,
 
-  /// iOS
+  /// GS1 DataBar 1D barcode (iOS 15.4+ Vision / iOS 15.4+ AVFoundation).
   gs1DataBar,
 
-  /// iOS, Android
+  /// Interleaved 2 of 5 / ITF-14 1D barcode (iOS, Android).
   itf,
 
-  /// iOS
+  /// MSI Plessey 1D barcode (iOS 17+ Vision).
   msi,
 
-  /// iOS, Android
+  /// PDF417 2D stacked barcode (iOS, Android).
   pdf417,
 
-  /// iOS, Android
+  /// QR Code 2D barcode (iOS, Android).
   qr,
 
-  /// iOS, Android
+  /// UPC-A 1D barcode (iOS, Android).
   upcA,
 
-  /// iOS, Android
-  upcE
+  /// UPC-E 1D barcode (iOS, Android).
+  upcE,
 }

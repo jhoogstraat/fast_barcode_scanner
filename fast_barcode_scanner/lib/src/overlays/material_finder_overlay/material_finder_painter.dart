@@ -1,7 +1,5 @@
 import 'package:fast_barcode_scanner/src/overlays/rect_of_interest.dart';
-import 'package:flutter/material.dart';
-
-import '../../../fast_barcode_scanner.dart';
+import 'package:flutter/widgets.dart';
 
 /// The MaterialFinderPainter draws a box around the [rectOfInterest] as well as
 /// an optional "scan line" as a guide for the user to locate the desired code
@@ -13,7 +11,7 @@ class MaterialFinderPainter extends CustomPainter {
     required this.rectOfInterest,
     this.inflate = 0.0,
     this.opacity = 1.0,
-    this.sensingColor = Colors.white,
+    this.sensingColor = const Color(0xFFFFFFFF),
   });
 
   final double inflate;

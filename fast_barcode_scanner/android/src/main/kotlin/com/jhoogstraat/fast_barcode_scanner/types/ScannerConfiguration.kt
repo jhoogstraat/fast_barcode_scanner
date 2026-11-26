@@ -3,42 +3,72 @@ package com.jhoogstraat.fast_barcode_scanner.types
 import android.util.Size
 import com.google.mlkit.vision.barcode.common.Barcode
 
-data class ScannerConfiguration(val types: IntArray, val resolution: Resolution, val framerate: Framerate, val position: CameraPosition, val detectionMode: DetectionMode)
-
-enum class Framerate {
-    Fps30, Fps60, Fps120, Fps240;
-}
-
-enum class Resolution {
-    Sd480, Hd720, Hd1080, Hd4k;
-
-    private fun width() : Int = when(this) {
-        Sd480 -> 640
-        Hd720 -> 1280
-        Hd1080 -> 1920
-        Hd4k -> 3840
+data class ScannerConfiguration(
+    val types: IntArray,
+    val mode: PerformanceMode,
+    val position: CameraPosition,
+    val detectionMode: DetectionMode
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ScannerConfiguration) return false
+        return types.contentEquals(other.types) &&
+            mode == other.mode &&
+            position == other.position &&
+            detectionMode == other.detectionMode
     }
 
-    private fun height() : Int = when(this) {
-        Sd480 -> 480
-        Hd720 -> 720
-        Hd1080 -> 1080
-        Hd4k -> 2160
+    override fun hashCode(): Int {
+        var result = types.contentHashCode()
+        result = 31 * result + mode.hashCode()
+        result = 31 * result + position.hashCode()
+        result = 31 * result + detectionMode.hashCode()
+        return result
+    }
+}
+
+enum class PerformanceMode(val wireName: String) {
+    System("system"),
+    Economic("economic"),
+    High("high");
+
+    fun targetSize(): Size = when (this) {
+        Economic -> Size(1280, 720)
+        System -> Size(1920, 1080)
+        High -> Size(3840, 2160)
     }
 
-    fun landscape() : Size = Size(width(), height())
-    fun portrait() : Size = Size(height(), width())
+    companion object {
+        fun fromString(value: String?): PerformanceMode =
+            entries.firstOrNull { it.wireName == value }
+                ?: throw IllegalArgumentException("Unknown PerformanceMode: $value")
+    }
 }
 
-enum class DetectionMode {
-    PauseDetection, PauseVideo, Continuous;
+enum class DetectionMode(val wireName: String) {
+    PauseDetection("pauseDetection"),
+    PauseVideo("pauseVideo"),
+    Continuous("continuous");
+
+    companion object {
+        fun fromString(value: String?): DetectionMode =
+            entries.firstOrNull { it.wireName == value }
+                ?: throw IllegalArgumentException("Unknown DetectionMode: $value")
+    }
 }
 
-enum class CameraPosition {
-    Front, Back;
+enum class CameraPosition(val wireName: String) {
+    Front("front"),
+    Back("back");
+
+    companion object {
+        fun fromString(value: String?): CameraPosition =
+            entries.firstOrNull { it.wireName == value }
+                ?: throw IllegalArgumentException("Unknown CameraPosition: $value")
+    }
 }
 
-val barcodeFormatMap = hashMapOf(
+val barcodeFormatMap: Map<String, Int> = hashMapOf(
     "aztec" to Barcode.FORMAT_AZTEC,
     "code128" to Barcode.FORMAT_CODE_128,
     "code39" to Barcode.FORMAT_CODE_39,
@@ -54,4 +84,5 @@ val barcodeFormatMap = hashMapOf(
     "upcE" to Barcode.FORMAT_UPC_E
 )
 
-val barcodeStringMap = barcodeFormatMap.entries.associateBy({ it.value }) { it.key }
+val barcodeStringMap: Map<Int, String> =
+    barcodeFormatMap.entries.associateBy({ it.value }) { it.key }

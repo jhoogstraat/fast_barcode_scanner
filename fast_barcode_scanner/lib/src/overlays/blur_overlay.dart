@@ -1,36 +1,46 @@
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../camera_controller.dart';
 import '../types/scanner_event.dart';
 
+/// Blurs the camera preview when a barcode is detected.
 class BlurPreviewOverlay extends StatelessWidget {
-  final double blurAmount;
-  final Duration duration;
-
+  /// Creates a [BlurPreviewOverlay].
   const BlurPreviewOverlay({
     super.key,
     this.blurAmount = 30,
     this.duration = const Duration(milliseconds: 500),
   });
 
-  bool shouldBlur(event) => event == ScannerEvent.detected;
+  /// Maximum Gaussian blur sigma applied on detection.
+  final double blurAmount;
+
+  /// Animation duration for fading the blur in and out.
+  final Duration duration;
+
+  bool _shouldBlur(ScannerEvent event) => event == ScannerEvent.detected;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
+    return ValueListenableBuilder<ScannerEvent>(
       valueListenable: CameraController.shared.eventNotifier,
-      builder: (context, event, child) {
-        return TweenAnimationBuilder(
-          tween: Tween(begin: 0.0, end: shouldBlur(event) ? blurAmount : 0.0),
+      builder: (context, event, _) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: _shouldBlur(event) ? blurAmount : 0.0),
           duration: duration,
           curve: Curves.easeOut,
-          child: Container(color: Colors.black.withOpacity(0.0)),
-          builder: (_, value, child) => BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
-            child: child,
-          ),
+          child: const SizedBox.expand(),
+          builder: (_, value, child) {
+            if (value <= 0.01) {
+              return child!;
+            }
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: value, sigmaY: value),
+              child: child,
+            );
+          },
         );
       },
     );

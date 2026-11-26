@@ -7,8 +7,9 @@ extension Error {
     } else {
       return FlutterError(
         code: "UNEXPECTED_ERROR",
-        message: "Unknown error occured.",
-        details: nil)
+        message: localizedDescription,
+        details: nil
+      )
     }
   }
 }
@@ -19,15 +20,13 @@ enum ScannerError: Error {
   case notRunning
   case alreadyRunning
   case noInputDeviceForConfig(CameraConfiguration)
-  case cameraNotSuitable(Resolution, Framerate)
+  case cameraNotSuitable(PerformanceMode)
   case unauthorized
   case configurationError(String)
   case invalidArguments(Any?)
   case invalidCodeType(String)
   case loadingFailed
   case analysisFailed(Error)
-  case minimumTarget
-  case loadingURLFailed(String)
   case loadingDataFailed
 
   var flutterError: FlutterError {
@@ -36,80 +35,80 @@ enum ScannerError: Error {
       return FlutterError(
         code: "NOT_INITIALIZED",
         message: "Camera has not been initialized",
-        details: nil)
+        details: nil
+      )
     case .alreadyInitialized:
       return FlutterError(
         code: "ALREADY_INITIALIZED",
         message: "Camera is already initialized",
-        details: nil)
+        details: nil
+      )
     case .notRunning:
       return FlutterError(
         code: "NOT_RUNNING",
         message: "Camera is not running",
-        details: nil)
+        details: nil
+      )
     case .alreadyRunning:
       return FlutterError(
         code: "ALREADY_RUNNING",
         message: "Camera is already running",
-        details: nil)
-    case .cameraNotSuitable(let res, let fps):
+        details: nil
+      )
+    case .cameraNotSuitable(let mode):
       return FlutterError(
         code: "CAMERA_NOT_SUITABLE",
-        message: """
-          The camera does not support the requested resolution (\(res)) \
-          and framerate (\(fps)) combination
-          """,
-        details: "Try to lower your settings")
+        message: "The camera does not support the requested performance mode (\(mode.rawValue))",
+        details: "Try switching to PerformanceMode.system or PerformanceMode.economic"
+      )
     case .configurationError(let error):
       return FlutterError(
         code: "CONFIGURATION_FAILED",
         message: "Configuration failed (\(error))",
-        details: nil)
+        details: nil
+      )
     case .noInputDeviceForConfig(let config):
       return FlutterError(
         code: "NO_INPUT_DEVICE",
-        message: "No input device found for configuration (\(config)",
-        details: "Are you using a simulator?")
+        message: "No input device found for configuration (\(config.position))",
+        details: "Are you running on a simulator without a camera?"
+      )
     case .unauthorized:
       return FlutterError(
         code: "UNAUTHORIZED",
         message: "The application is not authorized to use the camera device",
-        details: nil)
+        details: nil
+      )
     case .invalidArguments(let args):
       return FlutterError(
         code: "INVALID_ARGUMENT",
         message: "Invalid arguments provided (\(String(describing: args)))",
-        details: nil)
+        details: nil
+      )
     case .invalidCodeType(let type):
       return FlutterError(
         code: "INVALID_CODE",
         message: "Invalid code type \(type)",
-        details: nil)
+        details: nil
+      )
     case .loadingFailed:
       return FlutterError(
         code: "LOADING_FAILED",
-        message: "Could not load asset",
-        details: nil)
+        message: "Could not load image",
+        details: nil
+      )
     case .analysisFailed(let error):
       return FlutterError(
         code: "ANALYSIS_FAILED",
-        message: "Could not analyse asset",
-        details: error.localizedDescription)
-    case .minimumTarget:
-      return FlutterError(
-        code: "MINIMUM_TARGET",
-        message: "iOS 12 or higher required",
-        details: nil)
-    case .loadingURLFailed(let url):
-      return FlutterError(
-        code: "LOADING_URL_FAILED",
-        message: "Loading image from url failed",
-        details: url)
+        message: "Could not analyze image",
+        details: error.localizedDescription
+      )
     case .loadingDataFailed:
       return FlutterError(
         code: "LOADING_DATA_FAILED",
         message: "Loading image from data failed",
-        details: nil)
+        details: nil
+      )
     }
   }
 }

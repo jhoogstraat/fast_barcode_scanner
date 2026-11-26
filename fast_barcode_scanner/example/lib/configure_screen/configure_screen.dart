@@ -11,46 +11,40 @@ class ConfigureScreen extends StatefulWidget {
 }
 
 class _ConfigureScreenState extends State<ConfigureScreen> {
-  _ConfigureScreenState();
+  final CameraController cameraController = CameraController.shared;
 
-  final cameraController = CameraController.shared;
+  late List<BarcodeType> _types;
+  late PerformanceMode _mode;
+  late CameraPosition _position;
+  late DetectionMode _detectionMode;
+
+  @override
+  void initState() {
+    super.initState();
+    final config = cameraController.state.value.scannerConfig!;
+    _types = List<BarcodeType>.from(config.types);
+    _mode = config.mode;
+    _position = config.position;
+    _detectionMode = config.detectionMode;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final state = cameraController.state.value;
+    final currentConfig = ScannerConfiguration(
+      _types,
+      _mode,
+      _position,
+      _detectionMode,
+    );
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuration'),
-        leading: BackButton(
-          onPressed: () async {
-            final shouldReturn = await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Apply Changes?'),
-                content: const Text('Return without applying changes?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Ok'),
-                  ),
-                ],
-              ),
-            );
-
-            if (shouldReturn && context.mounted) {
-              Navigator.pop(context);
-            }
-          },
-        ),
         actions: [
           TextButton(
-            onPressed: applyChanges,
-            child: const Text(
-              'Apply',
-              style: TextStyle(color: Colors.white),
-            ),
-          )
+            onPressed: _applyChanges,
+            child: const Text('Apply'),
+          ),
         ],
       ),
       body: ListView(
@@ -59,95 +53,89 @@ class _ConfigureScreenState extends State<ConfigureScreen> {
           tiles: [
             ListTile(
               title: const Text('Active code types'),
-              subtitle: Text(
-                  state.scannerConfig!.types.map((e) => e.name).join(', ')),
+              subtitle: Text(_types.map((e) => e.name).join(', ')),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () async {
-                final types = await Navigator.push<List<BarcodeType>>(context,
-                    MaterialPageRoute(builder: (_) {
-                  return BarcodeTypeSelector(state.scannerConfig!);
-                }));
-                // TODO: Update camera config
+                final updatedTypes = await Navigator.push<List<BarcodeType>>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BarcodeTypeSelector(currentConfig),
+                  ),
+                );
+                if (updatedTypes != null && updatedTypes.isNotEmpty) {
+                  setState(() => _types = updatedTypes);
+                }
               },
             ),
             ListTile(
-              title: const Text('Mode'),
+              title: const Text('Performance Mode'),
               trailing: DropdownButton<PerformanceMode>(
-                  value: state.scannerConfig!.mode,
-                  onChanged: (value) {
-                    // TODO: Update camera config
-                  },
-                  items: buildDropdownItems(PerformanceMode.values)),
+                value: _mode,
+                onChanged: (value) {
+                  if (value != null) setState(() => _mode = value);
+                },
+                items: _buildDropdownItems(PerformanceMode.values),
+              ),
             ),
             ListTile(
-              title: const Text('Position'),
+              title: const Text('Camera Position'),
               trailing: DropdownButton<CameraPosition>(
-                  value: state.scannerConfig!.position,
-                  onChanged: (value) {
-                    // TODO: Update camera config
-                  },
-                  items: buildDropdownItems(CameraPosition.values)),
+                value: _position,
+                onChanged: (value) {
+                  if (value != null) setState(() => _position = value);
+                },
+                items: _buildDropdownItems(CameraPosition.values),
+              ),
             ),
             ListTile(
               title: const Text('Detection Mode'),
               trailing: DropdownButton<DetectionMode>(
-                value: state.scannerConfig!.detectionMode,
+                value: _detectionMode,
                 onChanged: (value) {
-                  // TODO: Update camera configt
+                  if (value != null) setState(() => _detectionMode = value);
                 },
-                items: buildDropdownItems(DetectionMode.values),
+                items: _buildDropdownItems(DetectionMode.values),
               ),
             ),
-            const Divider(),
-            //   CheckboxListTile(
-            //   value: _selected.contains(item),
-            //   title: Text("Material Design"),
-            //   onChanged: (newValue) {
-            //     setState(() {
-            //       if (newValue == true) {
-            //         _selected.add(item);
-            //       } else {
-            //         _selected.remove(item);
-            //       }
-            //     });
-            //   },
-            // );
           ],
         ).toList(),
       ),
     );
   }
 
-  List<DropdownMenuItem<E>> buildDropdownItems<E extends Enum>(
-          List<E> enumCases) =>
+  List<DropdownMenuItem<E>> _buildDropdownItems<E extends Enum>(
+    List<E> enumCases,
+  ) =>
       enumCases
           .map((v) => DropdownMenuItem(value: v, child: Text(v.name)))
           .toList();
 
-  Future<void> applyChanges() async {
+  Future<void> _applyChanges() async {
     try {
-      await CameraController.shared.configure(
-        types: cameraController.state.value.scannerConfig!.types,
-        mode: cameraController.state.value.scannerConfig!.mode,
-        detectionMode:
-            cameraController.state.value.scannerConfig!.detectionMode,
-        position: cameraController.state.value.scannerConfig!.position,
+      await cameraController.configure(
+        types: _types,
+        mode: _mode,
+        detectionMode: _detectionMode,
+        position: _position,
       );
-    } catch (error) {
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Fehler'),
-          content: Text(error.toString()),
-        ),
-      );
-
-      return;
-    } finally {
       if (mounted) {
         Navigator.pop(context);
       }
+    } catch (error) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Configuration Error'),
+          content: Text(error.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

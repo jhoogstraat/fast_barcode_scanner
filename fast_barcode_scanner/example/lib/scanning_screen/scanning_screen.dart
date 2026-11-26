@@ -40,14 +40,86 @@ class _ScanningScreenState extends State<ScanningScreen> {
     ..strokeJoin = StrokeJoin.bevel
     ..color = Colors.orange;
 
-  final availableOverlays = ["Boundary", "Material", "Blur"];
-
-  var enabledOverlays = [
-    "Material",
-    "Boundary",
-  ];
+  final List<String> enabledOverlays = ['Material', 'Boundary'];
 
   final cam = CameraController.shared;
+
+  @override
+  void dispose() {
+    _torchIconState.dispose();
+    _cameraRunning.dispose();
+    _scannerRunning.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleCamera() async {
+    final isRunning = _cameraRunning.value;
+    try {
+      if (isRunning) {
+        await cam.pauseCamera();
+      } else {
+        await cam.resumeCamera();
+      }
+      _cameraRunning.value = !isRunning;
+    } catch (error, stack) {
+      if (!mounted) return;
+      presentErrorAlert(context, error, stack);
+    }
+  }
+
+  Future<void> _toggleScanner() async {
+    final isRunning = _scannerRunning.value;
+    try {
+      if (isRunning) {
+        await cam.pauseScanner();
+      } else {
+        await cam.resumeScanner();
+      }
+      _scannerRunning.value = !isRunning;
+    } catch (error, stack) {
+      if (!mounted) return;
+      presentErrorAlert(context, error, stack);
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    try {
+      final torchState = await cam.toggleTorch();
+      _torchIconState.value = torchState;
+    } catch (error, stack) {
+      if (!mounted) return;
+      presentErrorAlert(context, error, stack);
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    try {
+      await cam.switchCamera();
+    } catch (error, stack) {
+      if (!mounted) return;
+      presentErrorAlert(context, error, stack);
+    }
+  }
+
+  Future<void> _openConfig() async {
+    final config = cam.state.value.scannerConfig;
+    if (config == null) return;
+
+    await cam.pauseCamera().catchError((_) {});
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ConfigureScreen()),
+    );
+
+    try {
+      await cam.resumeCamera();
+    } catch (error, stack) {
+      if (!mounted) return;
+      presentErrorAlert(context, error, stack);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,24 +134,25 @@ class _ScanningScreenState extends State<ScanningScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.info),
+            icon: const Icon(Icons.cameraswitch, color: Colors.white),
+            tooltip: 'Switch camera',
+            onPressed: _switchCamera,
+          ),
+          IconButton(
+            icon: const Icon(Icons.info, color: Colors.white),
             onPressed: () {
               final preview = cam.state.value.cameraInformation;
-
               if (preview != null) {
-                showDialog(
+                showDialog<void>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text("Preview Config"),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [Text(preview.toString())],
-                    ),
+                    title: const Text('Camera Info'),
+                    content: Text(preview.toString()),
                   ),
                 );
               }
             },
-          )
+          ),
         ],
       ),
       body: BarcodeCamera(
@@ -93,12 +166,10 @@ class _ScanningScreenState extends State<ScanningScreen> {
         detectionMode: DetectionMode.continuous,
         position: CameraPosition.back,
         api: widget.apiMode,
-        onScan: (code) {
-          history.addAll(code);
-        },
+        onScan: history.addAll,
         dispose: widget.dispose,
         children: [
-          if (enabledOverlays.contains("Material"))
+          if (enabledOverlays.contains('Material'))
             MaterialPreviewOverlay(
               rectOfInterest: RectOfInterest.wide(),
               onScan: (codes) {},
@@ -112,7 +183,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                 return null;
               },
             ),
-          if (enabledOverlays.contains(("Boundary")))
+          if (enabledOverlays.contains('Boundary'))
             CodeBoundaryOverlay(
               codeBorderPaintBuilder: (code) {
                 return code.value.hashCode % 2 == 0 ? orangePaint : greenPaint;
@@ -122,7 +193,7 @@ class _ScanningScreenState extends State<ScanningScreen> {
                     code.value.hashCode % 2 == 0 ? Colors.orange : Colors.green,
               ),
             ),
-          if (enabledOverlays.contains("Blur")) const BlurPreviewOverlay()
+          if (enabledOverlays.contains('Blur')) const BlurPreviewOverlay(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -151,70 +222,35 @@ class _ScanningScreenState extends State<ScanningScreen> {
                         Column(
                           children: [
                             ValueListenableBuilder<bool>(
-                                valueListenable: _cameraRunning,
-                                builder: (context, isRunning, _) {
-                                  return ElevatedButton(
-                                    onPressed: () {
-                                      final future = isRunning
-                                          ? cam.pauseCamera()
-                                          : cam.resumeCamera();
-
-                                      future.then((_) {
-                                        _cameraRunning.value = !isRunning;
-                                      }).catchError((error, stack) {
-                                        presentErrorAlert(
-                                          context,
-                                          error,
-                                          stack,
-                                        );
-                                      });
-                                    },
-                                    child: Text(isRunning
-                                        ? 'Pause Camera'
-                                        : 'Resume Camera'),
-                                  );
-                                }),
+                              valueListenable: _cameraRunning,
+                              builder: (context, isRunning, _) =>
+                                  ElevatedButton(
+                                onPressed: _toggleCamera,
+                                child: Text(
+                                  isRunning ? 'Pause Camera' : 'Resume Camera',
+                                ),
+                              ),
+                            ),
                             ValueListenableBuilder<bool>(
-                                valueListenable: _scannerRunning,
-                                builder: (context, isRunning, _) {
-                                  return ElevatedButton(
-                                    onPressed: () {
-                                      final future = isRunning
-                                          ? cam.pauseScanner()
-                                          : cam.resumeScanner();
-
-                                      future.then((_) {
-                                        _scannerRunning.value = !isRunning;
-                                      }).catchError((error, stackTrace) {
-                                        presentErrorAlert(
-                                          context,
-                                          error,
-                                          stackTrace,
-                                        );
-                                      });
-                                    },
-                                    child: Text(isRunning
-                                        ? 'Pause Scanner'
-                                        : 'Resume Scanner'),
-                                  );
-                                }),
+                              valueListenable: _scannerRunning,
+                              builder: (context, isRunning, _) =>
+                                  ElevatedButton(
+                                onPressed: _toggleScanner,
+                                child: Text(
+                                  isRunning
+                                      ? 'Pause Scanner'
+                                      : 'Resume Scanner',
+                                ),
+                              ),
+                            ),
                             ValueListenableBuilder<bool>(
                               valueListenable: _torchIconState,
                               builder: (context, isTorchActive, _) =>
                                   ElevatedButton(
-                                onPressed: () {
-                                  cam.toggleTorch().then((torchState) {
-                                    _torchIconState.value = torchState;
-                                  }).catchError((error, stackTrace) {
-                                    presentErrorAlert(
-                                      context,
-                                      error,
-                                      stackTrace,
-                                    );
-                                  });
-                                },
+                                onPressed: _toggleTorch,
                                 child: Text(
-                                    'Torch: ${isTorchActive ? 'on' : 'off'}'),
+                                  'Torch: ${isTorchActive ? 'on' : 'off'}',
+                                ),
                               ),
                             ),
                           ],
@@ -222,27 +258,13 @@ class _ScanningScreenState extends State<ScanningScreen> {
                         Column(
                           children: [
                             ElevatedButton(
-                              onPressed: () async {
-                                final config = cam.state.value.scannerConfig;
-                                if (config != null) {
-                                  // swallow errors
-                                  cam.pauseCamera().catchError((_, __) {});
-
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ConfigureScreen(),
-                                    ),
-                                  );
-
-                                  cam.resumeCamera().catchError(
-                                        (error, stack) => presentErrorAlert(
-                                            context, error, stack),
-                                      );
-                                }
-                              },
+                              onPressed: _openConfig,
                               child: const Text('Update Configuration'),
-                            )
+                            ),
+                            ElevatedButton(
+                              onPressed: _switchCamera,
+                              child: const Text('Switch Camera'),
+                            ),
                           ],
                         ),
                       ],

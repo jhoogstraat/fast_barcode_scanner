@@ -1,26 +1,18 @@
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
-import 'package:fast_barcode_scanner_platform_interface/fast_barcode_scanner_platform_interface.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
 import 'material_finder_painter.dart';
 
-/// Mimics the official Material Design Barcode Scanner
-/// (https://material.io/design/machine-learning/barcode-scanning.html)
-///
+/// Mimics the Material Design Barcode Scanner viewfinder overlay.
 class MaterialPreviewOverlay extends StatefulWidget {
-  /// Creates a material barcode overlay.
-  ///
-  /// * `showSensing` animates the finder border.
-  /// (Increased cpu usage confirmed on iOS when enabled)
-  ///
-  /// * `aspectRatio` of the finder border.
-  ///
+  /// Creates a Material barcode finder overlay.
   const MaterialPreviewOverlay({
     super.key,
     required this.rectOfInterest,
     this.showSensing = false,
-    this.sensingColor = Colors.white,
-    this.backgroundColor = Colors.black38,
-    this.cutOutBorderColor = Colors.black87,
+    this.sensingColor = const Color(0xFFFFFFFF),
+    this.backgroundColor = const Color(0x61000000),
+    this.cutOutBorderColor = const Color(0xDD000000),
     this.onScan,
     this.onScannedBoundsColor,
   });
@@ -34,86 +26,16 @@ class MaterialPreviewOverlay extends StatefulWidget {
   final OnDetectionHandler? onScan;
 
   @override
-  State createState() {
-    if (!showSensing) {
-      return StaticMaterialPreviewOverlayState();
-    } else {
-      return MaterialPreviewOverlayState();
-    }
-  }
-}
-
-class StaticMaterialPreviewOverlayState extends State<MaterialPreviewOverlay> {
-  List<Barcode> _filteredBarcodes = [];
-
-  @override
-  void initState() {
-    super.initState();
-    CameraController.shared.resultNotifier.addListener(_onBarcodesDetected);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    CameraController.shared.resultNotifier.removeListener(_onBarcodesDetected);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = widget.onScannedBoundsColor?.call(_filteredBarcodes) ??
-        widget.cutOutBorderColor;
-
-    final defaultBorderPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..color = borderColor;
-
-    return RepaintBoundary(
-      child: SizedBox.expand(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CustomPaint(
-              painter: MaterialFinderPainter(
-                borderPaint: defaultBorderPaint,
-                backgroundColor: widget.backgroundColor,
-                rectOfInterest: widget.rectOfInterest,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _onBarcodesDetected() {
-    // TODO: Get analysis size from native side.
-    // final analysisSize = CameraController.shared.analysisSize;
-    const analysisSize = null;
-    final previewSize = context.size;
-
-    setState(() {
-      if (analysisSize != null && previewSize != null) {
-        _filteredBarcodes = CameraController.shared.resultNotifier.value
-            .where(widget.rectOfInterest.buildCodeFilter(
-              analysisSize: analysisSize,
-              previewSize: previewSize,
-            ))
-            .toList();
-      } else {
-        _filteredBarcodes = [];
-      }
-    });
-  }
+  State<MaterialPreviewOverlay> createState() => MaterialPreviewOverlayState();
 }
 
 class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
     with SingleTickerProviderStateMixin {
-  List<Barcode> _filteredCodes = [];
+  List<Barcode> _filteredCodes = const [];
 
-  late AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-  late Animation<double> _inflateAnimation;
+  late final AnimationController _controller;
+  late final Animation<double> _opacityAnimation;
+  late final Animation<double> _inflateAnimation;
 
   @override
   void initState() {
@@ -128,40 +50,55 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
       vsync: this,
     );
 
-    final opacitySequence = TweenSequence([
+    final opacitySequence = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: fadeIn),
       TweenSequenceItem(tween: ConstantTween(1.0), weight: wait),
       TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 0.0)
-              .chain(CurveTween(curve: Curves.easeOutCubic)),
-          weight: expand),
-      // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
+        tween: Tween(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: expand,
+      ),
     ]);
 
-    final inflateSequence = TweenSequence([
+    final inflateSequence = TweenSequence<double>([
       TweenSequenceItem(tween: ConstantTween(0.0), weight: fadeIn + wait),
       TweenSequenceItem(
-          tween: Tween(begin: 0.0, end: 1.0)
-              .chain(CurveTween(curve: Curves.easeOutCubic)),
-          weight: expand),
-      // TweenSequenceItem(tween: ConstantTween(0.0), weight: wait),
+        tween: Tween(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: expand,
+      ),
     ]);
 
     _opacityAnimation = opacitySequence.animate(_controller);
     _inflateAnimation = inflateSequence.animate(_controller);
 
     _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed && _filteredCodes.isEmpty) {
+      if (widget.showSensing &&
+          status == AnimationStatus.completed &&
+          _filteredCodes.isEmpty) {
         Future.delayed(const Duration(milliseconds: 500), () {
-          if (!mounted) return;
+          if (!mounted || !widget.showSensing) return;
           _controller.forward(from: _controller.lowerBound);
         });
       }
     });
 
-    _controller.forward();
+    if (widget.showSensing) {
+      _controller.forward();
+    }
 
     CameraController.shared.resultNotifier.addListener(_onCodesScanned);
+  }
+
+  @override
+  void didUpdateWidget(covariant MaterialPreviewOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.showSensing && !oldWidget.showSensing) {
+      _controller.forward(from: _controller.lowerBound);
+    } else if (!widget.showSensing && oldWidget.showSensing) {
+      _controller.stop();
+      _controller.reset();
+    }
   }
 
   @override
@@ -172,29 +109,33 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
   }
 
   void _onCodesScanned() {
-    // TODO: Get analysis size from native side.
-    // final analysisSize = CameraController.shared.analysisSize;
-    const analysisSize = null;
+    if (!mounted) return;
+    final cameraInfo = CameraController.shared.state.value.cameraInformation;
+    final analysisSize =
+        cameraInfo?.analysisFrame.size ?? cameraInfo?.videoSize;
     final previewSize = context.size;
 
     setState(() {
       if (analysisSize != null && previewSize != null) {
-        _filteredCodes = CameraController.shared.resultNotifier.value
-            .where(widget.rectOfInterest.buildCodeFilter(
-              analysisSize: analysisSize,
-              previewSize: previewSize,
-            ))
-            .toList();
+        _filteredCodes = widget.rectOfInterest.filterCodes(
+          codes: CameraController.shared.resultNotifier.value,
+          analysisSize: analysisSize,
+          previewSize: previewSize,
+        );
       } else {
-        _filteredCodes = [];
+        _filteredCodes = const [];
       }
     });
 
     if (_filteredCodes.isEmpty) {
-      _controller.forward();
+      if (widget.showSensing) {
+        _controller.forward();
+      }
     } else {
       widget.onScan?.call(_filteredCodes);
-      _controller.reset();
+      if (widget.showSensing) {
+        _controller.reset();
+      }
     }
   }
 
@@ -224,19 +165,20 @@ class MaterialPreviewOverlayState extends State<MaterialPreviewOverlay>
                 rectOfInterest: widget.rectOfInterest,
               ),
             ),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) => CustomPaint(
-                foregroundPainter: MaterialFinderPainter(
-                  inflate: _inflateAnimation.value,
-                  opacity: _opacityAnimation.value,
-                  sensingColor: widget.sensingColor,
-                  borderPaint: sensingBorderPaint,
-                  backgroundColor: widget.backgroundColor,
-                  rectOfInterest: widget.rectOfInterest,
+            if (widget.showSensing)
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) => CustomPaint(
+                  foregroundPainter: MaterialFinderPainter(
+                    inflate: _inflateAnimation.value,
+                    opacity: _opacityAnimation.value,
+                    sensingColor: widget.sensingColor,
+                    borderPaint: sensingBorderPaint,
+                    backgroundColor: null,
+                    rectOfInterest: widget.rectOfInterest,
+                  ),
                 ),
               ),
-            )
           ],
         ),
       ),

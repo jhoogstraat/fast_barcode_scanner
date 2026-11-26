@@ -1,121 +1,105 @@
 # fast_barcode_scanner
 
-Fast barcode & QR code scanning library using the latest technologies on Android and iOS.
+A high-performance Flutter barcode & QR code scanning plugin built on native platform APIs:
 
-- [**ML Kit**](https://developers.google.com/ml-kit) and [**CameraX**](https://developer.android.com/training/camerax) on Android
-- [**AVFoundation**](https://developer.apple.com/av-foundation/) and [**Vision**](https://developer.apple.com/documentation/vision) on iOS.
+- **Android**: [CameraX](https://developer.android.com/training/camerax) + [Google ML Kit Barcode Scanning](https://developers.google.com/ml-kit/vision/barcode-scanning) rendered via zero-copy Flutter `Texture`
+- **iOS**: [AVFoundation](https://developer.apple.com/av-foundation/) or [Vision](https://developer.apple.com/documentation/vision) (`AVCaptureMetadataOutput` / `VNDetectBarcodesRequest`)
 
-It provides a live preview widget you can put anywhere in your widget tree with rich configurability.
+## Features
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/jhoogstraat)
+- Live `BarcodeCamera` preview widget with automatic lifecycle, orientation (portrait & landscape), and pinch-to-zoom support
+- Dynamic reconfiguration without rebuilding the widget (barcode types, performance mode, detection mode, front/back camera switching)
+- Configurable iOS detection engine: hardware-accelerated `AVFoundationApiMode` or `VisionApiMode(confidence: ...)`
+- Still image scanning from raw bytes (`ImageSource.binary` / `ImageSource.bytes`) or native photo picker (`ImageSource.picker`)
+- Built-in customizable overlays: `MaterialPreviewOverlay` (with `RectOfInterest` filtering), `CodeBoundaryOverlay` (bounding boxes & corner polygons), and `BlurPreviewOverlay`
+- Torch control, zoom control (`setZoom`), camera switching (`canSwitchCamera` / `switchCamera`), and independent camera vs. detector pause/resume
+
+## Requirements
+
+- **Flutter**: `>=3.27.0` / **Dart**: `>=3.6.0`
+- **iOS**: `13.0+` (add `NSCameraUsageDescription` to `ios/Runner/Info.plist`)
+- **Android**: `minSdk 24+`, `compileSdk 36`, Java 17, AGP 9+ / Gradle 9.5+
 
 ## Installation
 
-**This plugin required iOS 11.0 and Android API level 21 or higher.**
-
-Add the following line to your **pubspec.yaml**:
-
 ```yaml
-fast_barcode_scanner: ^2.0.0-dev.2
+dependencies:
+  fast_barcode_scanner: ^2.0.0
 ```
 
-### iOS
+### iOS Setup
 
-Add the `NSCameraUsageDescription` key to your `ios/Runner/Info.plist`, like so:
+Add `NSCameraUsageDescription` to `ios/Runner/Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>This app requires access to your phone’s camera solely for scanning barcodes or QR codes</string>
+<string>This app requires camera access to scan barcodes and QR codes.</string>
 ```
 
-### Android
-
-Change the minimum Android api level to 21 (or higher) in your `android/app/build.gradle` file.
-
-```
-minSdkVersion 23
-```
-
-Update the AGP (Android Gradle Plugin) to version 8.4 or higher, to avoid issues with the latest CameraX beta. Use the upgrade assistant in Android Studio for that.
-
-## Usage
-
-Insert the `BarcodeCamera` anywhere in your widget tree to get a live camera preview:
+## Quick Start
 
 ```dart
 import 'package:fast_barcode_scanner/fast_barcode_scanner.dart';
+import 'package:flutter/material.dart';
 
-class MyScannerScreen extends StatelessWidget {
-    @override
-    Widget build(BuildContext context) {
-        return Scaffold(
-            appBar: AppBar(title: Text('Barcode and QR code Scanner')),
-            body: BarcodeCamera(
-                types: const [
-                    BarcodeType.ean8,
-                    BarcodeType.ean13,
-                    BarcodeType.code128,
-                    BarcodeType.qr
-                ],
-                resolution: Resolution.hd720,
-                framerate: Framerate.fps30,
-                position: CameraPosition.back,
-                mode: DetectionMode.pauseVideo,
-                onScan: (code) => print(code),
-                children: [
-                    MaterialPreviewOverlay(animateDetection: false),
-                    BlurPreviewOverlay(),
-                    Positioned(
-                      child: ElevatedButton(
-                        onPressed: () =>
-                            CameraController.instance.resumeDetector(),
-                        child: Text('Resume'),
-                      ),
-                    )
-                ],
-            )
-        )
-    }
+class ScannerPage extends StatelessWidget {
+  const ScannerPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Barcode Scanner')),
+      body: BarcodeCamera(
+        types: const [
+          BarcodeType.ean8,
+          BarcodeType.ean13,
+          BarcodeType.code128,
+          BarcodeType.qr,
+        ],
+        mode: PerformanceMode.system,
+        detectionMode: DetectionMode.pauseDetection,
+        position: CameraPosition.back,
+        api: const ApiMode(apple: AVFoundationApiMode()),
+        enablePinchToZoom: true,
+        onScan: (barcodes) {
+          for (final code in barcodes) {
+            debugPrint('${code.type.name}: ${code.value}');
+          }
+        },
+        children: [
+          MaterialPreviewOverlay(
+            rectOfInterest: RectOfInterest.wide(),
+            showSensing: true,
+          ),
+          const CodeBoundaryOverlay(),
+          const BlurPreviewOverlay(),
+        ],
+      ),
+    );
+  }
 }
 ```
 
-Two overlays are included:
+## Controlling the Camera
 
-- `MaterialPreviewOverlay` mimics the official material barcode scanning [example](https://material.io/design/machine-learning/barcode-scanning.html#usage).
-- `BlurPreviewOverlay` blurs the screen when a barcode or QR code is detected.
+Use `CameraController.shared` to control the active scanner session:
 
-## Controlling the camera
+| Method | Description |
+| --- | --- |
+| `initialize(...)` | Initializes and starts the camera and detector |
+| `configure(...)` | Dynamically updates barcode types, performance mode, detection mode, or camera position |
+| `pauseCamera()` / `resumeCamera()` | Pauses or resumes both preview and barcode detection |
+| `pauseScanner()` / `resumeScanner()` | Pauses or resumes barcode detection while keeping the preview live |
+| `toggleTorch()` | Toggles the flashlight and returns the new state |
+| `setZoom(double factor)` | Sets zoom factor clamped to `[minZoom, maxZoom]` |
+| `canSwitchCamera()` / `switchCamera()` | Checks multi-camera availability and toggles front/back camera |
+| `scanImage(ImageSource)` | Scans a still image from bytes or the native photo picker |
+| `dispose()` | Stops the camera and releases all native resources |
 
-The `CameraController`-singleton manages the camera. Normally when using `BarcodeCamera` you don't need `CameraController`.
+## Migration from v1.x
 
-To get access use the following anyhwere in your code:
-
-```dart
-final controller = CameraController()
-```
-
-Here is a full list of all the methods `CameraController` provides:
-| method | Description |
-| --------------------- | ------------------------------------------------ |
-| `initialize` | Initializes the scanner with the provided config |
-| `pauseDetector` | Actively pauses the scanner |
-| `resumeDetector` | Resumes the scanner from the paused state |
-| `toggleTorch` | toggles the torch on and off |
-| `changeConfiguration` | Push an updated `ScannerConfiguration` |
-| `analyzeImage` | |
-| `dispose` | Stops and resets the camera on platform level |
-
-### CameraState
-
-The state comes in handy when building overlays that change depending on it.
-You can access the state by using `CameraController().state`.
-
-| Attribute       | Description                                           |
-| --------------- | ----------------------------------------------------- |
-| `isInitialized` | Indicated whether the camera is currently initialized |
-| `previewConfig` | The current `PreviewConfiguration`                    |
-| `scannerConfig` | The current `ScannerConfiguration`                    |
-| `eventNotifier` | Notifies listeners of `CameraEvent`s                  |
-| `torchState`    | The current state of the torch (on/off)               |
-| `hasError`      | Indicates if `error` is null or not                   |
-| `error`         | Access the most recent error                          |
+- `resolution` and `framerate` were replaced by `PerformanceMode` (`system`, `economic`, `high`).
+- `onScan` now receives `List<Barcode>` (all codes detected in a frame) rather than a single `Barcode`.
+- `CameraController.instance` is now `CameraController.shared`.
+- `pauseDetector()` / `resumeDetector()` are now `pauseScanner()` / `resumeScanner()`.
+- `Barcode.boundingBox` is now a `dart:ui` `Rect?`, with optional `Barcode.cornerPoints` (`List<Offset>?`).

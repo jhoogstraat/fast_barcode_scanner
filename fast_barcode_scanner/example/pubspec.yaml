@@ -1,23 +1,23 @@
 name: fast_barcode_scanner_example
 description: "Demonstrates how to use the fast_barcode_scanner plugin."
 publish_to: 'none'
+version: 2.0.0+1
+resolution: workspace
 
 environment:
-  sdk: ^3.5.4
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
-
-  fast_barcode_scanner:
-    path: ../
+  fast_barcode_scanner: ^2.0.0
 
 dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^5.0.0
 
 flutter:
